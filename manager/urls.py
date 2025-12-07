@@ -6,6 +6,7 @@ from .views import (
     StaffEvaluationViewSet,
     DepartmentActivityReportViewSet,
     CreateStaffAccountView,
+    ManagerDashboardView,
 )
 
 router = DefaultRouter()
@@ -20,4 +21,5 @@ router.register(
 urlpatterns = [
     path("api/", include(router.urls)),
     path("api/staff-accounts/", CreateStaffAccountView.as_view(), name="create-staff-account"),
+     path("api/dashboard/", ManagerDashboardView.as_view(), name="manager-dashboard"),
 ]

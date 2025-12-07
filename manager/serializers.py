@@ -62,15 +62,22 @@ class CreateStaffAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "password", "role"]
+        fields = ["id", "username","first_name", "last_name", "email", "password", "role"]
         extra_kwargs = {
             "password": {"write_only": True},
         }
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        # Assumes custom user model with create_user and 'role' field.
         user = User.objects.create_user(**validated_data)
         user.set_password(password)
         user.save()
         return user
+class WorkstreamStatsSerializer(serializers.Serializer):
+    """Serializer for workstream statistics."""
+    workstream_id = serializers.IntegerField()
+    workstream_name = serializers.CharField()
+    total_reports = serializers.IntegerField()
+    avg_attendance_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
+    total_evaluations = serializers.IntegerField()
+    avg_evaluation_score = serializers.DecimalField(max_digits=4, decimal_places=2, allow_null=True)

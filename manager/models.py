@@ -29,7 +29,9 @@ class Workstream(models.Model):
 
     def __str__(self):
         return self.name
-
+        
+    class Meta:
+        ordering = ["-created_at"]  # Add this line
 
 class StaffEvaluation(models.Model):
     """
