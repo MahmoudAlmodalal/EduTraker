@@ -41,9 +41,16 @@ INSTALLED_APPS = [
     "rest_framework",
     "accounts", 
     "manager",
+    "student",
+    "teacher",
+    "guardian",
+    "user_messages", 
+    "notifications",
+    "register",
+    "reports",
 ]
 
-AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "accounts.CustomUser"
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
