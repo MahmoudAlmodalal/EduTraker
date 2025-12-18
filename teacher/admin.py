@@ -35,6 +35,7 @@ class CourseAllocationAdmin(admin.ModelAdmin):
     list_filter = ["course", "class_room", "teacher"]
     search_fields = ["course__name", "class_room__classroom_name", "teacher__user__email"]
     ordering = ["course", "class_room"]
+    autocomplete_fields = ["course", "class_room", "teacher"]
 
 
 @admin.register(Assignment)
