@@ -105,7 +105,6 @@ WSGI_APPLICATION = 'eduTrack.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Replace the existing SQLite configuration with this:
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -116,6 +115,7 @@ DATABASES = {
         'PORT': '3306',          # Default MySQL port
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
