@@ -39,3 +39,16 @@ class IsSecretary(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == Role.REGISTRAR
+class IsStudent(permissions.BasePermission):
+    """
+    Allows access to Students.
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == Role.STUDENT
+
+class IsGuardian(permissions.BasePermission):
+    """
+    Allows access to Guardians.
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == Role.GUARDIAN
