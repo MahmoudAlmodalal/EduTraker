@@ -1,2 +1,72 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.log
+
+# =========================
+# Virtual Environment
+# =========================
 venv/
+env/
+ENV/
+.virtualenv/
+
+# =========================
+# Environment variables
+# =========================
 .env
+.env.*
+*.env
+
+# =========================
+# Django
+# =========================
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# =========================
+# Django migrations (اختياري)
+# لو الفريق متفق يرفع migrations احذف هذا الجزء
+# =========================
+# **/migrations/*
+# !**/migrations/__init__.py
+
+# =========================
+# IDEs & Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Testing / Coverage
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+
+# =========================
+# Node (لو مستخدم frontend tools)
+# =========================
+node_modules/
+
+# =========================
+# Build / Distribution
+# =========================
+build/
+dist/
+*.egg-info/
