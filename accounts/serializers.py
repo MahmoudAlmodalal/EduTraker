@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -127,4 +125,3 @@ class WorkstreamTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['school'] = self.user.school.school_name if self.user.school else None
         
         return data
->>>>>>> dev
