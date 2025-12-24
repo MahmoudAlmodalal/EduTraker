@@ -11,6 +11,7 @@ class Role:
     MANAGER_WORKSTREAM = "manager_workstream"
     GUARDIAN = "guardian"
     ADMIN = "admin"
+    GUEST = "guest"
 
 
 class UserManager(BaseUserManager):
@@ -52,6 +53,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         (Role.MANAGER_WORKSTREAM, "Workstream Manager"),
         (Role.GUARDIAN, "Guardian"),
         (Role.ADMIN, "Admin"),
+        (Role.GUEST, "Guest"),
     ]
     
     email = models.EmailField(
@@ -63,14 +65,30 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=150,
         help_text="Full name of the user"
     )
+
     role = models.CharField(
         max_length=50,
         choices=ROLE_CHOICES,
         db_index=True,
-        default=Role.STUDENT,
+        default=Role.GUEST,
         help_text="User role"
     )
-    
+    work_stream = models.ForeignKey(
+        'manager.WorkStream', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="users",
+        help_text="Workstream this user belongs to"
+    )
+    school = models.ForeignKey(
+        'manager.School', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="users",
+        help_text="School this user belongs to"
+    )
     # Django auth fields
     is_active = models.BooleanField(
         default=True,
