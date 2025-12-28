@@ -70,7 +70,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=50,
         choices=ROLE_CHOICES,
         db_index=True,
-        default=Role.STUDENT,
+        default=Role.GUEST,
         help_text="User role"
     )
     work_stream = models.ForeignKey(
