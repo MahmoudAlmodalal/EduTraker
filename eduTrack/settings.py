@@ -39,7 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
-    "accounts", 
+    "accounts",
+    "custom_admin",
+    "workstream",
+    "workstream_manager", 
     "manager",
     "student",
     "teacher",
@@ -48,6 +51,7 @@ INSTALLED_APPS = [
     "notifications",
     "register",
     "reports",
+    
 ]
 
 AUTH_USER_MODEL = "accounts.CustomUser"
@@ -110,7 +114,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'edutraker_db',  # Name of the database you created in MySQL
         'USER': 'root',          # Your MySQL username
-        'PASSWORD': 'EduTraker@2025!', # Your MySQL password
+        'PASSWORD': '120210653', # Your MySQL password
         'HOST': 'localhost',     # Or the IP address if hosted remotely
         'PORT': '3306',          # Default MySQL port
     }
