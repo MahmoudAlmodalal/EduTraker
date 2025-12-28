@@ -15,7 +15,7 @@ class IsWorkStreamManager(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        return request.user.role == Role.MANAGER_WORKSTREAM
+        return request.user.role == Role.WORKSTREAM_MANAGER
 
 class IsSchoolManager(permissions.BasePermission):
     """
@@ -24,7 +24,7 @@ class IsSchoolManager(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        return request.user.role == Role.MANAGER_SCHOOL
+        return request.user.role == Role.SCHOOL_MANAGER
 
 class IsTeacher(permissions.BasePermission):
     """
@@ -38,7 +38,8 @@ class IsSecretary(permissions.BasePermission):
     Allows access to Registrars/Secretaries.
     """
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == Role.REGISTRAR
+        return request.user.is_authenticated and request.user.role == Role.SECRETARY
+
 class IsStudent(permissions.BasePermission):
     """
     Allows access to Students.

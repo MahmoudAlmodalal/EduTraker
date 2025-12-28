@@ -4,7 +4,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404
 from .models import Role
-from manager.models import WorkStream
+from workstream.models import WorkStream
 
 User = get_user_model()
 
@@ -21,7 +21,8 @@ class UserSerializer(serializers.ModelSerializer):
 class GuestRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for the Admin Registration URL (/register/admin/).
-    Registers a user with the 'guest' role by default.
+    Registers a user with the 'admin' role by default.
+    Note: Schema does not include 'guest' role, so using 'admin' instead.
     """
     password = serializers.CharField(write_only=True)
 

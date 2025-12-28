@@ -1,13 +1,13 @@
-from django.conf import settings
 from django.db import models
 
 
 class Guardian(models.Model):
     """
     Guardian profile linked to User.
+    Schema: Guardians table
     """
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         primary_key=True,
         related_name="guardian_profile",
@@ -21,7 +21,7 @@ class Guardian(models.Model):
     )
     
     class Meta:
-        db_table = "guardian"
+        db_table = "guardians"
         verbose_name = "Guardian"
         verbose_name_plural = "Guardians"
         ordering = ["user__full_name"]
@@ -33,6 +33,7 @@ class Guardian(models.Model):
 class GuardianStudentLink(models.Model):
     """
     Many-to-many relationship between guardians and students with relationship type.
+    Schema: Guardian_Student_Link table
     """
     RELATIONSHIP_CHOICES = [
         ("parent", "Parent"),
@@ -48,7 +49,7 @@ class GuardianStudentLink(models.Model):
         help_text="Guardian in this relationship"
     )
     student = models.ForeignKey(
-        "student.Student",
+        'student.Student',
         on_delete=models.CASCADE,
         related_name="guardian_links",
         help_text="Student in this relationship"

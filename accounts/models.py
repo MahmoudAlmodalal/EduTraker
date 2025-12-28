@@ -6,7 +6,7 @@ class Role:
     """Role constants for user roles."""
     STUDENT = "student"
     TEACHER = "teacher"
-    REGISTRAR = "register"
+    SECRETARY = "secretary"
     MANAGER_SCHOOL = "manager_school"
     MANAGER_WORKSTREAM = "manager_workstream"
     GUARDIAN = "guardian"
@@ -44,11 +44,12 @@ class UserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """
     Custom User model with email-based authentication and role-based access control.
+    Schema: Users table
     """
     ROLE_CHOICES = [
         (Role.STUDENT, "Student"),
         (Role.TEACHER, "Teacher"),
-        (Role.REGISTRAR, "Registrar/Secretary"),
+        (Role.SECRETARY, "Secretary"),
         (Role.MANAGER_SCHOOL, "School Manager"),
         (Role.MANAGER_WORKSTREAM, "Workstream Manager"),
         (Role.GUARDIAN, "Guardian"),
@@ -65,27 +66,26 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=150,
         help_text="Full name of the user"
     )
-
     role = models.CharField(
         max_length=50,
         choices=ROLE_CHOICES,
         db_index=True,
-        default=Role.GUEST,
+        default=Role.STUDENT,
         help_text="User role"
     )
     work_stream = models.ForeignKey(
-        'manager.WorkStream', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'workstream.WorkStream',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="users",
         help_text="Workstream this user belongs to"
     )
     school = models.ForeignKey(
-        'manager.School', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'manager.School',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="users",
         help_text="School this user belongs to"
     )
@@ -106,10 +106,45 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ["full_name"]
     
     class Meta:
+        db_table = "users"
         verbose_name = "user"
         verbose_name_plural = "users"
         ordering = ["email"]
     
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
-        
+
+
+class SystemConfiguration(models.Model):
+    """
+    System-wide or school-specific configuration settings.
+    Schema: System_Configurations table
+    """
+    school = models.ForeignKey(
+        "manager.School",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="configurations",
+        help_text="School-specific config (null for global)"
+    )
+    config_key = models.CharField(max_length=100, help_text="Configuration key")
+    config_value = models.TextField(help_text="Configuration value")
+    
+    class Meta:
+        db_table = "system_configurations"
+        verbose_name = "System Configuration"
+        verbose_name_plural = "System Configurations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "config_key"],
+                name="unique_school_config_key"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["school", "config_key"]),
+        ]
+    
+    def __str__(self):
+        scope = self.school.school_name if self.school else "Global"
+        return f"{scope}: {self.config_key}"

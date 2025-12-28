@@ -1,10 +1,10 @@
-from django.conf import settings
 from django.db import models
 
 
 class Notification(models.Model):
     """
     System notifications with different scopes.
+    Schema: Notifications table
     """
     SCOPE_TYPE_CHOICES = [
         ("Workstream", "Workstream"),
@@ -13,7 +13,7 @@ class Notification(models.Model):
     ]
     
     sender = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         related_name="sent_notifications",
         help_text="User who created this notification"
@@ -33,7 +33,7 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, help_text="When the notification was created")
     
     class Meta:
-        db_table = "notification"
+        db_table = "notifications"
         verbose_name = "Notification"
         verbose_name_plural = "Notifications"
         ordering = ["-created_at"]

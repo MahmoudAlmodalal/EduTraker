@@ -1,21 +1,5 @@
 from django.contrib import admin
-from .models import SystemConfiguration, WorkStream, School, AcademicYear, Grade, StaffEvaluation
-
-
-@admin.register(SystemConfiguration)
-class SystemConfigurationAdmin(admin.ModelAdmin):
-    list_display = ["id", "school", "config_key", "config_value"]
-    list_filter = ["school"]
-    search_fields = ["config_key", "config_value"]
-    ordering = ["school", "config_key"]
-
-
-@admin.register(WorkStream)
-class WorkStreamAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "manager", "max_user", "is_active"]
-    list_filter = ["is_active", "manager"]
-    search_fields = ["name", "description", "manager__email"]
-    ordering = ["name"]
+from .models import School, AcademicYear, Grade, Course, ClassRoom, Secretary, StaffEvaluation
 
 
 @admin.register(School)
@@ -40,6 +24,30 @@ class GradeAdmin(admin.ModelAdmin):
     list_filter = ["numeric_level"]
     search_fields = ["name"]
     ordering = ["numeric_level"]
+
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = ["id", "course_code", "name", "school", "grade"]
+    list_filter = ["school", "grade"]
+    search_fields = ["course_code", "name", "school__school_name"]
+    ordering = ["course_code"]
+
+
+@admin.register(ClassRoom)
+class ClassRoomAdmin(admin.ModelAdmin):
+    list_display = ["id", "classroom_name", "school", "academic_year", "grade", "homeroom_teacher"]
+    list_filter = ["school", "academic_year", "grade"]
+    search_fields = ["classroom_name", "school__school_name", "homeroom_teacher__user__email"]
+    ordering = ["academic_year", "grade", "classroom_name"]
+
+
+@admin.register(Secretary)
+class SecretaryAdmin(admin.ModelAdmin):
+    list_display = ["user", "department", "office_number", "hire_date"]
+    list_filter = ["department", "hire_date"]
+    search_fields = ["user__email", "user__full_name", "department", "office_number"]
+    ordering = ["user__full_name"]
 
 
 @admin.register(StaffEvaluation)

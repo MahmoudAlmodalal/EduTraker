@@ -3,85 +3,23 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
-class SystemConfiguration(models.Model):
-    """
-    System-wide or school-specific configuration settings.
-    """
-    school = models.ForeignKey(
-        "School",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="configurations",
-        help_text="School-specific config (null for global)"
-    )
-    config_key = models.CharField(max_length=100, help_text="Configuration key")
-    config_value = models.TextField(help_text="Configuration value")
-    
-    class Meta:
-        db_table = "system_configuration"
-        verbose_name = "System Configuration"
-        verbose_name_plural = "System Configurations"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["school", "config_key"],
-                name="unique_school_config_key"
-            )
-        ]
-        indexes = [
-            models.Index(fields=["school", "config_key"]),
-        ]
-    
-    def __str__(self):
-        scope = self.school.school_name if self.school else "Global"
-        return f"{scope}: {self.config_key}"
-
-
-class WorkStream(models.Model):
-    """
-    Workstream managed by a manager.
-    """
-    name = models.CharField(max_length=100, help_text="Workstream name")
-    description = models.CharField(max_length=255, null=True, blank=True)
-    manager = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="managed_workstreams",
-        help_text="Manager of this workstream"
-    )
-    max_user = models.IntegerField(
-        validators=[MinValueValidator(1)],
-        help_text="Maximum number of users"
-    )
-    is_active = models.BooleanField(default=True, help_text="Whether this workstream is active")
-    
-    class Meta:
-        db_table = "workstream"
-        verbose_name = "Workstream"
-        verbose_name_plural = "Workstreams"
-        ordering = ["name"]
-    
-    def __str__(self):
-        return self.name
-
-
 class School(models.Model):
     """
     School entity within a workstream.
+    Schema: Schools table
     """
     school_name = models.CharField(
-        max_length=100,
-        unique=True,
+        max_length=255,
         help_text="School name"
     )
     work_stream = models.ForeignKey(
-        WorkStream,
+        'workstream.WorkStream',
         on_delete=models.CASCADE,
         related_name="schools",
         help_text="Workstream this school belongs to"
     )
     manager = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -90,7 +28,7 @@ class School(models.Model):
     )
     
     class Meta:
-        db_table = "school"
+        db_table = "schools"
         verbose_name = "School"
         verbose_name_plural = "Schools"
         ordering = ["school_name"]
@@ -102,12 +40,11 @@ class School(models.Model):
 class AcademicYear(models.Model):
     """
     Academic year for a school.
+    Schema: Academic_years table
     """
     academic_year_code = models.CharField(
-        max_length=9,
-        unique=True,
-        db_index=True,
-        help_text="Academic year code (e.g., 2024-2025)"
+        max_length=20,
+        help_text="Academic year code (e.g., 2025/2026)"
     )
     school = models.ForeignKey(
         School,
@@ -119,7 +56,7 @@ class AcademicYear(models.Model):
     end_date = models.DateField(help_text="Academic year end date")
     
     class Meta:
-        db_table = "academic_year"
+        db_table = "academic_years"
         verbose_name = "Academic Year"
         verbose_name_plural = "Academic Years"
         ordering = ["-academic_year_code"]
@@ -131,6 +68,7 @@ class AcademicYear(models.Model):
 class Grade(models.Model):
     """
     Grade/level in the educational system.
+    Schema: Grades table
     """
     name = models.CharField(max_length=50, help_text="Grade name (e.g., Grade 1, Kindergarten)")
     numeric_level = models.IntegerField(
@@ -147,7 +85,7 @@ class Grade(models.Model):
     )
     
     class Meta:
-        db_table = "grade"
+        db_table = "grades"
         verbose_name = "Grade"
         verbose_name_plural = "Grades"
         ordering = ["numeric_level"]
@@ -156,18 +94,135 @@ class Grade(models.Model):
         return self.name
 
 
+class Course(models.Model):
+    """
+    Course offered in a school for a specific grade.
+    Schema: Courses table
+    """
+    course_code = models.CharField(
+        max_length=50,
+        help_text="Course code"
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="courses",
+        help_text="School offering this course"
+    )
+    grade = models.ForeignKey(
+        Grade,
+        on_delete=models.CASCADE,
+        related_name="courses",
+        help_text="Grade level for this course"
+    )
+    name = models.CharField(max_length=150, help_text="Course name")
+    
+    class Meta:
+        db_table = "courses"
+        verbose_name = "Course"
+        verbose_name_plural = "Courses"
+        ordering = ["course_code", "name"]
+    
+    def __str__(self):
+        return f"{self.course_code} - {self.name}"
+
+
+class ClassRoom(models.Model):
+    """
+    Classroom for a specific grade in an academic year.
+    Schema: Class_rooms table
+    """
+    classroom_name = models.CharField(max_length=100, help_text="Classroom name")
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="classrooms",
+        help_text="School this classroom belongs to"
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.CASCADE,
+        related_name="classrooms",
+        help_text="Academic year for this classroom"
+    )
+    grade = models.ForeignKey(
+        Grade,
+        on_delete=models.CASCADE,
+        related_name="classrooms",
+        help_text="Grade level for this classroom"
+    )
+    homeroom_teacher = models.ForeignKey(
+        'teacher.Teacher',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="homeroom_classrooms",
+        help_text="Homeroom teacher for this classroom"
+    )
+    
+    class Meta:
+        db_table = "class_rooms"
+        verbose_name = "Classroom"
+        verbose_name_plural = "Classrooms"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "academic_year", "classroom_name"],
+                name="unique_school_year_classroom"
+            )
+        ]
+        ordering = ["academic_year", "grade", "classroom_name"]
+    
+    def __str__(self):
+        return f"{self.classroom_name} - {self.grade.name} ({self.academic_year.academic_year_code})"
+
+
+class Secretary(models.Model):
+    """
+    Secretary/Registrar profile linked to User.
+    Schema: Secretaries table
+    """
+    user = models.OneToOneField(
+        'accounts.CustomUser',
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="secretary_profile",
+        help_text="User account for this secretary/registrar"
+    )
+    department = models.CharField(
+        max_length=100,
+        help_text="Department this secretary belongs to"
+    )
+    office_number = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="Office number"
+    )
+    hire_date = models.DateField(help_text="Date of hire")
+    
+    class Meta:
+        db_table = "secretaries"
+        verbose_name = "Secretary/Registrar"
+        verbose_name_plural = "Secretaries/Registrars"
+        ordering = ["user__full_name"]
+    
+    def __str__(self):
+        return f"{self.user.full_name} ({self.user.email}) - {self.department}"
+
+
 class StaffEvaluation(models.Model):
     """
     Staff evaluation records.
+    Schema: Staff_Evaluations table
     """
     reviewer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         related_name="reviewer_evaluations",
         help_text="User who performed the evaluation"
     )
     reviewee = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         related_name="reviewee_evaluations",
         help_text="User being evaluated"
@@ -180,7 +235,7 @@ class StaffEvaluation(models.Model):
     comments = models.TextField(null=True, blank=True, help_text="Evaluation comments")
     
     class Meta:
-        db_table = "staff_evaluation"
+        db_table = "staff_evaluations"
         verbose_name = "Staff Evaluation"
         verbose_name_plural = "Staff Evaluations"
         ordering = ["-evaluation_date"]

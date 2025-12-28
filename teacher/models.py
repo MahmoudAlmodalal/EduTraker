@@ -1,45 +1,13 @@
 from django.conf import settings
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator
 from decimal import Decimal
-
-
-class Course(models.Model):
-    """
-    Course offered in a school for a specific grade.
-    """
-    course_code = models.CharField(
-        max_length=20,
-        unique=True,
-        help_text="Unique course code"
-    )
-    school = models.ForeignKey(
-        "manager.School",
-        on_delete=models.CASCADE,
-        related_name="courses",
-        help_text="School offering this course"
-    )
-    grade = models.ForeignKey(
-        "manager.Grade",
-        on_delete=models.CASCADE,
-        related_name="courses",
-        help_text="Grade level for this course"
-    )
-    name = models.CharField(max_length=150, help_text="Course name")
-    
-    class Meta:
-        db_table = "course"
-        verbose_name = "Course"
-        verbose_name_plural = "Courses"
-        ordering = ["course_code", "name"]
-    
-    def __str__(self):
-        return f"{self.course_code} - {self.name}"
 
 
 class Teacher(models.Model):
     """
     Teacher profile linked to User.
+    Schema: Teachers table
     """
     EMPLOYMENT_STATUS_CHOICES = [
         ("full_time", "Full Time"),
@@ -49,7 +17,7 @@ class Teacher(models.Model):
     ]
     
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         primary_key=True,
         related_name="teacher_profile",
@@ -87,7 +55,7 @@ class Teacher(models.Model):
     )
     
     class Meta:
-        db_table = "teacher"
+        db_table = "teachers"
         verbose_name = "Teacher"
         verbose_name_plural = "Teachers"
         ordering = ["user__full_name"]
@@ -96,66 +64,19 @@ class Teacher(models.Model):
         return f"{self.user.full_name} ({self.user.email})"
 
 
-class ClassRoom(models.Model):
-    """
-    Classroom for a specific grade in an academic year.
-    """
-    classroom_name = models.CharField(max_length=50, help_text="Classroom name")
-    school = models.ForeignKey(
-        "manager.School",
-        on_delete=models.CASCADE,
-        related_name="classrooms",
-        help_text="School this classroom belongs to"
-    )
-    academic_year = models.ForeignKey(
-        "manager.AcademicYear",
-        on_delete=models.CASCADE,
-        related_name="classrooms",
-        help_text="Academic year for this classroom"
-    )
-    grade = models.ForeignKey(
-        "manager.Grade",
-        on_delete=models.CASCADE,
-        related_name="classrooms",
-        help_text="Grade level for this classroom"
-    )
-    homeroom_teacher = models.ForeignKey(
-        Teacher,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="homeroom_classrooms",
-        help_text="Homeroom teacher for this classroom"
-    )
-    
-    class Meta:
-        db_table = "classroom"
-        verbose_name = "Classroom"
-        verbose_name_plural = "Classrooms"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["school", "academic_year", "classroom_name"],
-                name="unique_school_year_classroom"
-            )
-        ]
-        ordering = ["academic_year", "grade", "classroom_name"]
-    
-    def __str__(self):
-        return f"{self.classroom_name} - {self.grade.name} ({self.academic_year.academic_year_code})"
-
-
 class CourseAllocation(models.Model):
     """
     Allocation of a course to a classroom with a teacher.
+    Schema: Course_Allocations table
     """
     course = models.ForeignKey(
-        Course,
+        'manager.Course',
         on_delete=models.CASCADE,
         related_name="allocations",
         help_text="Course being allocated"
     )
     class_room = models.ForeignKey(
-        ClassRoom,
+        'manager.ClassRoom',
         on_delete=models.CASCADE,
         related_name="course_allocations",
         help_text="Classroom where course is taught"
@@ -168,7 +89,7 @@ class CourseAllocation(models.Model):
     )
     
     class Meta:
-        db_table = "course_allocation"
+        db_table = "course_allocations"
         verbose_name = "Course Allocation"
         verbose_name_plural = "Course Allocations"
         constraints = [
@@ -186,6 +107,7 @@ class CourseAllocation(models.Model):
 class Assignment(models.Model):
     """
     Assignment or exam created by a teacher.
+    Schema: Assignments table
     """
     EXAM_TYPE_CHOICES = [
         ("assignment", "Assignment"),
@@ -197,8 +119,7 @@ class Assignment(models.Model):
     
     assignment_code = models.CharField(
         max_length=50,
-        unique=True,
-        help_text="Unique assignment code"
+        help_text="Assignment code"
     )
     created_by = models.ForeignKey(
         Teacher,
@@ -222,7 +143,7 @@ class Assignment(models.Model):
     )
     
     class Meta:
-        db_table = "assignment"
+        db_table = "assignments"
         verbose_name = "Assignment"
         verbose_name_plural = "Assignments"
         ordering = ["-due_date", "title"]
@@ -234,32 +155,32 @@ class Assignment(models.Model):
 class LearningMaterial(models.Model):
     """
     Learning materials uploaded for courses.
+    Schema: Learning_materials table
     """
     material_code = models.CharField(
         max_length=50,
-        unique=True,
-        help_text="Unique material code"
+        help_text="Material code"
     )
     course = models.ForeignKey(
-        Course,
+        'manager.Course',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Course this material belongs to"
     )
     classroom = models.ForeignKey(
-        ClassRoom,
+        'manager.ClassRoom',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Classroom this material is for"
     )
     academic_year = models.ForeignKey(
-        "manager.AcademicYear",
+        'manager.AcademicYear',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Academic year for this material"
     )
     uploaded_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         related_name="uploaded_materials",
         help_text="User who uploaded this material"
@@ -269,7 +190,7 @@ class LearningMaterial(models.Model):
     file_url = models.CharField(max_length=255, help_text="URL/path to the material file")
     
     class Meta:
-        db_table = "learning_material"
+        db_table = "learning_materials"
         verbose_name = "Learning Material"
         verbose_name_plural = "Learning Materials"
         ordering = ["-academic_year", "course", "title"]
@@ -281,9 +202,10 @@ class LearningMaterial(models.Model):
 class Mark(models.Model):
     """
     Marks/scores for students on assignments.
+    Schema: Marks table
     """
     student = models.ForeignKey(
-        "student.Student",
+        'student.Student',
         on_delete=models.CASCADE,
         related_name="marks",
         help_text="Student who received this mark"
@@ -291,8 +213,6 @@ class Mark(models.Model):
     assignment = models.ForeignKey(
         Assignment,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         related_name="marks",
         help_text="Assignment this mark is for"
     )
@@ -304,19 +224,19 @@ class Mark(models.Model):
     )
     
     class Meta:
-        db_table = "mark"
+        db_table = "marks"
         verbose_name = "Mark"
         verbose_name_plural = "Marks"
         ordering = ["-assignment__due_date", "student"]
     
     def __str__(self):
-        assignment_str = self.assignment.title if self.assignment else "N/A"
-        return f"{self.student.user.full_name} - {assignment_str}: {self.score}"
+        return f"{self.student.user.full_name} - {self.assignment.title}: {self.score}"
 
 
 class Attendance(models.Model):
     """
     Student attendance records.
+    Schema: Attendance table
     """
     STATUS_CHOICES = [
         ("present", "Present"),
@@ -326,19 +246,19 @@ class Attendance(models.Model):
     ]
     
     student = models.ForeignKey(
-        "student.Student",
+        'student.Student',
         on_delete=models.CASCADE,
         related_name="attendances",
         help_text="Student attendance record"
     )
     course = models.ForeignKey(
-        Course,
+        'manager.Course',
         on_delete=models.CASCADE,
         related_name="attendances",
         help_text="Course for this attendance"
     )
     class_room = models.ForeignKey(
-        ClassRoom,
+        'manager.ClassRoom',
         on_delete=models.CASCADE,
         related_name="attendances",
         help_text="Classroom for this attendance"
