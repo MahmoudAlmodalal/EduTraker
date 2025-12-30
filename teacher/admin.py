@@ -1,16 +1,8 @@
 from django.contrib import admin
 from .models import (
-    Course, Teacher, ClassRoom, CourseAllocation,
+    Teacher, CourseAllocation,
     Assignment, LearningMaterial, Mark, Attendance
 )
-
-
-@admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
-    list_display = ["course_code", "name", "school", "grade"]
-    list_filter = ["school", "grade"]
-    search_fields = ["course_code", "name", "school__school_name"]
-    ordering = ["course_code"]
 
 
 @admin.register(Teacher)
@@ -19,14 +11,6 @@ class TeacherAdmin(admin.ModelAdmin):
     list_filter = ["employment_status", "hire_date"]
     search_fields = ["user__email", "user__full_name", "specialization"]
     ordering = ["user__full_name"]
-
-
-@admin.register(ClassRoom)
-class ClassRoomAdmin(admin.ModelAdmin):
-    list_display = ["classroom_name", "school", "academic_year", "grade", "homeroom_teacher"]
-    list_filter = ["school", "academic_year", "grade"]
-    search_fields = ["classroom_name", "school__school_name", "homeroom_teacher__user__email"]
-    ordering = ["academic_year", "grade", "classroom_name"]
 
 
 @admin.register(CourseAllocation)

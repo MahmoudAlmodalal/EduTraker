@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import UserMessage
+from .models import Message
 
 
-@admin.register(UserMessage)
-class UserMessageAdmin(admin.ModelAdmin):
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
     list_display = ["sender", "receiver", "subject", "sent_at", "is_read"]
     list_filter = ["is_read", "sent_at"]
     search_fields = ["sender__email", "receiver__email", "subject", "body"]

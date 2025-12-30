@@ -1,10 +1,10 @@
-from django.conf import settings
 from django.db import models
 
 
 class Student(models.Model):
     """
     Student profile linked to User.
+    Schema: Students table
     """
     STATUS_CHOICES = [
         ("active", "Active"),
@@ -15,20 +15,20 @@ class Student(models.Model):
     ]
     
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.CASCADE,
         primary_key=True,
         related_name="student_profile",
         help_text="User account for this student"
     )
     school = models.ForeignKey(
-        "manager.School",
+        'manager.School',
         on_delete=models.CASCADE,
         related_name="students",
         help_text="School this student belongs to"
     )
     grade = models.ForeignKey(
-        "manager.Grade",
+        'manager.Grade',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -47,7 +47,7 @@ class Student(models.Model):
     medical_notes = models.TextField(null=True, blank=True, help_text="Medical information/notes")
     
     class Meta:
-        db_table = "student"
+        db_table = "students"
         verbose_name = "Student"
         verbose_name_plural = "Students"
         ordering = ["user__full_name"]
@@ -59,6 +59,7 @@ class Student(models.Model):
 class StudentEnrollment(models.Model):
     """
     Student enrollment in a classroom for an academic year.
+    Schema: Student_enrollments table
     """
     STATUS_CHOICES = [
         ("enrolled", "Enrolled"),
@@ -74,13 +75,13 @@ class StudentEnrollment(models.Model):
         help_text="Enrolled student"
     )
     class_room = models.ForeignKey(
-        "teacher.ClassRoom",
+        'manager.ClassRoom',
         on_delete=models.CASCADE,
         related_name="enrollments",
         help_text="Classroom student is enrolled in"
     )
     academic_year = models.ForeignKey(
-        "manager.AcademicYear",
+        'manager.AcademicYear',
         on_delete=models.CASCADE,
         related_name="enrollments",
         help_text="Academic year for this enrollment"
@@ -94,7 +95,7 @@ class StudentEnrollment(models.Model):
     )
     
     class Meta:
-        db_table = "student_enrollment"
+        db_table = "student_enrollments"
         verbose_name = "Student Enrollment"
         verbose_name_plural = "Student Enrollments"
         constraints = [

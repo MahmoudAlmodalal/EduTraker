@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     "guardian",
     "user_messages", 
     "notifications",
-    "register",
+    "secretary",
     "reports",
     
 ]
@@ -114,7 +114,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'edutraker_db',  # Name of the database you created in MySQL
         'USER': 'root',          # Your MySQL username
-        'PASSWORD': '120210653', # Your MySQL password
+        'PASSWORD': 'EduTraker@2025!', # Your MySQL password
         'HOST': 'localhost',     # Or the IP address if hosted remotely
         'PORT': '3306',          # Default MySQL port
     }

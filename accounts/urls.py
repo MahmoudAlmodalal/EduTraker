@@ -1,36 +1,47 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
-    GuestRegistrationView,
-    WorkstreamStudentRegistrationView,
-    ManagementLoginView,
+    PortalRegisterView,
+    PortalLoginView,
+    WorkstreamRegisterView,
     WorkstreamLoginView
 )
 
-urlpatterns = [
-    # --- Registration Endpoints ---
+# ============================================
+# ADMIN & MANAGER PORTAL AUTH
+# Base URL: /api/portal/auth/
+# ============================================
+portal_auth_patterns = [
+    # Register - Creates user with role=GUEST
+    # URL: /api/portal/auth/register/
+    path('register/', PortalRegisterView.as_view(), name='portal_register'),
     
-    # 1. Admin/Guest Registration
-    # URL: /api/accounts/register/admin/
-    path('register/admin/', GuestRegistrationView.as_view(), name='register_guest'),
-
-    # 2. Workstream/Student Registration
-    # URL: /api/accounts/register/<workstream_name>/
-    # Example: /api/accounts/register/Engineering/
-    path('register/<str:workstream_name>/', WorkstreamStudentRegistrationView.as_view(), name='register_student'),
-
-
-    # --- Login Endpoints ---
-
-    # 1. Management Login (Super Admin & Workstream Managers)
-    # URL: /api/accounts/login/admin/
-    path('login/admin/', ManagementLoginView.as_view(), name='login_admin'),
-
-    # 2. Workstream User Login (Teachers, Students, School Managers)
-    # URL: /api/accounts/login/<workstream_name>/
-    # Example: /api/accounts/login/Engineering/
-    path('login/<str:workstream_name>/', WorkstreamLoginView.as_view(), name='login_workstream'),
-
-    # --- Token Refresh (Standard for all users) ---
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # Login - Only ADMIN or MANAGER_WORKSTREAM allowed
+    # URL: /api/portal/auth/login/
+    path('login/', PortalLoginView.as_view(), name='portal_login'),
+    
+    # Token Refresh
+    # URL: /api/portal/auth/token/refresh/
+    path('token/refresh/', TokenRefreshView.as_view(), name='portal_token_refresh'),
 ]
+
+# ============================================
+# WORKSTREAM SPECIFIC AUTH
+# Base URL: /api/workstream/<int:workstream_id>/auth/
+# ============================================
+workstream_auth_patterns = [
+    # Register - Creates user with role=STUDENT, assigns to workstream
+    # URL: /api/workstream/<workstream_id>/auth/register/
+    path('register/', WorkstreamRegisterView.as_view(), name='workstream_register'),
+    
+    # Login - User MUST belong to this specific workstream
+    # URL: /api/workstream/<workstream_id>/auth/login/
+    path('login/', WorkstreamLoginView.as_view(), name='workstream_login'),
+    
+    # Token Refresh
+    # URL: /api/workstream/<workstream_id>/auth/token/refresh/
+    path('token/refresh/', TokenRefreshView.as_view(), name='workstream_token_refresh'),
+]
+
+# Default urlpatterns for include() - contains portal patterns
+urlpatterns = portal_auth_patterns

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import CustomUser
+from .models import CustomUser, SystemConfiguration
 
 
 @admin.register(CustomUser)
@@ -19,7 +19,7 @@ class UserAdmin(BaseUserAdmin):
         (_("Permissions"), {
             "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
         }),
-        (_("Role Information"), {"fields": ("role",)}),
+        (_("Role Information"), {"fields": ("role", "work_stream", "school")}),
         (_("Important dates"), {"fields": ("last_login", "date_joined",)}),
     )
     
@@ -29,3 +29,11 @@ class UserAdmin(BaseUserAdmin):
             "fields": ("email", "full_name", "password1", "password2", "role"),
         }),
     )
+
+
+@admin.register(SystemConfiguration)
+class SystemConfigurationAdmin(admin.ModelAdmin):
+    list_display = ["id", "school", "config_key", "config_value"]
+    list_filter = ["school"]
+    search_fields = ["config_key", "config_value"]
+    ordering = ["school", "config_key"]

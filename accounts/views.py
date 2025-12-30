@@ -1,65 +1,121 @@
-from rest_framework import generics, permissions, status
+from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
 from .models import CustomUser
 from .serializers import (
-    GuestRegistrationSerializer, 
-    WorkstreamStudentSerializer,
-    ManagementTokenObtainPairSerializer,
-    WorkstreamTokenObtainPairSerializer
+    UserSerializer,
+    GuestRegisterSerializer,
+    AdminLoginSerializer,
+    StudentRegisterSerializer,
+    WorkstreamLoginSerializer
 )
+from workstream.models import WorkStream
 
-class GuestRegistrationView(generics.CreateAPIView):
+
+# ============================================
+# ADMIN & MANAGER PORTAL VIEWS
+# Base URL: /api/portal/auth/
+# ============================================
+
+class PortalRegisterView(APIView):
     """
-    Registration Endpoint for Admin/Guest users.
-    URL: /api/accounts/register/admin/
-    Role: Assigned 'guest' automatically.
+    Registration for Admin Portal.
+    URL: /api/portal/auth/register/
+    
+    Logic: Creates a new user with role forced to GUEST.
     """
-    queryset = CustomUser.objects.all()
-    serializer_class = GuestRegistrationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GuestRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        return Response({
+            'message': 'Registration successful. Account pending approval.',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
 
 
-class WorkstreamStudentRegistrationView(generics.CreateAPIView):
+class PortalLoginView(APIView):
     """
-    Registration Endpoint for Workstream Students.
-    URL: /api/accounts/register/<str:workstream_name>/
-    Role: Assigned 'student' and linked to the specific Workstream.
+    Login for Admin & Manager Portal.
+    URL: /api/portal/auth/login/
+    
+    Logic: Only allows users with role ADMIN or MANAGER_WORKSTREAM.
+    If a student, teacher, or other role tries to login, access is denied
+    even if credentials are correct.
     """
-    queryset = CustomUser.objects.all()
-    serializer_class = WorkstreamStudentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
 
-    def get_serializer_context(self):
-        """
-        Pass the 'workstream_name' from the URL to the serializer
-        so it can validate the workstream exists and link the user.
-        """
-        context = super().get_serializer_context()
-        context['workstream_name'] = self.kwargs.get('workstream_name')
-        return context
+    def post(self, request):
+        serializer = AdminLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
-class ManagementLoginView(TokenObtainPairView):
+# ============================================
+# WORKSTREAM SPECIFIC VIEWS
+# Base URL: /api/workstream/<int:workstream_id>/auth/
+# ============================================
+
+class WorkstreamRegisterView(APIView):
     """
-    Login View for Super Admins and Workstream Managers.
-    URL: /api/accounts/login/admin/
+    Registration for Workstream Portal.
+    URL: /api/workstream/<int:workstream_id>/auth/register/
+    
+    Logic:
+        1. Forces role to STUDENT.
+        2. Automatically assigns work_stream from workstream_id in URL.
+        3. Validates that workstream_id exists in manager.WorkStream.
     """
-    serializer_class = ManagementTokenObtainPairSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, workstream_id):
+        # Validate that the workstream exists
+        workstream = get_object_or_404(WorkStream, id=workstream_id)
+        
+        serializer = StudentRegisterSerializer(
+            data=request.data,
+            context={'workstream': workstream}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        return Response({
+            'message': f'Registration successful. You are now a student of {workstream.name}.',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
 
 
-class WorkstreamLoginView(TokenObtainPairView):
+class WorkstreamLoginView(APIView):
     """
-    Login View for Workstream Users (Teachers, Students).
-    URL: /api/accounts/login/<str:workstream_name>/
+    Login for Workstream Portal.
+    URL: /api/workstream/<int:workstream_id>/auth/login/
+    
+    Logic:
+        1. Validates credentials (email/password).
+        2. CRUCIAL CHECK: The user MUST belong to the workstream_id in URL
+           (i.e., user.work_stream.id == workstream_id).
+        3. If user belongs to a different workstream or no workstream, 
+           deny the login.
     """
-    serializer_class = WorkstreamTokenObtainPairSerializer
+    permission_classes = [AllowAny]
 
-    def get_serializer_context(self):
-        """
-        Pass the 'workstream_name' from the URL to the serializer
-        for validation (User must belong to this specific workstream).
-        """
-        context = super().get_serializer_context()
-        context['workstream_name'] = self.kwargs.get('workstream_name')
-        return context
+    def post(self, request, workstream_id):
+        # Validate that the workstream exists
+        workstream = get_object_or_404(WorkStream, id=workstream_id)
+        
+        serializer = WorkstreamLoginSerializer(
+            data=request.data,
+            context={
+                'workstream_id': workstream_id,
+                'workstream': workstream
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
