@@ -1,48 +1,34 @@
 from django.db.models import QuerySet, Q
 from accounts.models import CustomUser, Role
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
+from accounts.services.user_services import can_access_user
+def user_list(*, filters: dict, user: CustomUser):
+    qs = CustomUser.objects.all()
 
-def user_list(*, filters: dict = None, user: CustomUser) -> QuerySet[CustomUser]:
-    """
-    List users with optional filtering and Row Level Security (RLS).
-    """
-    filters = filters or {}
-    queryset = CustomUser.objects.all()
+    if user.role == Role.MANAGER_WORKSTREAM:
+        qs = qs.filter(work_stream=user.work_stream)
 
-    # RLS: Enforce visibility based on the requesting user's role
-    if user.role == Role.ADMIN:
-        pass  # Admins see everything
-    elif user.role == Role.MANAGER_WORKSTREAM:
-        if user.work_stream_id:
-            queryset = queryset.filter(work_stream=user.work_stream)
-        else:
-            queryset = queryset.none()
     elif user.role == Role.MANAGER_SCHOOL:
-        if user.school_id:
-            queryset = queryset.filter(school=user.school)
-        else:
-            queryset = queryset.none()
-    else:
-        # Others can only see themselves
-        queryset = queryset.filter(id=user.id)
+        qs = qs.filter(school=user.school)
 
-    # Search Filter
-    search = filters.get('search')
-    if search:
-        queryset = queryset.filter(
-            Q(full_name__icontains=search) |
-            Q(email__icontains=search)
-        )
+    elif user.role in [Role.TEACHER, Role.SECRETARY]:
+        qs = qs.filter(role__in=[Role.GUARDIAN, Role.STUDENT])
 
-    # Role Filter
-    role = filters.get('role')
-    if role:
-        queryset = queryset.filter(role=role)
+    if role := filters.get("role"):
+        qs = qs.filter(role=role)
 
-    return queryset
+    if search := filters.get("search"):
+        qs = qs.filter(full_name__icontains=search)
+
+    return qs
 
 
-def user_get(*, user_id: int) -> CustomUser:
-    """
-    Fetches a single user by ID.
-    """
-    return CustomUser.objects.get(id=user_id)
+
+def user_get(*, user_id: int, actor: CustomUser) -> CustomUser:
+    user = get_object_or_404(CustomUser, id=user_id)
+
+    if not can_access_user(actor=actor, target=user):
+        raise PermissionDenied("Access denied.")
+
+    return user
