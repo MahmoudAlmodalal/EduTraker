@@ -1,47 +1,26 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
-from .views import (
-    PortalRegisterView,
-    PortalLoginView,
-    WorkstreamRegisterView,
-    WorkstreamLoginView
+from .views.portal_views import PortalRegisterView, PortalLoginView
+from .views.workstream_views import WorkstreamRegisterView, WorkstreamLoginView
+from .views.user_views import (
+    UserListApi,
+    UserCreateApi,
+    UserUpdateApi,
+    UserDeleteApi,
+    UserDeactivateApi
 )
 
-# ============================================
-# ADMIN & MANAGER PORTAL AUTH
-# Base URL: /api/portal/auth/
-# ============================================
-portal_auth_patterns = [
-    # Register - Creates user with role=GUEST
-    # URL: /api/portal/auth/register/
-    path('register/', PortalRegisterView.as_view(), name='portal_register'),
+urlpatterns = [
+    # Auth endpoints
+    path('portal/auth/register/', PortalRegisterView.as_view(), name='portal-register'),
+    path('portal/auth/login/', PortalLoginView.as_view(), name='portal-login'),
     
-    # Login - Only ADMIN or MANAGER_WORKSTREAM allowed
-    # URL: /api/portal/auth/login/
-    path('login/', PortalLoginView.as_view(), name='portal_login'),
-    
-    # Token Refresh
-    # URL: /api/portal/auth/token/refresh/
-    path('token/refresh/', TokenRefreshView.as_view(), name='portal_token_refresh'),
-]
+    path('workstream/<int:workstream_id>/auth/register/', WorkstreamRegisterView.as_view(), name='workstream-register'),
+    path('workstream/<int:workstream_id>/auth/login/', WorkstreamLoginView.as_view(), name='workstream-login'),
 
-# ============================================
-# WORKSTREAM SPECIFIC AUTH
-# Base URL: /api/workstream/<int:workstream_id>/auth/
-# ============================================
-workstream_auth_patterns = [
-    # Register - Creates user with role=STUDENT, assigns to workstream
-    # URL: /api/workstream/<workstream_id>/auth/register/
-    path('register/', WorkstreamRegisterView.as_view(), name='workstream_register'),
-    
-    # Login - User MUST belong to this specific workstream
-    # URL: /api/workstream/<workstream_id>/auth/login/
-    path('login/', WorkstreamLoginView.as_view(), name='workstream_login'),
-    
-    # Token Refresh
-    # URL: /api/workstream/<workstream_id>/auth/token/refresh/
-    path('token/refresh/', TokenRefreshView.as_view(), name='workstream_token_refresh'),
+    # User Management endpoints
+    path('users/', UserListApi.as_view(), name='user-list'),
+    path('users/create/', UserCreateApi.as_view(), name='user-create'),
+    path('users/<int:user_id>/', UserUpdateApi.as_view(), name='user-update'),
+    path('users/<int:user_id>/delete/', UserDeleteApi.as_view(), name='user-delete'),
+    path('users/<int:user_id>/deactivate/', UserDeactivateApi.as_view(), name='user-deactivate'),
 ]
-
-# Default urlpatterns for include() - contains portal patterns
-urlpatterns = portal_auth_patterns
