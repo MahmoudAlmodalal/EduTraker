@@ -44,14 +44,6 @@ def user_delete(*, user: CustomUser):
     """
     user.delete()
 
-
-def user_list(*, filters: dict = None, user: CustomUser):
-    """
-    Handles list logic (delegates to selector).
-    """
-    return selector_user_list(filters=filters, user=user)
-
-
 @transaction.atomic
 def user_deactivate(*, user: CustomUser) -> CustomUser:
     """
@@ -60,3 +52,21 @@ def user_deactivate(*, user: CustomUser) -> CustomUser:
     user.is_active = False
     user.save()
     return user
+def canAccessUser(*, user: CustomUser, target_user: CustomUser) -> bool:
+    """
+    Checks if the user has permission to access the target user.
+    """
+    access_map = {"workstream_manager": [Role.SCHOOL_MANAGER, Role.TEACHER, Role.SECRETARY, Role.GUARDIAN, Role.STUDENT],
+     "school_manager": [Role.TEACHER, Role.SECRETARY, Role.GUARDIAN, Role.STUDENT], 
+     "staff": [Role.GUARDIAN, Role.STUDENT]}
+    if user.role == Role.ADMIN:
+        return True
+    elif user.work_stream == target_user.work_stream:
+        if user.role == Role.WORKSTREAM_MANAGER:
+            return user.role in access_map["workstream_manager"]
+        elif user.school == target_user.school:
+            if user.role == Role.WORKSTREAM_MANAGER:
+                return user.role in access_map["school_manager"]
+            elif user.role in [Role.TEACHER, Role.SECRETARY]:
+                return user.role in access_map["staff"]
+    return False    
