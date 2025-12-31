@@ -9,7 +9,15 @@ from accounts.services.user_services import (
     user_delete, 
     user_deactivate
 )
-from accounts.permissions import IsAdminOrManager
+from accounts.permissions import (IsAdminOrManager, 
+    IsWorkStreamManager, 
+    IsSchoolManager, 
+    IsTeacher, 
+    IsSecretary, 
+    IsStaffUser,
+    IsAdminOrManagerOrSecretary,
+)
+from django.core.exceptions import PermissionDenied
 
 
 class UserListApi(APIView):
@@ -46,7 +54,7 @@ class UserListApi(APIView):
 
 
 class UserCreateApi(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsStaffUser]
 
     class InputSerializer(serializers.Serializer):
         email = serializers.EmailField()
@@ -59,14 +67,20 @@ class UserCreateApi(APIView):
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        user = user_create(**serializer.validated_data)
-        
-        return Response(UserListApi.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
+
+        user = user_create(
+            creator=request.user,
+            **serializer.validated_data
+        )
+
+        return Response(
+            UserListApi.OutputSerializer(user).data,
+            status=status.HTTP_201_CREATED
+        )
 
 
 class UserDetailApi(APIView):
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsStaffUser]
 
     class InputSerializer(serializers.Serializer):
         email = serializers.EmailField(required=False)
@@ -77,28 +91,59 @@ class UserDetailApi(APIView):
         is_active = serializers.BooleanField(required=False)
 
     def get(self, request, user_id):
-        user = user_get(user_id=user_id)
+        user = user_get(user_id=user_id,actor=request.user)
         return Response(UserListApi.OutputSerializer(user).data)
 
     def patch(self, request, user_id):
-        user = user_get(user_id=user_id)
+        user = user_get(user_id=user_id, actor=request.user)
+
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        user = user_update(user=user, data=serializer.validated_data)
-        
-        return Response(UserListApi.OutputSerializer(user).data)
+
+        data = serializer.validated_data
+
+        if request.user.role == CustomUser.Role.ADMIN:
+            pass
+
+        # WORKSTREAM MANAGER
+        elif request.user.role == CustomUser.Role.MANAGER_WORKSTREAM:
+            data.pop("role", None)
+            data.pop("work_stream", None)
+
+            if "school" in data:
+                if user.work_stream_id != request.user.work_stream_id:
+                    raise PermissionDenied(
+                        "You can only move users inside your own workstream."
+                    )
+
+        else:
+            data.pop("role", None)
+            data.pop("work_stream", None)
+            data.pop("school", None)
+
+        user = user_update(user=user, data=data)
+
+        return Response(
+            UserListApi.OutputSerializer(user).data,
+            status=status.HTTP_200_OK
+        )
+
 
     def delete(self, request, user_id):
-        user = user_get(user_id=user_id)
-        user_delete(user=user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        raise PermissionDenied("Use deactivate instead of delete.")
+        # user = user_get(user_id=user_id,actor=request.user)
+        # user_delete(user=user)
+        # return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserDeactivateApi(APIView):
-    permission_classes = [IsAdminOrManager]
-
+    permission_classes = [IsAdminOrManagerOrSecretary]
     def post(self, request, user_id):
-        user = user_get(user_id=user_id)
+        if request.user.id == user_id:
+            return Response(
+                {"detail": "You cannot deactivate yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = user_get(user_id=user_id,actor=request.user)
         user_deactivate(user=user)
         return Response({"detail": "User deactivated successfully."}, status=status.HTTP_200_OK)

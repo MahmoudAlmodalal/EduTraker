@@ -1,22 +1,55 @@
 from django.db import transaction
 from accounts.models import CustomUser
 from accounts.selectors.user_selectors import user_list as selector_user_list
-
+from accounts.models import Role
+from accounts.policies.user_policies import ROLE_CREATION_MATRIX
+from django.core.exceptions import PermissionDenied
 @transaction.atomic
-def user_create(*, email: str, full_name: str, password: str, role: str, **extra_fields) -> CustomUser:
-    """
-    Handles user creation and password hashing.
-    """
+def user_create(
+    *,
+    creator: CustomUser,
+    email: str,
+    full_name: str,
+    password: str,
+    role: str,
+    work_stream=None,
+    school=None,
+) -> CustomUser:
+
+    allowed_roles = ROLE_CREATION_MATRIX.get(creator.role, [])
+    if role not in allowed_roles:
+        raise PermissionDenied("You are not allowed to create this role.")
+
+    # Scope enforcement
+    if creator.role == Role.MANAGER_WORKSTREAM:
+        if work_stream != creator.work_stream_id:
+            raise PermissionDenied("Invalid work stream assignment.")
+
+    if creator.role == Role.MANAGER_SCHOOL:
+        if school != creator.school_id:
+            raise PermissionDenied("Invalid school assignment.")
+
+    if creator.role in [Role.TEACHER, Role.SECRETARY]:
+        if school != creator.school_id:
+            raise PermissionDenied(
+                "Secretary/Teacher can only create users in their own school."
+            )
+    
+
     user = CustomUser(
         email=email,
         full_name=full_name,
         role=role,
-        **extra_fields
+        work_stream_id=work_stream,
+        school_id=school,
     )
+
     user.set_password(password)
     user.full_clean()
     user.save()
     return user
+
+
 
 
 @transaction.atomic
@@ -52,21 +85,17 @@ def user_deactivate(*, user: CustomUser) -> CustomUser:
     user.is_active = False
     user.save()
     return user
-def canAccessUser(*, user: CustomUser, target_user: CustomUser) -> bool:
-    """
-    Checks if the user has permission to access the target user.
-    """
-    access_map = {"workstream_manager": [Role.SCHOOL_MANAGER, Role.TEACHER, Role.SECRETARY, Role.GUARDIAN, Role.STUDENT],
-     "school_manager": [Role.TEACHER, Role.SECRETARY, Role.GUARDIAN, Role.STUDENT], 
-     "staff": [Role.GUARDIAN, Role.STUDENT]}
-    if user.role == Role.ADMIN:
+def can_access_user(*, actor: CustomUser, target: CustomUser) -> bool:
+    if actor.role == Role.ADMIN:
         return True
-    elif user.work_stream == target_user.work_stream:
-        if user.role == Role.WORKSTREAM_MANAGER:
-            return user.role in access_map["workstream_manager"]
-        elif user.school == target_user.school:
-            if user.role == Role.WORKSTREAM_MANAGER:
-                return user.role in access_map["school_manager"]
-            elif user.role in [Role.TEACHER, Role.SECRETARY]:
-                return user.role in access_map["staff"]
-    return False    
+
+    if actor.role == Role.MANAGER_WORKSTREAM:
+        return target.work_stream_id == actor.work_stream_id
+
+    if actor.role == Role.MANAGER_SCHOOL:
+        return target.school_id == actor.school_id
+
+    if actor.role in [Role.TEACHER, Role.SECRETARY]:
+        return target.role in [Role.GUARDIAN, Role.STUDENT] and target.school_id == actor.school_id
+
+    return False
