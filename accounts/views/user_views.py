@@ -1,0 +1,104 @@
+from rest_framework import status, serializers
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from accounts.models import CustomUser, Role
+from accounts.selectors.user_selectors import user_list, user_get
+from accounts.services.user_services import (
+    user_create, 
+    user_update, 
+    user_delete, 
+    user_deactivate
+)
+from accounts.permissions import IsAdminOrManager
+
+
+class UserListApi(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    class FilterSerializer(serializers.Serializer):
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False)
+        search = serializers.CharField(required=False)
+
+    class OutputSerializer(serializers.ModelSerializer):
+        work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
+        school_name = serializers.CharField(source='school.school_name', read_only=True)
+
+        class Meta:
+            model = CustomUser
+            fields = [
+                'id', 'email', 'full_name', 'role',
+                'work_stream', 'work_stream_name',
+                'school', 'school_name',
+                'is_active', 'date_joined'
+            ]
+
+    def get(self, request):
+        filter_serializer = self.FilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        
+        users = user_list(
+            filters=filter_serializer.validated_data,
+            user=request.user
+        )
+        
+        data = self.OutputSerializer(users, many=True).data
+        return Response(data)
+
+
+class UserCreateApi(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    class InputSerializer(serializers.Serializer):
+        email = serializers.EmailField()
+        full_name = serializers.CharField(max_length=150)
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES)
+        password = serializers.CharField(write_only=True)
+        work_stream = serializers.IntegerField(required=False, allow_null=True)
+        school = serializers.IntegerField(required=False, allow_null=True)
+
+    def post(self, request):
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = user_create(**serializer.validated_data)
+        
+        return Response(UserListApi.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class UserDetailApi(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    class InputSerializer(serializers.Serializer):
+        email = serializers.EmailField(required=False)
+        full_name = serializers.CharField(max_length=150, required=False)
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False)
+        work_stream = serializers.IntegerField(required=False, allow_null=True)
+        school = serializers.IntegerField(required=False, allow_null=True)
+        is_active = serializers.BooleanField(required=False)
+
+    def get(self, request, user_id):
+        user = user_get(user_id=user_id)
+        return Response(UserListApi.OutputSerializer(user).data)
+
+    def patch(self, request, user_id):
+        user = user_get(user_id=user_id)
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = user_update(user=user, data=serializer.validated_data)
+        
+        return Response(UserListApi.OutputSerializer(user).data)
+
+    def delete(self, request, user_id):
+        user = user_get(user_id=user_id)
+        user_delete(user=user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserDeactivateApi(APIView):
+    permission_classes = [IsAdminOrManager]
+
+    def post(self, request, user_id):
+        user = user_get(user_id=user_id)
+        user_deactivate(user=user)
+        return Response({"detail": "User deactivated successfully."}, status=status.HTTP_200_OK)

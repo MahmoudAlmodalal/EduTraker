@@ -58,6 +58,82 @@ class PortalLoginView(APIView):
 
 
 # ============================================
+# USER MANAGEMENT APIs
+# ============================================
+from .selectors import get_list_users, get_user_detail
+from .services import create_user, update_user, delete_user, deactivate_user
+from .serializers import (
+    UserCreateInputSerializer,
+    UserUpdateInputSerializer,
+    UserFilterSerializer,
+    UserSerializer
+)
+from rest_framework.permissions import IsAuthenticated
+
+class UserListApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        filter_serializer = UserFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        
+        users = get_list_users(
+            actor=request.user,
+            filters=filter_serializer.validated_data
+        )
+        
+        data = UserSerializer(users, many=True).data
+        return Response(data)
+
+
+class UserCreateApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        input_serializer = UserCreateInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        
+        user = create_user(
+            actor=request.user,
+            **input_serializer.validated_data
+        )
+        
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class UserUpdateApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, user_id):
+        input_serializer = UserUpdateInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        
+        user = update_user(
+            actor=request.user,
+            user_id=user_id,
+            data=input_serializer.validated_data
+        )
+        
+        return Response(UserSerializer(user).data)
+
+
+class UserDeleteApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, user_id):
+        delete_user(actor=request.user, user_id=user_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserDeactivateApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, user_id):
+        deactivate_user(actor=request.user, user_id=user_id)
+        return Response({"message": "User deactivated successfully."}, status=status.HTTP_200_OK)
+
+
+# ============================================
 # WORKSTREAM SPECIFIC VIEWS
 # Base URL: /api/workstream/<int:workstream_id>/auth/
 # ============================================

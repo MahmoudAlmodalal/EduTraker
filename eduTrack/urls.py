@@ -16,7 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from accounts.urls import workstream_auth_patterns
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,19 +24,8 @@ urlpatterns = [
     # AUTHENTICATION ENDPOINTS
     # ============================================
     
-    # 1. Admin & Manager Portal Auth
-    # Base URL: /api/portal/auth/
-    # Endpoints:
-    #   POST /api/portal/auth/register/  → Create user with role=GUEST
-    #   POST /api/portal/auth/login/     → Login (ADMIN/MANAGER_WORKSTREAM only)
-    #   POST /api/portal/auth/token/refresh/
-    path('api/portal/auth/', include('accounts.urls')),
-    
-    # 2. Workstream Specific Auth
-    # Base URL: /api/workstream/<int:workstream_id>/auth/
-    # Endpoints:
-    #   POST /api/workstream/<id>/auth/register/  → Create student, assign to workstream
-    #   POST /api/workstream/<id>/auth/login/     → Login (must belong to workstream)
-    #   POST /api/workstream/<id>/auth/token/refresh/
-    path('api/workstream/<int:workstream_id>/auth/', include((workstream_auth_patterns, 'workstream_auth'))),
+    # All auth endpoints are defined in accounts.urls with full prefixes:
+    # /api/portal/auth/...
+    # /api/workstream/<id>/auth/...
+    path('api/', include('accounts.urls')),
 ]
