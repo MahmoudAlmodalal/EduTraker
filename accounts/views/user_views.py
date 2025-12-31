@@ -79,7 +79,7 @@ class UserCreateApi(APIView):
         )
 
 
-class UserDetailApi(APIView):
+class UserUpdateApi(APIView):
     permission_classes = [IsStaffUser]
 
     class InputSerializer(serializers.Serializer):
