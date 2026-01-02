@@ -20,11 +20,3 @@ def authenticate_user(*, email: str, password: str) -> Optional[CustomUser]:
     return user
 
 
-def get_user_by_email(*, email: str) -> Optional[CustomUser]:
-    """
-    Get user by email address.
-    """
-    try:
-        return CustomUser.objects.get(email=email)
-    except CustomUser.DoesNotExist:
-        return None
