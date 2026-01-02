@@ -1,6 +1,6 @@
 from django.urls import path
 from .views.portal_views import PortalRegisterView, PortalLoginView
-from .views.workstream_views import WorkstreamRegisterView, WorkstreamLoginView
+from .views.workstream_portal_views import WorkstreamRegisterView, WorkstreamLoginView
 from .views.user_views import (
     UserListApi,
     UserCreateApi,
@@ -16,7 +16,7 @@ urlpatterns = [
     
     path('workstream/<int:workstream_id>/auth/register/', WorkstreamRegisterView.as_view(), name='workstream-register'),
     path('workstream/<int:workstream_id>/auth/login/', WorkstreamLoginView.as_view(), name='workstream-login'),
-
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     # User Management endpoints
     path('users/', UserListApi.as_view(), name='user-list'),
     path('users/create/', UserCreateApi.as_view(), name='user-create'),
