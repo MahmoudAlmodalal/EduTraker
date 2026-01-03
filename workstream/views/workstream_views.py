@@ -30,6 +30,7 @@ class WorkStreamCreateView(APIView):
         max_user = serializers.IntegerField()
         is_active = serializers.BooleanField()
 
+
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -94,7 +95,7 @@ class WorkStreamUpdateView(APIView):
             )
 
             return Response(
-                {"id": workstream.id, "name": workstream.name},
+                {"id": workstream.id, "name": workstream.name, "message": "Workstream updated successfully.","data": WorkStreamCreateView.OutputSerializer(workstream).data },
                 status=status.HTTP_200_OK,
             )
 
@@ -127,3 +128,4 @@ class WorkStreamDeactivateView(APIView):
         except PermissionDenied as e:
             return Response({"detail": str(e)}, status=403)
     
+

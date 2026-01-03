@@ -28,4 +28,6 @@ urlpatterns = [
     # /api/portal/auth/...
     # /api/workstream/<id>/auth/...
     path('api/', include('accounts.urls')),
+    path('api/', include('workstream.urls')),
+    path('api/', include('reports.urls')),
 ]

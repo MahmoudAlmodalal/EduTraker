@@ -5,7 +5,6 @@ from .views.user_views import (
     UserListApi,
     UserCreateApi,
     UserUpdateApi,
-    UserDeleteApi,
     UserDeactivateApi
 )
 
@@ -21,6 +20,5 @@ urlpatterns = [
     path('users/', UserListApi.as_view(), name='user-list'),
     path('users/create/', UserCreateApi.as_view(), name='user-create'),
     path('users/<int:user_id>/', UserUpdateApi.as_view(), name='user-update'),
-    path('users/<int:user_id>/delete/', UserDeleteApi.as_view(), name='user-delete'),
     path('users/<int:user_id>/deactivate/', UserDeactivateApi.as_view(), name='user-deactivate'),
 ]
