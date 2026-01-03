@@ -4,11 +4,10 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
-from accounts.selectors.auth_selectors import (
-    authenticate_user,
-    get_user_by_email,
-)
+from accounts.selectors.auth_selectors import authenticate_user
+from accounts.selectors.user_selectors import get_user_by_email
 from typing import Dict
+
 
 def validate_workstream_access(*, user: CustomUser, workstream_id: int) -> bool:
     """
@@ -94,7 +93,7 @@ def portal_login(
 
 
 @transaction.atomic
-def workstream_register(
+def workstream_register_user(
     *,
     workstream_id: int,
     email: str,
@@ -113,7 +112,15 @@ def workstream_register(
         workstream = WorkStream.objects.get(id=workstream_id)
     except WorkStream.DoesNotExist:
         raise ValidationError("Invalid workstream.")
-    
+    current_users_count = CustomUser.objects.filter(
+        work_stream=workstream,
+        is_active=True
+    ).count()
+
+    if current_users_count >= workstream.max_user:
+        raise ValidationError(
+            "This workstream has reached the maximum number of users."
+        )
     # Create user with STUDENT role and assign to workstream
     user = CustomUser(
         email=email,

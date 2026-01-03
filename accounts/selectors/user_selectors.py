@@ -3,6 +3,8 @@ from accounts.models import CustomUser, Role
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 from accounts.services.user_services import can_access_user
+from typing import Optional
+
 def user_list(*, filters: dict, user: CustomUser):
     qs = CustomUser.objects.all()
 
@@ -32,3 +34,11 @@ def user_get(*, user_id: int, actor: CustomUser) -> CustomUser:
         raise PermissionDenied("Access denied.")
 
     return user
+def get_user_by_email(*, email: str) -> Optional[CustomUser]:
+    """
+    Get user by email address.
+    """
+    try:
+        return CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return None

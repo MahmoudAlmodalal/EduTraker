@@ -31,17 +31,13 @@ class PortalRegisterView(APIView):
                 })
             return data
     
-    class OutputSerializer(serializers.ModelSerializer):
-        class Meta:
-            model = CustomUser
-            fields = [
-                'id',
-                'email',
-                'full_name',
-                'role',
-                'is_active',
-                'date_joined',
-            ]
+    class OutputSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        email = serializers.EmailField()
+        full_name = serializers.CharField()
+        role = serializers.CharField()
+        is_active = serializers.BooleanField()
+        date_joined = serializers.DateTimeField()
     
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)

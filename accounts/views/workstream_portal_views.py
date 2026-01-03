@@ -31,24 +31,16 @@ class WorkstreamRegisterView(APIView):
                 })
             return data
     
-    class OutputSerializer(serializers.ModelSerializer):
-        work_stream_name = serializers.CharField(
-            source='work_stream.name',
-            read_only=True
-        )
+    class OutputSerializer(serializers.Serializer): 
+        id = serializers.IntegerField()
+        email = serializers.EmailField()
+        full_name = serializers.CharField()
+        role = serializers.CharField()
+        work_stream = serializers.IntegerField()
+        work_stream_name = serializers.CharField()
+        is_active = serializers.BooleanField()
+        date_joined = serializers.DateTimeField()
         
-        class Meta:
-            model = CustomUser
-            fields = [
-                'id',
-                'email',
-                'full_name',
-                'role',
-                'work_stream',
-                'work_stream_name',
-                'is_active',
-                'date_joined',
-            ]
     
     def post(self, request, workstream_id):
         serializer = self.InputSerializer(data=request.data)
