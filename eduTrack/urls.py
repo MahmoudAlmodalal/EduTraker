@@ -30,4 +30,5 @@ urlpatterns = [
     path('api/', include('accounts.urls')),
     path('api/', include('workstream.urls')),
     path('api/', include('reports.urls')),
+    path('api/manager/', include('manager.urls')),
 ]

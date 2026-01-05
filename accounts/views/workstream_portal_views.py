@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from accounts.models import CustomUser
 from accounts.services.auth_services import (
-    workstream_register,
+    workstream_register_user,
     workstream_login,
 )
 from django.core.exceptions import ValidationError, PermissionDenied
@@ -47,7 +47,7 @@ class WorkstreamRegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         
         try:
-            user = workstream_register(
+            user = workstream_register_user(
                 workstream_id=workstream_id,
                 email=serializer.validated_data['email'],
                 full_name=serializer.validated_data['full_name'],

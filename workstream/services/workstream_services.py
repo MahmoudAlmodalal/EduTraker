@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.db import transaction
 from django.core.exceptions import ValidationError, PermissionDenied
 from accounts.models import CustomUser, Role

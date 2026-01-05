@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
 from accounts.selectors.auth_selectors import authenticate_user
-from accounts.selectors.user_selectors import get_user_by_email
+from accounts.selectors.user_selectors import user_get_by_email
 from typing import Dict
 
 
@@ -45,7 +45,7 @@ def portal_register(
     This is for admin/workstream manager registration.
     """
     # Check if email already exists
-    if get_user_by_email(email=email):
+    if user_get_by_email(email=email):
         raise ValidationError("A user with this email already exists.")
     
     # Create user with GUEST role
@@ -104,7 +104,7 @@ def workstream_register_user(
     Register a new user in a specific workstream with STUDENT role by default.
     """
     # Check if email already exists
-    if get_user_by_email(email=email):
+    if user_get_by_email(email=email):
         raise ValidationError("A user with this email already exists.")
     
     # Validate workstream exists
