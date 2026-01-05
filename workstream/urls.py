@@ -1,11 +1,5 @@
 from django.urls import path
-from workstream.views.workstream_views import WorkStreamCreateView
-
-urlpatterns = [
-    path("workstreams/", WorkStreamCreateView.as_view(), name="workstream-create"),
-]
-
-from workstream.views.workstream_view import (
+from workstream.views.workstream_views import (
     WorkstreamListView,
     WorkstreamCreateView,
     WorkstreamDetailView,
@@ -21,4 +15,3 @@ urlpatterns = [
     path('workstreams/<int:workstream_id>/update/', WorkstreamUpdateView.as_view(), name='workstream-update'),
     path('workstreams/<int:workstream_id>/deactivate/', WorkstreamDeactivateView.as_view(), name='workstream-deactivate'),
 ]
->>>>>>> c1334ecd7deabea52a3e42fd6d05fe1c8cf0a413

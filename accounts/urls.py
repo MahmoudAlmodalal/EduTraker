@@ -1,4 +1,5 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
 from .views.portal_views import PortalRegisterView, PortalLoginView
 from .views.workstream_portal_views import WorkstreamRegisterView, WorkstreamLoginView
 from .views.user_views import (

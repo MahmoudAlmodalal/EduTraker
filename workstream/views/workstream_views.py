@@ -10,7 +10,34 @@ from workstream.services.workstream_services import workstream_update
 from workstream.services.workstream_services import workstream_deactivate
 
 
-class WorkStreamCreateView(APIView):
+class WorkstreamListView(APIView):
+    permission_classes = [IsSuperAdmin]
+    
+    class OutputSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = WorkStream
+            fields = ['id', 'name', 'description', 'max_user', 'is_active']
+
+    def get(self, request):
+        from workstream.selectors.workstream_selectors import workstream_list
+        filters = request.query_params.dict()
+        workstreams = workstream_list(filters=filters, user=request.user)
+        return Response(self.OutputSerializer(workstreams, many=True).data)
+
+class WorkstreamDetailView(APIView):
+    permission_classes = [IsSuperAdmin]
+    
+    class OutputSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = WorkStream
+            fields = ['id', 'name', 'description', 'max_user', 'is_active']
+
+    def get(self, request, workstream_id):
+        from workstream.selectors.workstream_selectors import workstream_get
+        workstream = workstream_get(workstream_id=workstream_id, actor=request.user)
+        return Response(self.OutputSerializer(workstream).data)
+
+class WorkstreamCreateView(APIView):
     """
     Create a new WorkStream.
     Admin-only endpoint.
@@ -67,7 +94,7 @@ class WorkStreamCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-class WorkStreamUpdateView(APIView):
+class WorkstreamUpdateView(APIView):
     permission_classes = [IsSuperAdmin]
     class InputSerializer(serializers.Serializer):
         name = serializers.CharField(required=False)
@@ -95,7 +122,7 @@ class WorkStreamUpdateView(APIView):
             )
 
             return Response(
-                {"id": workstream.id, "name": workstream.name, "message": "Workstream updated successfully.","data": WorkStreamCreateView.OutputSerializer(workstream).data },
+                {"id": workstream.id, "name": workstream.name, "message": "Workstream updated successfully.","data": WorkstreamCreateView.OutputSerializer(workstream).data },
                 status=status.HTTP_200_OK,
             )
 
@@ -107,7 +134,7 @@ class WorkStreamUpdateView(APIView):
             return Response({"detail": str(e)}, status=400)
 
 
-class WorkStreamDeactivateView(APIView):
+class WorkstreamDeactivateView(APIView):
     permission_classes = [IsSuperAdmin]
     def post(self, request, workstream_id):
         try:
