@@ -93,7 +93,7 @@ def portal_login(
 
 
 @transaction.atomic
-def workstream_register(
+def workstream_register_user(
     *,
     workstream_id: int,
     email: str,

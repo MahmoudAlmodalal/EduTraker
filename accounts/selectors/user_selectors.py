@@ -1,11 +1,15 @@
 from django.db.models import QuerySet, Q
 from accounts.models import CustomUser, Role
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import PermissionDenied
 from accounts.policies.user_policies import can_access_user
-from typing import Optional
+from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
+from typing import Optional, Dict, Any
 
-def user_list(*, filters: dict, user: CustomUser):
+
+def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
+    """
+    Get a filtered list of users based on the actor's role and permissions.
+    """
     qs = CustomUser.objects.all()
 
     if user.role == Role.MANAGER_WORKSTREAM:
@@ -26,19 +30,61 @@ def user_list(*, filters: dict, user: CustomUser):
     return qs
 
 
-
 def user_get(*, user_id: int, actor: CustomUser) -> CustomUser:
+    """
+    Get a single user by ID with permission check.
+    """
     user = get_object_or_404(CustomUser, id=user_id)
 
     if not can_access_user(actor=actor, target=user):
-        raise PermissionDenied("Access denied.")
+        raise DRFPermissionDenied("Access denied.")
 
     return user
-def get_user_by_email(*, email: str) -> Optional[CustomUser]:
+
+
+def user_get_by_email(*, email: str) -> Optional[CustomUser]:
     """
     Get user by email address.
+    Returns None if user does not exist.
     """
     try:
         return CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return None
+
+
+def user_get_profile(*, user_id: int, actor: CustomUser) -> Dict[str, Any]:
+    """
+    Get user with their role-specific profile.
+    
+    Returns:
+        {
+            'user': CustomUser,
+            'profile': Student | Teacher | None,
+            'profile_type': str | None
+        }
+    """
+    user = user_get(user_id=user_id, actor=actor)
+    
+    profile = None
+    profile_type = None
+    
+    if user.role == Role.STUDENT:
+        try:
+            profile = user.student_profile
+            profile_type = 'student'
+        except Exception:
+            pass
+    
+    elif user.role == Role.TEACHER:
+        try:
+            profile = user.teacher_profile
+            profile_type = 'teacher'
+        except Exception:
+            pass
+    
+    return {
+        'user': user,
+        'profile': profile,
+        'profile_type': profile_type
+    }
