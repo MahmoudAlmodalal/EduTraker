@@ -31,4 +31,12 @@ urlpatterns = [
     path('api/', include('workstream.urls')),
     path('api/', include('reports.urls')),
     path('api/manager/', include('manager.urls')),
+    path('api/manager/', include('student.urls')),
+    path('api/custom-admin/', include('custom_admin.urls')),
+    path('api/workstream-manager/', include('workstream_manager.urls')),
+    path('api/teacher/', include('teacher.urls')),
+    path('api/guardian/', include('guardian.urls')),
+    path('api/user-messages/', include('user_messages.urls')),
+    path('api/notifications/', include('notifications.urls')),
+    path('api/secretary/', include('secretary.urls')),
 ]

@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
 from accounts.models import CustomUser, Role
-from manager.models import School, AcademicYear, Grade, Course, ClassRoom
+from manager.models import School
 
 
 def school_list(*, filters: dict, user: CustomUser) -> QuerySet[School]:
@@ -61,58 +61,10 @@ def school_get(*, school_id: int, actor: CustomUser) -> School:
     return get_object_or_404(qs, id=school_id)
 
 
-def academic_year_list(*, school_id: int, filters: dict) -> QuerySet[AcademicYear]:
-    """Return a QuerySet of AcademicYears for a specific school."""
-    qs = AcademicYear.objects.filter(school_id=school_id)
-
-    if academic_year_code := filters.get("academic_year_code"):
-        qs = qs.filter(academic_year_code__icontains=academic_year_code)
-
-    return qs
 
 
-def grade_list(*, filters: dict) -> QuerySet[Grade]:
-    """Return a QuerySet of all Grades with optional filters."""
-    qs = Grade.objects.all()
-
-    if name := filters.get("name"):
-        qs = qs.filter(name__icontains=name)
-
-    if numeric_level := filters.get("numeric_level"):
-        qs = qs.filter(numeric_level=numeric_level)
-
-    return qs
 
 
-def course_list(*, school_id: int, filters: dict) -> QuerySet[Course]:
-    """Return a QuerySet of Courses for a specific school."""
-    qs = Course.objects.select_related('grade').filter(school_id=school_id)
-
-    if course_code := filters.get("course_code"):
-        qs = qs.filter(course_code__icontains=course_code)
-
-    if name := filters.get("name"):
-        qs = qs.filter(name__icontains=name)
-
-    if grade_id := filters.get("grade_id"):
-        qs = qs.filter(grade_id=grade_id)
-
-    return qs
 
 
-def classroom_list(
-    *, school_id: int, academic_year_id: int, filters: dict
-) -> QuerySet[ClassRoom]:
-    """Return a QuerySet of ClassRooms for a specific school and academic year."""
-    qs = ClassRoom.objects.select_related('grade', 'homeroom_teacher').filter(
-        school_id=school_id,
-        academic_year_id=academic_year_id
-    )
 
-    if classroom_name := filters.get("classroom_name"):
-        qs = qs.filter(classroom_name__icontains=classroom_name)
-
-    if grade_id := filters.get("grade_id"):
-        qs = qs.filter(grade_id=grade_id)
-
-    return qs
