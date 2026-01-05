@@ -117,6 +117,15 @@ def get_comprehensive_statistics(*, actor: CustomUser) -> Dict:
     return stats
 
 
+# Aliases for backward compatibility with stats_views.py
+get_student_count_by_teacher = get_teacher_summary
+get_student_count_by_workstream = get_workstream_summary
+get_student_count_by_school = get_school_summary
+get_student_count_by_school_manager = get_school_summary  # Note: School managers are usually assigned to one school
+get_student_count_by_course = get_students_by_course
+get_student_count_by_classroom = get_teacher_students_by_classroom
+
+
 # Re-export all functions for backward compatibility
 __all__ = [
     # Base
