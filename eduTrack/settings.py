@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     "notifications",
     "secretary",
     "reports",
-    
+    "drf_spectacular",
 ]
 
 AUTH_USER_MODEL = "accounts.CustomUser"
@@ -68,6 +68,21 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# Swagger/OpenAPI Documentation Settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'EduTraker API',
+    'DESCRIPTION': 'API documentation for EduTraker - Educational Management System',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
 }
 
 

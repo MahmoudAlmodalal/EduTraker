@@ -1,7 +1,18 @@
 from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 from django.core.exceptions import PermissionDenied, ValidationError
+
+from reports.serializers import (
+    TeacherStudentCountSerializer,
+    WorkstreamStudentCountSerializer,
+    SchoolStudentCountSerializer,
+    CourseStudentCountSerializer,
+    ClassroomStudentCountSerializer,
+    ComprehensiveStatisticsSerializer,
+    DashboardStatisticsSerializer
+)
 
 from accounts.permissions import IsStaffUser, IsAdminOrManager
 from reports.services.count_services import (
@@ -21,6 +32,30 @@ class TeacherStudentCountView(APIView):
     """
     permission_classes = [IsStaffUser]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by teacher',
+        description='Returns student count and breakdown by course/classroom for a specific teacher.',
+        parameters=[OpenApiParameter(name='teacher_id', type=int, location=OpenApiParameter.PATH, description='Teacher User ID')],
+        responses={
+            200: TeacherStudentCountSerializer,
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='Teacher not found')
+        },
+        examples=[
+            OpenApiExample(
+                'Teacher Stats Response',
+                value={
+                    'teacher_id': 5,
+                    'teacher_name': 'John Teacher',
+                    'total_students': 45,
+                    'by_course': [{'course_id': 1, 'course_name': 'Math', 'count': 25}],
+                    'by_classroom': [{'classroom_id': 1, 'classroom_name': '1A', 'count': 25}]
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, teacher_id):
         try:
             data = get_student_count_by_teacher(
@@ -47,6 +82,30 @@ class WorkstreamStudentCountView(APIView):
     """
     permission_classes = [IsAdminOrManager]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by workstream',
+        description='Returns student count and breakdown by school for a specific workstream.',
+        parameters=[OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID')],
+        responses={
+            200: WorkstreamStudentCountSerializer,
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='Workstream not found')
+        },
+        examples=[
+            OpenApiExample(
+                'Workstream Stats Response',
+                value={
+                    'workstream_id': 1,
+                    'workstream_name': 'Primary Education',
+                    'total_students': 1200,
+                    'school_count': 5,
+                    'by_school': [{'school_id': 1, 'school_name': 'West School', 'count': 300}]
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, workstream_id):
         try:
             data = get_student_count_by_workstream(
@@ -73,6 +132,30 @@ class SchoolStudentCountView(APIView):
     """
     permission_classes = [IsAdminOrManager]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by school',
+        description='Returns student count and breakdown by grade/classroom for a specific school.',
+        parameters=[OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID')],
+        responses={
+            200: SchoolStudentCountSerializer,
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='School not found')
+        },
+        examples=[
+            OpenApiExample(
+                'School Stats Response',
+                value={
+                    'school_id': 1,
+                    'school_name': 'West School',
+                    'total_students': 300,
+                    'by_grade': [{'grade_id': 1, 'grade_name': 'Grade 1', 'count': 50}],
+                    'by_classroom': [{'classroom_id': 1, 'classroom_name': '1A', 'count': 25}]
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, school_id):
         try:
             data = get_student_count_by_school(
@@ -99,6 +182,30 @@ class SchoolManagerStudentCountView(APIView):
     """
     permission_classes = [IsAdminOrManager]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by school manager',
+        description='Returns student count across all schools managed by a specific school manager.',
+        parameters=[OpenApiParameter(name='manager_id', type=int, location=OpenApiParameter.PATH, description='Manager User ID')],
+        responses={
+            200: serializers.DictField(help_text="Manager stats"),
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='Manager not found')
+        },
+        examples=[
+            OpenApiExample(
+                'Manager Stats Response',
+                value={
+                    'manager_id': 2,
+                    'manager_name': 'Jane Manager',
+                    'total_schools': 2,
+                    'total_students': 550,
+                    'schools': [{'school_id': 1, 'school_name': 'West School', 'count': 300}]
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, manager_id):
         try:
             data = get_student_count_by_school_manager(
@@ -125,6 +232,29 @@ class CourseStudentCountView(APIView):
     """
     permission_classes = [IsStaffUser]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by course',
+        description='Returns student count and breakdown by classroom for a specific course.',
+        parameters=[OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID')],
+        responses={
+            200: CourseStudentCountSerializer,
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='Course not found')
+        },
+        examples=[
+            OpenApiExample(
+                'Course Stats Response',
+                value={
+                    'course_id': 1,
+                    'course_name': 'Mathematics 101',
+                    'total_students': 150,
+                    'by_classroom': [{'classroom_id': 1, 'classroom_name': '1A', 'count': 25}]
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, course_id):
         try:
             data = get_student_count_by_course(
@@ -151,6 +281,28 @@ class ClassroomStudentCountView(APIView):
     """
     permission_classes = [IsStaffUser]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get student count by classroom',
+        description='Returns total student count for a specific classroom.',
+        parameters=[OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID')],
+        responses={
+            200: ClassroomStudentCountSerializer,
+            403: OpenApiResponse(description='Permission Denied'),
+            404: OpenApiResponse(description='Classroom not found')
+        },
+        examples=[
+            OpenApiExample(
+                'Classroom Stats Response',
+                value={
+                    'classroom_id': 1,
+                    'classroom_name': '1A',
+                    'total_students': 25
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request, classroom_id):
         try:
             data = get_student_count_by_classroom(
@@ -177,6 +329,26 @@ class ComprehensiveStatisticsView(APIView):
     """
     permission_classes = [IsStaffUser]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get comprehensive statistics',
+        description='Get statistics tailored to the authenticated user role.',
+        responses={
+            200: ComprehensiveStatisticsSerializer,
+            403: OpenApiResponse(description='Permission Denied')
+        },
+        examples=[
+            OpenApiExample(
+                'Comprehensive Stats Response',
+                value={
+                    'role': 'admin',
+                    'generated_at': '2026-01-06T12:00:00Z',
+                    'statistics': {'total_students': 5000, 'total_teachers': 200}
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request):
         try:
             data = get_comprehensive_statistics(actor=request.user)
@@ -196,6 +368,30 @@ class DashboardStatisticsView(APIView):
     """
     permission_classes = [IsStaffUser]
     
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get dashboard statistics',
+        description='Get quick statistics for the dashboard based on user role.',
+        responses={
+            200: DashboardStatisticsSerializer,
+            400: OpenApiResponse(description='Error processing request')
+        },
+        examples=[
+            OpenApiExample(
+                'Dashboard Stats Response',
+                value={
+                    'role': 'teacher',
+                    'statistics': {
+                        'teacher_name': 'John Teacher',
+                        'total_students': 45,
+                        'course_count': 2,
+                        'classroom_count': 2
+                    }
+                },
+                response_only=True
+            )
+        ]
+    )
     def get(self, request):
         user = request.user
         stats = {}
