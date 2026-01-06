@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
+from rest_framework.permissions import AllowAny
 from django.core.exceptions import ValidationError, PermissionDenied
 from workstream.services.workstream_services import workstream_create
 from accounts.models import CustomUser
@@ -8,6 +9,27 @@ from accounts.permissions import IsSuperAdmin
 from workstream.models import WorkStream
 from workstream.services.workstream_services import workstream_update
 from workstream.services.workstream_services import workstream_deactivate
+
+
+class WorkstreamInfoView(APIView):
+    """
+    Public endpoint to get basic workstream info for login page.
+    Returns workstream name and active status.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request, workstream_id):
+        try:
+            workstream = WorkStream.objects.get(id=workstream_id, is_active=True)
+            return Response({
+                'id': workstream.id,
+                'name': workstream.name,
+            })
+        except WorkStream.DoesNotExist:
+            return Response(
+                {'detail': 'Workstream not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class WorkstreamListView(APIView):
