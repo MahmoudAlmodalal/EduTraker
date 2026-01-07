@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
+from accounts.serializers import MessageSerializer
+
 from accounts.permissions import IsAdminOrManager
 from secretary.models import Secretary
 from secretary.selectors import secretary_list, secretary_get
@@ -227,22 +229,15 @@ class SecretaryDeactivateApi(APIView):
         summary='Deactivate secretary',
         description='Deactivate a secretary account (soft delete).',
         parameters=[OpenApiParameter(name='secretary_id', type=int, location=OpenApiParameter.PATH, description='Secretary user ID')],
+        request=None,
         responses={
             200: OpenApiResponse(
-                response=SecretaryOutputSerializer,
+                response=MessageSerializer,
+                description='Secretary deactivated successfully',
                 examples=[
                     OpenApiExample(
                         'Secretary Deactivated',
-                        value={
-                            'user_id': 10,
-                            'email': 'jane.doe@school.com',
-                            'full_name': 'Jane Doe',
-                            'is_active': False,
-                            'school_name': 'West Side Academy',
-                            'department': 'Administration',
-                            'office_number': 'A-101',
-                            'hire_date': '2024-01-15'
-                        }
+                        value={'detail': 'Secretary deactivated successfully.'}
                     )
                 ]
             )
@@ -250,5 +245,5 @@ class SecretaryDeactivateApi(APIView):
     )
     def post(self, request, secretary_id):
        secretary = secretary_get(secretary_id=secretary_id, actor=request.user)
-       deactivated_secretary = secretary_deactivate(secretary=secretary, actor=request.user)
-       return Response(SecretaryOutputSerializer(deactivated_secretary).data)
+       secretary_deactivate(secretary=secretary, actor=request.user)
+       return Response({"detail": "Secretary deactivated successfully."}, status=status.HTTP_200_OK)

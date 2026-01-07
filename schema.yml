@@ -1,0 +1,4390 @@
+openapi: 3.0.3
+info:
+  title: EduTraker API
+  version: 1.0.0
+  description: API documentation for EduTraker - Educational Management System
+paths:
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/manager/enrollments/{enrollment_id}/:
+    get:
+      operationId: manager_enrollments_retrieve
+      description: Retrieve details of a specific enrollment.
+      summary: Get enrollment details
+      parameters:
+      - in: path
+        name: enrollment_id
+        schema:
+          type: integer
+        description: Enrollment ID
+        required: true
+      tags:
+      - Student Enrollment
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentOutput'
+              examples:
+                EnrollmentDetails:
+                  value:
+                    id: 1
+                    student_id: 5
+                    student_name: John Student
+                    class_room: 1
+                    classroom_name: Class 1A
+                    academic_year: 1
+                    academic_year_code: 2024-2025
+                    grade_name: Grade 1
+                    status: enrolled
+                  summary: Enrollment Details
+          description: ''
+    patch:
+      operationId: manager_enrollments_partial_update
+      description: Update an enrollment status.
+      summary: Update enrollment
+      parameters:
+      - in: path
+        name: enrollment_id
+        schema:
+          type: integer
+        description: Enrollment ID
+        required: true
+      tags:
+      - Student Enrollment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollmentInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  status: completed
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollmentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEnrollmentInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentOutput'
+              examples:
+                EnrollmentUpdated:
+                  value:
+                    id: 1
+                    student_id: 5
+                    student_name: John Student
+                    class_room: 1
+                    classroom_name: Class 1A
+                    academic_year: 1
+                    academic_year_code: 2024-2025
+                    grade_name: Grade 1
+                    status: completed
+                  summary: Enrollment Updated
+          description: ''
+    delete:
+      operationId: manager_enrollments_destroy
+      description: Delete an enrollment permanently.
+      summary: Delete enrollment
+      parameters:
+      - in: path
+        name: enrollment_id
+        schema:
+          type: integer
+        description: Enrollment ID
+        required: true
+      tags:
+      - Student Enrollment
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/enrollments/create/:
+    post:
+      operationId: manager_enrollments_create_create
+      description: Create a new student enrollment in a classroom.
+      summary: Create enrollment
+      tags:
+      - Student Enrollment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  student_id: 1
+                  class_room_id: 1
+                  academic_year_id: 1
+                  status: enrolled
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EnrollmentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EnrollmentInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentOutput'
+              examples:
+                EnrollmentCreated:
+                  value:
+                    id: 10
+                    student_id: 5
+                    student_name: John Student
+                    class_room: 2
+                    classroom_name: Class 2A
+                    academic_year: 2
+                    academic_year_code: 2025-2026
+                    grade_name: Grade 2
+                    status: enrolled
+                  summary: Enrollment Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/grades/:
+    get:
+      operationId: manager_grades_list
+      description: Get all available grades.
+      summary: List grades
+      parameters:
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by name
+      - in: query
+        name: numeric_level
+        schema:
+          type: integer
+        description: Filter by level
+      tags:
+      - Grade Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GradeOutput'
+              examples:
+                GradeListResponse:
+                  value:
+                  - - id: 1
+                      name: Grade 1
+                      numeric_level: 1
+                      min_age: 6
+                      max_age: 7
+                  summary: Grade List Response
+          description: ''
+  /api/manager/grades/{grade_id}/:
+    get:
+      operationId: manager_grades_retrieve
+      description: Retrieve details of a specific grade.
+      summary: Get grade details
+      parameters:
+      - in: path
+        name: grade_id
+        schema:
+          type: integer
+        description: Grade ID
+        required: true
+      tags:
+      - Grade Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeOutput'
+              examples:
+                GradeDetails:
+                  value:
+                    id: 1
+                    name: Grade 1
+                    numeric_level: 1
+                    min_age: 6
+                    max_age: 7
+                  summary: Grade Details
+          description: ''
+    patch:
+      operationId: manager_grades_partial_update
+      description: Update a grade with partial data.
+      summary: Update grade
+      parameters:
+      - in: path
+        name: grade_id
+        schema:
+          type: integer
+        description: Grade ID
+        required: true
+      tags:
+      - Grade Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGradeInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  name: Grade 2
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGradeInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGradeInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeOutput'
+              examples:
+                GradeUpdated:
+                  value:
+                    id: 1
+                    name: Grade 2
+                    numeric_level: 2
+                    min_age: 7
+                    max_age: 8
+                  summary: Grade Updated
+          description: ''
+    delete:
+      operationId: manager_grades_destroy
+      description: Delete a grade permanently.
+      summary: Delete grade
+      parameters:
+      - in: path
+        name: grade_id
+        schema:
+          type: integer
+        description: Grade ID
+        required: true
+      tags:
+      - Grade Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/grades/create/:
+    post:
+      operationId: manager_grades_create_create
+      description: Create a new grade. Admin only.
+      summary: Create grade
+      tags:
+      - Grade Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  name: Grade 1
+                  numeric_level: 1
+                  min_age: 6
+                  max_age: 7
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GradeInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GradeInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeOutput'
+              examples:
+                GradeCreated:
+                  value:
+                    id: 10
+                    name: Grade 10
+                    numeric_level: 10
+                    min_age: 15
+                    max_age: 16
+                  summary: Grade Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/schools/:
+    get:
+      operationId: manager_schools_list
+      description: Get a list of all schools. Filtered by user role permissions.
+      summary: List all schools
+      parameters:
+      - in: query
+        name: manager_id
+        schema:
+          type: integer
+        description: Filter by manager ID
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by school name
+      - in: query
+        name: work_stream_id
+        schema:
+          type: integer
+        description: Filter by workstream ID
+      tags:
+      - School Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolOutput'
+              examples:
+                SchoolList:
+                  value:
+                  - - id: 1
+                      school_name: Main School
+                      work_stream: 1
+                      work_stream_name: Main Workstream
+                      manager: 2
+                      manager_name: John Manager
+                  summary: School List
+          description: ''
+  /api/manager/schools/{school_id}/:
+    get:
+      operationId: manager_schools_retrieve
+      description: Retrieve details of a specific school.
+      summary: Get school details
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - School Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolOutput'
+              examples:
+                SchoolDetails:
+                  value:
+                    id: 1
+                    school_name: Main School
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    manager: 2
+                    manager_name: John Manager
+                  summary: School Details
+          description: ''
+    patch:
+      operationId: manager_schools_partial_update
+      description: Update school details.
+      summary: Update a school
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - School Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSchoolInputRequest'
+            examples:
+              UpdateSchoolRequest:
+                value:
+                  school_name: Updated School Name
+                summary: Update School Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSchoolInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSchoolInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolOutput'
+              examples:
+                UpdatedSchool:
+                  value:
+                    id: 1
+                    school_name: Updated School Name
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    manager: 2
+                    manager_name: John Manager
+                  summary: Updated School
+          description: ''
+    delete:
+      operationId: manager_schools_destroy
+      description: Delete a school permanently.
+      summary: Delete a school
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - School Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: School deleted successfully
+  /api/manager/schools/{school_id}/academic-years/:
+    get:
+      operationId: manager_schools_academic_years_list
+      description: Get all academic years for a specific school.
+      summary: List academic years
+      parameters:
+      - in: query
+        name: academic_year_code
+        schema:
+          type: string
+        description: Filter by year code
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Academic Year Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AcademicYearOutput'
+              examples:
+                AcademicYearListResponse:
+                  value:
+                  - - id: 1
+                      academic_year_code: 2024-2025
+                      school: 1
+                      start_date: '2024-09-01'
+                      end_date: '2025-06-30'
+                  summary: Academic Year List Response
+          description: ''
+  /api/manager/schools/{school_id}/academic-years/{academic_year_id}/:
+    get:
+      operationId: manager_schools_academic_years_retrieve
+      description: Retrieve details of a specific academic year.
+      summary: Get academic year details
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Academic Year Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicYearOutput'
+              examples:
+                AcademicYearDetails:
+                  value:
+                    id: 1
+                    academic_year_code: 2024-2025
+                    school: 1
+                    start_date: '2024-09-01'
+                    end_date: '2025-06-30'
+                  summary: Academic Year Details
+          description: ''
+    patch:
+      operationId: manager_schools_academic_years_partial_update
+      description: Update an academic year with partial data.
+      summary: Update academic year
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Academic Year Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicYearInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  academic_year_code: 2025-2026
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicYearInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicYearInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicYearOutput'
+              examples:
+                AcademicYearUpdated:
+                  value:
+                    id: 1
+                    academic_year_code: 2025-2026
+                    school: 1
+                    start_date: '2025-09-01'
+                    end_date: '2026-06-30'
+                  summary: Academic Year Updated
+          description: ''
+    delete:
+      operationId: manager_schools_academic_years_destroy
+      description: Delete an academic year permanently.
+      summary: Delete academic year
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Academic Year Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/:
+    get:
+      operationId: manager_schools_academic_years_classrooms_list
+      description: Get all classrooms for a specific school and academic year.
+      summary: List classrooms
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: query
+        name: classroom_name
+        schema:
+          type: string
+        description: Filter by name
+      - in: query
+        name: grade_id
+        schema:
+          type: integer
+        description: Filter by grade
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Classroom Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClassRoomOutput'
+              examples:
+                ClassroomListResponse:
+                  value:
+                  - - id: 1
+                      classroom_name: Class 1A
+                      school: 1
+                      academic_year: 2
+                      grade: 3
+                      grade_name: Grade 1
+                      homeroom_teacher: 5
+                      homeroom_teacher_name: John Teacher
+                  summary: Classroom List Response
+          description: ''
+  /api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/{classroom_id}/:
+    get:
+      operationId: manager_schools_academic_years_classrooms_retrieve
+      description: Retrieve details of a specific classroom.
+      summary: Get classroom details
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: classroom_id
+        schema:
+          type: integer
+        description: Classroom ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Classroom Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassRoomOutput'
+              examples:
+                ClassroomDetails:
+                  value:
+                    id: 1
+                    classroom_name: Class 1A
+                    school: 1
+                    academic_year: 2
+                    grade: 3
+                    grade_name: Grade 1
+                    homeroom_teacher: 5
+                    homeroom_teacher_name: John Teacher
+                  summary: Classroom Details
+          description: ''
+    patch:
+      operationId: manager_schools_academic_years_classrooms_partial_update
+      description: Update a classroom with partial data.
+      summary: Update classroom
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: classroom_id
+        schema:
+          type: integer
+        description: Classroom ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Classroom Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClassRoomInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  classroom_name: Class B
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClassRoomInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClassRoomInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassRoomOutput'
+              examples:
+                ClassroomUpdated:
+                  value:
+                    id: 1
+                    classroom_name: Class 1B
+                    school: 1
+                    academic_year: 2
+                    grade: 3
+                    grade_name: Grade 1
+                    homeroom_teacher: 5
+                    homeroom_teacher_name: John Teacher
+                  summary: Classroom Updated
+          description: ''
+    delete:
+      operationId: manager_schools_academic_years_classrooms_destroy
+      description: Delete a classroom permanently.
+      summary: Delete classroom
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: classroom_id
+        schema:
+          type: integer
+        description: Classroom ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Classroom Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/create/:
+    post:
+      operationId: manager_schools_academic_years_classrooms_create_create
+      description: Create a new classroom for the specified school and academic year.
+      summary: Create classroom
+      parameters:
+      - in: path
+        name: academic_year_id
+        schema:
+          type: integer
+        description: Academic Year ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Classroom Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassRoomInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  grade_id: 1
+                  classroom_name: Class A
+                  homeroom_teacher_id: 5
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClassRoomInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClassRoomInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassRoomOutput'
+              examples:
+                ClassroomCreated:
+                  value:
+                    id: 10
+                    classroom_name: Science Lab A
+                    school: 1
+                    academic_year: 2
+                    grade: 3
+                    grade_name: Grade 1
+                    homeroom_teacher: 5
+                    homeroom_teacher_name: John Teacher
+                  summary: Classroom Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/schools/{school_id}/academic-years/create/:
+    post:
+      operationId: manager_schools_academic_years_create_create
+      description: Create a new academic year for the specified school.
+      summary: Create academic year
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Academic Year Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcademicYearInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  academic_year_code: 2025-2026
+                  start_date: '2025-09-01'
+                  end_date: '2026-06-30'
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcademicYearInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcademicYearInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicYearOutput'
+              examples:
+                AcademicYearCreated:
+                  value:
+                    id: 10
+                    academic_year_code: 2025-2026
+                    school: 1
+                    start_date: '2025-09-01'
+                    end_date: '2026-06-30'
+                  summary: Academic Year Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/schools/{school_id}/courses/:
+    get:
+      operationId: manager_schools_courses_list
+      description: Get all courses for a specific school.
+      summary: List courses
+      parameters:
+      - in: query
+        name: course_code
+        schema:
+          type: string
+        description: Filter by code
+      - in: query
+        name: grade_id
+        schema:
+          type: integer
+        description: Filter by grade
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Filter by name
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Course Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CourseOutput'
+              examples:
+                CourseListResponse:
+                  value:
+                  - - id: 1
+                      course_code: MATH101
+                      school: 1
+                      grade: 2
+                      grade_name: Grade 1
+                      name: Mathematics
+                  summary: Course List Response
+          description: ''
+  /api/manager/schools/{school_id}/courses/{course_id}/:
+    get:
+      operationId: manager_schools_courses_retrieve
+      description: Retrieve details of a specific course.
+      summary: Get course details
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        description: Course ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Course Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOutput'
+              examples:
+                CourseDetails:
+                  value:
+                    id: 1
+                    course_code: MATH101
+                    school: 1
+                    grade: 2
+                    grade_name: Grade 1
+                    name: Mathematics
+                  summary: Course Details
+          description: ''
+    patch:
+      operationId: manager_schools_courses_partial_update
+      description: Update a course with partial data.
+      summary: Update course
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        description: Course ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Course Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  name: Advanced Mathematics
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOutput'
+              examples:
+                CourseUpdated:
+                  value:
+                    id: 1
+                    course_code: MATH101
+                    school: 1
+                    grade: 2
+                    grade_name: Grade 1
+                    name: Advanced Mathematics
+                  summary: Course Updated
+          description: ''
+    delete:
+      operationId: manager_schools_courses_destroy
+      description: Delete a course permanently.
+      summary: Delete course
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        description: Course ID
+        required: true
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Course Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/schools/{school_id}/courses/create/:
+    post:
+      operationId: manager_schools_courses_create_create
+      description: Create a new course for the specified school.
+      summary: Create course
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Course Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  grade_id: 1
+                  course_code: MATH101
+                  name: Mathematics
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOutput'
+              examples:
+                CourseCreated:
+                  value:
+                    id: 10
+                    course_code: SCI201
+                    school: 1
+                    grade: 3
+                    grade_name: Grade 2
+                    name: Science
+                  summary: Course Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/schools/create/:
+    post:
+      operationId: manager_schools_create_create
+      description: Create a new school with specified workstream and manager.
+      summary: Create a new school
+      tags:
+      - School Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolInputRequest'
+            examples:
+              CreateSchoolRequest:
+                value:
+                  school_name: New School
+                  work_stream_id: 1
+                  manager_id: 2
+                summary: Create School Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SchoolInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SchoolInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolOutput'
+              examples:
+                CreatedSchool:
+                  value:
+                    id: 5
+                    school_name: New School
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    manager: 2
+                    manager_name: John Manager
+                  summary: Created School
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/staff-evaluations/:
+    get:
+      operationId: manager_staff_evaluations_list
+      description: Get all staff evaluations filtered by permissions.
+      summary: List staff evaluations
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+        description: Filter by end date
+      - in: query
+        name: reviewee_id
+        schema:
+          type: integer
+        description: Filter by reviewee
+      - in: query
+        name: reviewer_id
+        schema:
+          type: integer
+        description: Filter by reviewer
+      - in: query
+        name: start_date
+        schema:
+          type: string
+        description: Filter by start date
+      tags:
+      - Staff Evaluation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffEvaluationOutput'
+              examples:
+                EvaluationListResponse:
+                  value:
+                  - - id: 1
+                      reviewer: 2
+                      reviewer_name: Jane Manager
+                      reviewee: 5
+                      reviewee_name: John Teacher
+                      evaluation_date: '2026-01-06'
+                      rating_score: 4
+                      comments: Consistently high performance.
+                  summary: Evaluation List Response
+          description: ''
+  /api/manager/staff-evaluations/{evaluation_id}/:
+    get:
+      operationId: manager_staff_evaluations_retrieve
+      description: Retrieve details of a specific staff evaluation.
+      summary: Get evaluation details
+      parameters:
+      - in: path
+        name: evaluation_id
+        schema:
+          type: integer
+        description: Evaluation ID
+        required: true
+      tags:
+      - Staff Evaluation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffEvaluationOutput'
+              examples:
+                EvaluationDetails:
+                  value:
+                    id: 1
+                    reviewer: 2
+                    reviewer_name: Jane Manager
+                    reviewee: 5
+                    reviewee_name: John Teacher
+                    evaluation_date: '2026-01-06'
+                    rating_score: 4
+                    comments: Consistently high performance.
+                  summary: Evaluation Details
+          description: ''
+    patch:
+      operationId: manager_staff_evaluations_partial_update
+      description: Update a staff evaluation with partial data.
+      summary: Update evaluation
+      parameters:
+      - in: path
+        name: evaluation_id
+        schema:
+          type: integer
+        description: Evaluation ID
+        required: true
+      tags:
+      - Staff Evaluation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffEvaluationInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  rating_score: 5
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffEvaluationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffEvaluationInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffEvaluationOutput'
+              examples:
+                EvaluationUpdated:
+                  value:
+                    id: 1
+                    reviewer: 2
+                    reviewer_name: Jane Manager
+                    reviewee: 5
+                    reviewee_name: John Teacher
+                    evaluation_date: '2026-01-06'
+                    rating_score: 5
+                    comments: Updated rating to reflect final results.
+                  summary: Evaluation Updated
+          description: ''
+    delete:
+      operationId: manager_staff_evaluations_destroy
+      description: Delete a staff evaluation permanently.
+      summary: Delete evaluation
+      parameters:
+      - in: path
+        name: evaluation_id
+        schema:
+          type: integer
+        description: Evaluation ID
+        required: true
+      tags:
+      - Staff Evaluation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/staff-evaluations/create/:
+    post:
+      operationId: manager_staff_evaluations_create_create
+      description: Create a new staff evaluation.
+      summary: Create staff evaluation
+      tags:
+      - Staff Evaluation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffEvaluationInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  reviewee_id: 5
+                  evaluation_date: '2026-01-06'
+                  rating_score: 4
+                  comments: Good work
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StaffEvaluationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffEvaluationInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffEvaluationOutput'
+              examples:
+                EvaluationCreated:
+                  value:
+                    id: 10
+                    reviewer: 2
+                    reviewer_name: Jane Manager
+                    reviewee: 5
+                    reviewee_name: John Teacher
+                    evaluation_date: '2026-01-06'
+                    rating_score: 5
+                    comments: Excellent contributions this term.
+                  summary: Evaluation Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/manager/students/:
+    get:
+      operationId: manager_students_list
+      description: Get all students filtered by permissions and filters.
+      summary: List students
+      parameters:
+      - in: query
+        name: current_status
+        schema:
+          type: string
+        description: Filter by status
+      - in: query
+        name: grade_id
+        schema:
+          type: integer
+        description: Filter by grade
+      - in: query
+        name: school_id
+        schema:
+          type: integer
+        description: Filter by school
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search by name or email
+      tags:
+      - Student Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentOutput'
+              examples:
+                StudentListResponse:
+                  value:
+                  - - user_id: 20
+                      email: student1@example.com
+                      full_name: John Student
+                      is_active: true
+                      school: 1
+                      school_name: Global Academy
+                      work_stream_id: 5
+                      grade: 2
+                      grade_name: Grade 10
+                      date_of_birth: '2010-05-15'
+                      admission_date: '2024-09-01'
+                      current_status: active
+                      address: 123 Study Lane
+                      medical_notes: None
+                  summary: Student List Response
+          description: ''
+  /api/manager/students/{student_id}/:
+    get:
+      operationId: manager_students_retrieve
+      description: Retrieve details of a specific student.
+      summary: Get student details
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        description: Student ID
+        required: true
+      tags:
+      - Student Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentOutput'
+              examples:
+                StudentDetails:
+                  value:
+                    user_id: 20
+                    email: student1@example.com
+                    full_name: John Student
+                    is_active: true
+                    school: 1
+                    school_name: Global Academy
+                    work_stream_id: 5
+                    grade: 2
+                    grade_name: Grade 10
+                    date_of_birth: '2010-05-15'
+                    admission_date: '2024-09-01'
+                    current_status: active
+                    address: 123 Study Lane
+                    medical_notes: None
+                  summary: Student Details
+          description: ''
+    patch:
+      operationId: manager_students_partial_update
+      description: Update a student with partial data.
+      summary: Update student
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        description: Student ID
+        required: true
+      tags:
+      - Student Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  current_status: graduated
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStudentInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentOutput'
+              examples:
+                StudentUpdated:
+                  value:
+                    user_id: 20
+                    email: student1@example.com
+                    full_name: John Student
+                    is_active: true
+                    school: 1
+                    school_name: Global Academy
+                    work_stream_id: 5
+                    grade: 2
+                    grade_name: Grade 10
+                    date_of_birth: '2010-05-15'
+                    admission_date: '2024-09-01'
+                    current_status: graduated
+                    address: 123 Study Lane
+                    medical_notes: None
+                  summary: Student Updated
+          description: ''
+    delete:
+      operationId: manager_students_destroy
+      description: Delete a student permanently.
+      summary: Delete student
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        description: Student ID
+        required: true
+      tags:
+      - Student Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Deleted successfully
+  /api/manager/students/{student_id}/deactivate/:
+    post:
+      operationId: manager_students_deactivate_create
+      description: Deactivate a student account (soft delete).
+      summary: Deactivate student
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        description: Student ID
+        required: true
+      tags:
+      - Student Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                StudentDeactivated:
+                  value:
+                    detail: Student deactivated successfully.
+                  summary: Student Deactivated
+          description: Student deactivated successfully
+  /api/manager/students/{student_id}/enrollments/:
+    get:
+      operationId: manager_students_enrollments_list
+      description: Get all enrollments for a specific student.
+      summary: List student enrollments
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: integer
+        description: Student ID
+        required: true
+      tags:
+      - Student Enrollment
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnrollmentOutput'
+              examples:
+                EnrollmentListResponse:
+                  value:
+                  - - id: 1
+                      student_id: 5
+                      student_name: John Student
+                      class_room: 1
+                      classroom_name: Class 1A
+                      academic_year: 1
+                      academic_year_code: 2024-2025
+                      grade_name: Grade 1
+                      status: enrolled
+                  summary: Enrollment List Response
+          description: ''
+  /api/manager/students/create/:
+    post:
+      operationId: manager_students_create_create
+      description: Create a new student with user account.
+      summary: Create student
+      tags:
+      - Student Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  email: student@school.com
+                  full_name: John Student
+                  password: SecurePass123!
+                  school_id: 1
+                  grade_id: 1
+                  date_of_birth: '2010-01-15'
+                  admission_date: '2026-01-01'
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StudentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StudentInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentOutput'
+              examples:
+                StudentCreated:
+                  value:
+                    user_id: 21
+                    email: alice.young@example.com
+                    full_name: Alice Young
+                    is_active: true
+                    school: 1
+                    school_name: Global Academy
+                    work_stream_id: 5
+                    grade: 2
+                    grade_name: Grade 10
+                    date_of_birth: '2011-03-20'
+                    admission_date: '2026-01-01'
+                    current_status: active
+                    address: 456 Learn Blvd
+                    medical_notes: Asthma
+                  summary: Student Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/portal/auth/login/:
+    post:
+      operationId: portal_auth_login_create
+      description: Authenticate portal users (Admin, Workstream Managers) and receive
+        JWT tokens.
+      summary: Login to portal
+      tags:
+      - Portal Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortalLoginInputRequest'
+            examples:
+              LoginRequest:
+                value:
+                  email: admin@test.com
+                  password: test1234
+                summary: Login Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PortalLoginInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PortalLoginInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Login successful
+        '400':
+          description: Invalid credentials
+        '403':
+          description: User not authorized for portal login
+  /api/portal/auth/register/:
+    post:
+      operationId: portal_auth_register_create
+      description: Register a new user in the portal with GUEST role. Account requires
+        admin approval before login.
+      summary: Register a new portal user
+      tags:
+      - Portal Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortalRegisterInputRequest'
+            examples:
+              RegistrationRequest:
+                value:
+                  email: newuser@example.com
+                  full_name: John Doe
+                  password: SecurePass123!
+                  password_confirm: SecurePass123!
+                summary: Registration Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PortalRegisterInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PortalRegisterInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          description: Registration successful
+        '400':
+          description: Validation error or email already exists
+  /api/secretary/:
+    get:
+      operationId: secretary_list
+      description: Get all secretaries filtered by permissions.
+      summary: List secretaries
+      parameters:
+      - in: query
+        name: department
+        schema:
+          type: string
+        description: Filter by department
+      - in: query
+        name: school_id
+        schema:
+          type: integer
+        description: Filter by school
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search by name or email
+      tags:
+      - Secretary
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SecretaryOutput'
+              examples:
+                SecretaryListResponse:
+                  value:
+                  - - user_id: 10
+                      email: jane.doe@school.com
+                      full_name: Jane Doe
+                      is_active: true
+                      school_name: West Side Academy
+                      department: Administration
+                      office_number: A-101
+                      hire_date: '2024-01-15'
+                  summary: Secretary List Response
+          description: ''
+  /api/secretary/{secretary_id}/:
+    get:
+      operationId: secretary_retrieve
+      description: Retrieve details of a specific secretary.
+      summary: Get secretary details
+      parameters:
+      - in: path
+        name: secretary_id
+        schema:
+          type: integer
+        description: Secretary user ID
+        required: true
+      tags:
+      - Secretary
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretaryOutput'
+              examples:
+                SecretaryDetails:
+                  value:
+                    user_id: 10
+                    email: jane.doe@school.com
+                    full_name: Jane Doe
+                    is_active: true
+                    school_name: West Side Academy
+                    department: Administration
+                    office_number: A-101
+                    hire_date: '2024-01-15'
+                  summary: Secretary Details
+          description: ''
+    patch:
+      operationId: secretary_partial_update
+      description: Update a secretary with partial data.
+      summary: Update secretary
+      parameters:
+      - in: path
+        name: secretary_id
+        schema:
+          type: integer
+        description: Secretary user ID
+        required: true
+      tags:
+      - Secretary
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSecretaryInputRequest'
+            examples:
+              UpdateRequest:
+                value:
+                  department: Records
+                summary: Update Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSecretaryInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSecretaryInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretaryOutput'
+              examples:
+                SecretaryUpdated:
+                  value:
+                    user_id: 10
+                    email: jane.doe@school.com
+                    full_name: Jane Doe
+                    is_active: true
+                    school_name: West Side Academy
+                    department: Operations
+                    office_number: A-102
+                    hire_date: '2024-01-15'
+                  summary: Secretary Updated
+          description: ''
+    delete:
+      operationId: secretary_destroy
+      description: Delete is not allowed. Use deactivate endpoint instead.
+      summary: Delete secretary
+      parameters:
+      - in: path
+        name: secretary_id
+        schema:
+          type: integer
+        description: Secretary user ID
+        required: true
+      tags:
+      - Secretary
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '405':
+          description: Use deactivate endpoint instead
+  /api/secretary/{secretary_id}/deactivate/:
+    post:
+      operationId: secretary_deactivate_create
+      description: Deactivate a secretary account (soft delete).
+      summary: Deactivate secretary
+      parameters:
+      - in: path
+        name: secretary_id
+        schema:
+          type: integer
+        description: Secretary user ID
+        required: true
+      tags:
+      - Secretary
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                SecretaryDeactivated:
+                  value:
+                    detail: Secretary deactivated successfully.
+                  summary: Secretary Deactivated
+          description: Secretary deactivated successfully
+  /api/secretary/create/:
+    post:
+      operationId: secretary_create_create
+      description: Create a new secretary user and profile.
+      summary: Create secretary
+      tags:
+      - Secretary
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretaryInputRequest'
+            examples:
+              CreateRequest:
+                value:
+                  email: secretary@school.com
+                  full_name: Jane Doe
+                  password: SecurePass123!
+                  school_id: 1
+                  department: Administration
+                  hire_date: '2026-01-01'
+                summary: Create Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SecretaryInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SecretaryInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretaryOutput'
+              examples:
+                SecretaryCreated:
+                  value:
+                    user_id: 11
+                    email: mark.smith@school.com
+                    full_name: Mark Smith
+                    is_active: true
+                    school_name: West Side Academy
+                    department: Records
+                    office_number: B-201
+                    hire_date: '2026-02-01'
+                  summary: Secretary Created
+          description: ''
+        '400':
+          description: Validation error
+  /api/statistics/classroom/{classroom_id}/:
+    get:
+      operationId: statistics_classroom_retrieve
+      description: Returns total student count for a specific classroom.
+      summary: Get student count by classroom
+      parameters:
+      - in: path
+        name: classroom_id
+        schema:
+          type: integer
+        description: Classroom ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomStudentCount'
+              examples:
+                ClassroomStatsResponse:
+                  value:
+                    classroom_id: 1
+                    classroom_name: 1A
+                    total_students: 25
+                  summary: Classroom Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: Classroom not found
+  /api/statistics/comprehensive/:
+    get:
+      operationId: statistics_comprehensive_retrieve
+      description: Get statistics tailored to the authenticated user role.
+      summary: Get comprehensive statistics
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComprehensiveStatistics'
+              examples:
+                ComprehensiveStatsResponse:
+                  value:
+                    role: admin
+                    generated_at: '2026-01-06T12:00:00Z'
+                    statistics:
+                      total_students: 5000
+                      total_teachers: 200
+                  summary: Comprehensive Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+  /api/statistics/course/{course_id}/:
+    get:
+      operationId: statistics_course_retrieve
+      description: Returns student count and breakdown by classroom for a specific
+        course.
+      summary: Get student count by course
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        description: Course ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseStudentCount'
+              examples:
+                CourseStatsResponse:
+                  value:
+                    course_id: 1
+                    course_name: Mathematics 101
+                    total_students: 150
+                    by_classroom:
+                    - classroom_id: 1
+                      classroom_name: 1A
+                      count: 25
+                  summary: Course Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: Course not found
+  /api/statistics/dashboard/:
+    get:
+      operationId: statistics_dashboard_retrieve
+      description: Get quick statistics for the dashboard based on user role.
+      summary: Get dashboard statistics
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStatistics'
+              examples:
+                DashboardStatsResponse:
+                  value:
+                    role: teacher
+                    statistics:
+                      teacher_name: John Teacher
+                      total_students: 45
+                      course_count: 2
+                      classroom_count: 2
+                  summary: Dashboard Stats Response
+          description: ''
+        '400':
+          description: Error processing request
+  /api/statistics/school-manager/{manager_id}/:
+    get:
+      operationId: statistics_school_manager_retrieve
+      description: Returns student count across all schools managed by a specific
+        school manager.
+      summary: Get student count by school manager
+      parameters:
+      - in: path
+        name: manager_id
+        schema:
+          type: integer
+        description: Manager User ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+              examples:
+                ManagerStatsResponse:
+                  value:
+                    manager_id: 2
+                    manager_name: Jane Manager
+                    total_schools: 2
+                    total_students: 550
+                    schools:
+                    - school_id: 1
+                      school_name: West School
+                      count: 300
+                  summary: Manager Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: Manager not found
+  /api/statistics/school/{school_id}/:
+    get:
+      operationId: statistics_school_retrieve
+      description: Returns student count and breakdown by grade/classroom for a specific
+        school.
+      summary: Get student count by school
+      parameters:
+      - in: path
+        name: school_id
+        schema:
+          type: integer
+        description: School ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentCount'
+              examples:
+                SchoolStatsResponse:
+                  value:
+                    school_id: 1
+                    school_name: West School
+                    total_students: 300
+                    by_grade:
+                    - grade_id: 1
+                      grade_name: Grade 1
+                      count: 50
+                    by_classroom:
+                    - classroom_id: 1
+                      classroom_name: 1A
+                      count: 25
+                  summary: School Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: School not found
+  /api/statistics/teacher/{teacher_id}/:
+    get:
+      operationId: statistics_teacher_retrieve
+      description: Returns student count and breakdown by course/classroom for a specific
+        teacher.
+      summary: Get student count by teacher
+      parameters:
+      - in: path
+        name: teacher_id
+        schema:
+          type: integer
+        description: Teacher User ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherStudentCount'
+              examples:
+                TeacherStatsResponse:
+                  value:
+                    teacher_id: 5
+                    teacher_name: John Teacher
+                    total_students: 45
+                    by_course:
+                    - course_id: 1
+                      course_name: Math
+                      count: 25
+                    by_classroom:
+                    - classroom_id: 1
+                      classroom_name: 1A
+                      count: 25
+                  summary: Teacher Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: Teacher not found
+  /api/statistics/workstream/{workstream_id}/:
+    get:
+      operationId: statistics_workstream_retrieve
+      description: Returns student count and breakdown by school for a specific workstream.
+      summary: Get student count by workstream
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Reports & Statistics
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkstreamStudentCount'
+              examples:
+                WorkstreamStatsResponse:
+                  value:
+                    workstream_id: 1
+                    workstream_name: Primary Education
+                    total_students: 1200
+                    school_count: 5
+                    by_school:
+                    - school_id: 1
+                      school_name: West School
+                      count: 300
+                  summary: Workstream Stats Response
+          description: ''
+        '403':
+          description: Permission Denied
+        '404':
+          description: Workstream not found
+  /api/users/:
+    get:
+      operationId: users_list
+      description: Get a list of all users. Filtered by role permissions.
+      summary: List all users
+      parameters:
+      - in: query
+        name: role
+        schema:
+          type: string
+        description: Filter by role
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Search by name or email
+      tags:
+      - User Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserOutput'
+              examples:
+                UserListResponse:
+                  value:
+                  - - id: 1
+                      email: admin@test.com
+                      full_name: Admin User
+                      password: '12345678'
+                      role: admin
+                      work_stream: null
+                      work_stream_name: null
+                      school: null
+                      school_name: null
+                      is_active: true
+                      date_joined: '2026-01-01T00:00:00Z'
+                  summary: User List Response
+          description: ''
+  /api/users/{user_id}/:
+    get:
+      operationId: users_retrieve
+      description: Get details of a specific user.
+      summary: Get user details
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        description: User ID
+        required: true
+      tags:
+      - User Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOutput'
+              examples:
+                UserDetails:
+                  value:
+                    id: 1
+                    email: user@test.com
+                    full_name: Test User
+                    role: teacher
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    school: 2
+                    school_name: Main School
+                    is_active: true
+                    date_joined: '2026-01-01T00:00:00Z'
+                  summary: User Details
+          description: ''
+    patch:
+      operationId: users_partial_update
+      description: Update user details. Available fields depend on your role.
+      summary: Update a user
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        description: User ID
+        required: true
+      tags:
+      - User Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
+            examples:
+              UpdateUserRequest:
+                value:
+                  email: apdateuser@example.com
+                  full_name: Update User
+                  role: student
+                  password: SecurePass123!
+                  work_stream: 1
+                  school: null
+                  is_active: true
+                summary: Update User Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdateInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOutput'
+              examples:
+                UpdatedUser:
+                  value:
+                    id: 1
+                    email: user@test.com
+                    full_name: Updated Name
+                    role: teacher
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    school: 2
+                    school_name: Main School
+                    is_active: true
+                    date_joined: '2026-01-01T00:00:00Z'
+                  summary: Updated User
+          description: ''
+    delete:
+      operationId: users_destroy
+      description: Delete is disabled. Use deactivate endpoint instead.
+      summary: Delete a user
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        description: User ID
+        required: true
+      tags:
+      - User Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '403':
+          description: Use deactivate instead of delete
+  /api/users/{user_id}/activate/:
+    post:
+      operationId: users_activate_create
+      description: Activate a user account. You cannot activate yourself.
+      summary: Activate a user
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        description: User ID
+        required: true
+      tags:
+      - User Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                Success:
+                  value:
+                    detail: User activated successfully.
+          description: User activated successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Cannot activate yourself
+  /api/users/{user_id}/deactivate/:
+    post:
+      operationId: users_deactivate_create
+      description: Deactivate a user account (soft delete). You cannot deactivate
+        yourself.
+      summary: Deactivate a user
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        description: User ID
+        required: true
+      tags:
+      - User Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                Success:
+                  value:
+                    detail: User deactivated successfully.
+          description: User deactivated successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Cannot deactivate yourself
+  /api/users/create/:
+    post:
+      operationId: users_create_create
+      description: Create a new user with specified role and optional workstream/school
+        assignment.
+      summary: Create a new user
+      tags:
+      - User Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+            examples:
+              CreateUserRequest:
+                value:
+                  email: newuser@example.com
+                  full_name: New User
+                  role: student
+                  password: SecurePass123!
+                  work_stream: 1
+                  school: null
+                summary: Create User Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreateInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOutput'
+              examples:
+                CreatedUser:
+                  value:
+                    id: 5
+                    email: newuser@example.com
+                    full_name: New User
+                    role: student
+                    work_stream: 1
+                    work_stream_name: Main Workstream
+                    school: null
+                    school_name: null
+                    is_active: true
+                    date_joined: '2026-01-06T12:00:00Z'
+                  summary: Created User
+          description: User created successfully
+        '400':
+          description: Validation error
+  /api/workstream/{workstream_id}/auth/login/:
+    post:
+      operationId: workstream_auth_login_create
+      description: Authenticate workstream users (Students, Teachers, Guardians, etc.)
+        and receive JWT tokens.
+      summary: Login to workstream
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkstreamLoginInputRequest'
+            examples:
+              LoginRequest:
+                value:
+                  email: teacher@test.com
+                  password: test1234
+                summary: Login Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkstreamLoginInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkstreamLoginInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Login successful
+        '400':
+          description: Invalid credentials
+        '403':
+          description: User not authorized for this workstream
+  /api/workstream/{workstream_id}/auth/register/:
+    post:
+      operationId: workstream_auth_register_create
+      description: Register a new user in a specific workstream with STUDENT role
+        by default.
+      summary: Register in a workstream
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream Authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkstreamRegisterInputRequest'
+            examples:
+              RegisterRequest:
+                value:
+                  email: student@example.com
+                  full_name: John Student
+                  password: SecurePass123!
+                  password_confirm: SecurePass123!
+                summary: Register Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkstreamRegisterInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkstreamRegisterInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '201':
+          description: Registration successful
+        '400':
+          description: Validation error
+  /api/workstreams/:
+    get:
+      operationId: workstreams_list
+      description: Get a list of all workstreams. Requires Super Admin authentication.
+      summary: List all workstreams
+      tags:
+      - Workstream Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkstreamListOutput'
+              examples:
+                WorkstreamList:
+                  value:
+                  - - id: 1
+                      name: Main Workstream
+                      description: Primary workstream
+                      max_user: 100
+                      is_active: true
+                  summary: Workstream List
+          description: ''
+  /api/workstreams/{workstream_id}/:
+    get:
+      operationId: workstreams_retrieve
+      description: Get detailed information about a specific workstream. Requires
+        Super Admin authentication.
+      summary: Get workstream details
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkstreamDetailOutput'
+              examples:
+                WorkstreamDetails:
+                  value:
+                    id: 1
+                    name: Main Workstream
+                    description: Primary workstream
+                    max_user: 100
+                    is_active: true
+                  summary: Workstream Details
+          description: ''
+  /api/workstreams/{workstream_id}/deactivate/:
+    post:
+      operationId: workstreams_deactivate_create
+      description: Deactivate a workstream (soft delete). Requires Super Admin authentication.
+      summary: Deactivate a workstream
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream Management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              examples:
+                Deactivated:
+                  value:
+                    detail: Workstream deactivated successfully.
+          description: Workstream deactivated successfully
+        '403':
+          description: Permission denied
+        '404':
+          description: Workstream not found
+  /api/workstreams/{workstream_id}/info/:
+    get:
+      operationId: workstreams_info_retrieve
+      description: Public endpoint to get basic workstream info for the login page.
+        No authentication required.
+      summary: Get workstream info
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream - Public
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          description: Workstream found
+        '404':
+          description: Workstream not found
+  /api/workstreams/{workstream_id}/update/:
+    patch:
+      operationId: workstreams_update_partial_update
+      description: Update workstream details. Requires Super Admin authentication.
+      summary: Update a workstream
+      parameters:
+      - in: path
+        name: workstream_id
+        schema:
+          type: integer
+        description: Workstream ID
+        required: true
+      tags:
+      - Workstream Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkstreamUpdateInputRequest'
+            examples:
+              UpdateWorkstreamRequest:
+                value:
+                  name: Updated Workstream Name
+                  description: Updated description
+                  max_user: 150
+                summary: Update Workstream Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkstreamUpdateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkstreamUpdateInputRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: Workstream updated successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Workstream not found
+  /api/workstreams/create/:
+    post:
+      operationId: workstreams_create_create
+      description: Create a new workstream with a designated manager. Requires Super
+        Admin authentication.
+      summary: Create a new workstream
+      tags:
+      - Workstream Management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkstreamCreateInputRequest'
+            examples:
+              CreateWorkstreamRequest:
+                value:
+                  name: New Workstream
+                  description: Description of the workstream
+                  manager_id: 1
+                  max_user: 100
+                summary: Create Workstream Request
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkstreamCreateInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkstreamCreateInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkstreamCreateOutput'
+              examples:
+                CreatedWorkstream:
+                  value:
+                    id: 5
+                    name: New Workstream
+                    description: Description
+                    manager: 1
+                    max_user: 100
+                    is_active: true
+                  summary: Created Workstream
+          description: ''
+        '400':
+          description: Validation error or manager not found
+        '403':
+          description: Permission denied
+components:
+  schemas:
+    AcademicYearInputRequest:
+      type: object
+      description: Input serializer for creating/updating academic years.
+      properties:
+        academic_year_code:
+          type: string
+          minLength: 1
+          description: Year code like '2025-2026'
+          maxLength: 20
+        start_date:
+          type: string
+          format: date
+          description: Start date
+        end_date:
+          type: string
+          format: date
+          description: End date
+    AcademicYearOutput:
+      type: object
+      description: Output serializer for academic year responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        academic_year_code:
+          type: string
+          description: Academic year code (e.g., 2025/2026)
+          maxLength: 20
+        school:
+          type: integer
+          readOnly: true
+          description: School this academic year belongs to
+        start_date:
+          type: string
+          format: date
+          description: Academic year start date
+        end_date:
+          type: string
+          format: date
+          description: Academic year end date
+      required:
+      - academic_year_code
+      - end_date
+      - id
+      - school
+      - start_date
+    BlankEnum:
+      enum:
+      - ''
+    ClassRoomInputRequest:
+      type: object
+      description: Input serializer for creating/updating classrooms.
+      properties:
+        grade_id:
+          type: integer
+          description: Grade ID
+        classroom_name:
+          type: string
+          minLength: 1
+          description: Classroom name
+          maxLength: 100
+        homeroom_teacher_id:
+          type: integer
+          nullable: true
+          description: Teacher ID
+    ClassRoomOutput:
+      type: object
+      description: Output serializer for classroom responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        classroom_name:
+          type: string
+          description: Classroom name
+          maxLength: 100
+        school:
+          type: integer
+          readOnly: true
+          description: School this classroom belongs to
+        academic_year:
+          type: integer
+          readOnly: true
+          description: Academic year for this classroom
+        grade:
+          type: integer
+          description: Grade level for this classroom
+        grade_name:
+          type: string
+          readOnly: true
+        homeroom_teacher:
+          type: integer
+          description: Homeroom teacher for this classroom
+          nullable: true
+        homeroom_teacher_name:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - academic_year
+      - classroom_name
+      - grade
+      - grade_name
+      - homeroom_teacher_name
+      - id
+      - school
+    ClassroomStudentCount:
+      type: object
+      properties:
+        classroom_id:
+          type: integer
+          description: Classroom ID
+        classroom_name:
+          type: string
+          description: Classroom Name
+        total_students:
+          type: integer
+          description: Total students in classroom
+      required:
+      - classroom_id
+      - classroom_name
+      - total_students
+    ComprehensiveStatistics:
+      type: object
+      properties:
+        role:
+          type: string
+          description: User role
+        generated_at:
+          type: string
+          format: date-time
+          description: Time of generation
+        statistics:
+          type: object
+          additionalProperties: {}
+          description: Key-value statistics
+      required:
+      - generated_at
+      - role
+      - statistics
+    CourseInputRequest:
+      type: object
+      description: Input serializer for creating/updating courses.
+      properties:
+        grade_id:
+          type: integer
+          description: Grade ID
+        course_code:
+          type: string
+          minLength: 1
+          description: Course code
+          maxLength: 50
+        name:
+          type: string
+          minLength: 1
+          description: Course name
+          maxLength: 150
+    CourseOutput:
+      type: object
+      description: Output serializer for course responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        course_code:
+          type: string
+          description: Course code
+          maxLength: 50
+        school:
+          type: integer
+          readOnly: true
+          description: School offering this course
+        grade:
+          type: integer
+          description: Grade level for this course
+        grade_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Course name
+          maxLength: 150
+      required:
+      - course_code
+      - grade
+      - grade_name
+      - id
+      - name
+      - school
+    CourseStudentCount:
+      type: object
+      properties:
+        course_id:
+          type: integer
+          description: Course ID
+        course_name:
+          type: string
+          description: Course Name
+        total_students:
+          type: integer
+          description: Total students enrolled in course
+        by_classroom:
+          type: array
+          items: {}
+          description: Student count per classroom
+      required:
+      - by_classroom
+      - course_id
+      - course_name
+      - total_students
+    DashboardStatistics:
+      type: object
+      properties:
+        role:
+          type: string
+          description: User role
+        statistics:
+          type: object
+          additionalProperties: {}
+          description: Dashboard-specific statistics
+      required:
+      - role
+      - statistics
+    EnrollmentInputRequest:
+      type: object
+      description: Input serializer for creating/updating enrollments.
+      properties:
+        student_id:
+          type: integer
+          description: Student ID
+        class_room_id:
+          type: integer
+          description: Classroom ID
+        academic_year_id:
+          type: integer
+          description: Academic year ID
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EnrollmentInputStatusEnum'
+          description: |-
+            Enrollment status
+
+            * `enrolled` - enrolled
+            * `completed` - completed
+            * `withdrawn` - withdrawn
+            * `transferred` - transferred
+    EnrollmentInputStatusEnum:
+      enum:
+      - enrolled
+      - completed
+      - withdrawn
+      - transferred
+      type: string
+      description: |-
+        * `enrolled` - enrolled
+        * `completed` - completed
+        * `withdrawn` - withdrawn
+        * `transferred` - transferred
+    EnrollmentOutput:
+      type: object
+      description: Output serializer for enrollment responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: integer
+          description: Enrolled student
+          readOnly: true
+        student_name:
+          type: string
+          readOnly: true
+        class_room:
+          type: integer
+          description: Classroom student is enrolled in
+        classroom_name:
+          type: string
+          readOnly: true
+        academic_year:
+          type: integer
+          description: Academic year for this enrollment
+        academic_year_code:
+          type: string
+          readOnly: true
+        grade_name:
+          type: string
+          readOnly: true
+        status:
+          nullable: true
+          description: |-
+            Enrollment status
+
+            * `enrolled` - Enrolled
+            * `completed` - Completed
+            * `withdrawn` - Withdrawn
+            * `transferred` - Transferred
+          oneOf:
+          - $ref: '#/components/schemas/EnrollmentOutputStatusEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - academic_year
+      - academic_year_code
+      - class_room
+      - classroom_name
+      - grade_name
+      - id
+      - student_id
+      - student_name
+    EnrollmentOutputStatusEnum:
+      enum:
+      - enrolled
+      - completed
+      - withdrawn
+      - transferred
+      type: string
+      description: |-
+        * `enrolled` - Enrolled
+        * `completed` - Completed
+        * `withdrawn` - Withdrawn
+        * `transferred` - Transferred
+    GradeInputRequest:
+      type: object
+      description: Input serializer for creating/updating grades.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Grade name
+          maxLength: 50
+        numeric_level:
+          type: integer
+          description: Numeric level (e.g., 1-12)
+        min_age:
+          type: integer
+          description: Minimum age
+        max_age:
+          type: integer
+          description: Maximum age
+    GradeOutput:
+      type: object
+      description: Output serializer for grade responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Grade name (e.g., Grade 1, Kindergarten)
+          maxLength: 50
+        numeric_level:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          description: Numeric level for ordering
+        min_age:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Minimum age for this grade
+        max_age:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Maximum age for this grade
+      required:
+      - id
+      - max_age
+      - min_age
+      - name
+      - numeric_level
+    Message:
+      type: object
+      description: Simple serializer for detail messages.
+      properties:
+        detail:
+          type: string
+          description: Response message
+      required:
+      - detail
+    NullEnum:
+      enum:
+      - null
+    PatchedAcademicYearInputRequest:
+      type: object
+      description: Input serializer for creating/updating academic years.
+      properties:
+        academic_year_code:
+          type: string
+          minLength: 1
+          description: Year code like '2025-2026'
+          maxLength: 20
+        start_date:
+          type: string
+          format: date
+          description: Start date
+        end_date:
+          type: string
+          format: date
+          description: End date
+    PatchedClassRoomInputRequest:
+      type: object
+      description: Input serializer for creating/updating classrooms.
+      properties:
+        grade_id:
+          type: integer
+          description: Grade ID
+        classroom_name:
+          type: string
+          minLength: 1
+          description: Classroom name
+          maxLength: 100
+        homeroom_teacher_id:
+          type: integer
+          nullable: true
+          description: Teacher ID
+    PatchedCourseInputRequest:
+      type: object
+      description: Input serializer for creating/updating courses.
+      properties:
+        grade_id:
+          type: integer
+          description: Grade ID
+        course_code:
+          type: string
+          minLength: 1
+          description: Course code
+          maxLength: 50
+        name:
+          type: string
+          minLength: 1
+          description: Course name
+          maxLength: 150
+    PatchedEnrollmentInputRequest:
+      type: object
+      description: Input serializer for creating/updating enrollments.
+      properties:
+        student_id:
+          type: integer
+          description: Student ID
+        class_room_id:
+          type: integer
+          description: Classroom ID
+        academic_year_id:
+          type: integer
+          description: Academic year ID
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EnrollmentInputStatusEnum'
+          description: |-
+            Enrollment status
+
+            * `enrolled` - enrolled
+            * `completed` - completed
+            * `withdrawn` - withdrawn
+            * `transferred` - transferred
+    PatchedGradeInputRequest:
+      type: object
+      description: Input serializer for creating/updating grades.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Grade name
+          maxLength: 50
+        numeric_level:
+          type: integer
+          description: Numeric level (e.g., 1-12)
+        min_age:
+          type: integer
+          description: Minimum age
+        max_age:
+          type: integer
+          description: Maximum age
+    PatchedSchoolInputRequest:
+      type: object
+      description: Input serializer for creating/updating schools.
+      properties:
+        school_name:
+          type: string
+          minLength: 1
+          description: School name
+          maxLength: 255
+        work_stream_id:
+          type: integer
+          description: Workstream ID
+        manager_id:
+          type: integer
+          description: Manager user ID
+    PatchedSecretaryInputRequest:
+      type: object
+      description: Input serializer for creating/updating secretaries.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email address
+        full_name:
+          type: string
+          minLength: 1
+          description: Full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+        school_id:
+          type: integer
+          description: School ID
+        department:
+          type: string
+          minLength: 1
+          description: Department
+          maxLength: 100
+        office_number:
+          type: string
+          nullable: true
+          description: Office number
+          maxLength: 50
+        hire_date:
+          type: string
+          format: date
+          description: Hire date
+    PatchedStaffEvaluationInputRequest:
+      type: object
+      description: Input serializer for creating/updating staff evaluations.
+      properties:
+        reviewee_id:
+          type: integer
+          description: User ID of person being reviewed
+        evaluation_date:
+          type: string
+          format: date
+          description: Date of evaluation
+        rating_score:
+          type: integer
+          description: Rating score (1-5)
+        comments:
+          type: string
+          nullable: true
+          description: Comments
+    PatchedStudentInputRequest:
+      type: object
+      description: Input serializer for creating/updating students.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email address
+        full_name:
+          type: string
+          minLength: 1
+          description: Full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+        school_id:
+          type: integer
+          description: School ID
+        grade_id:
+          type: integer
+          description: Grade ID
+        date_of_birth:
+          type: string
+          format: date
+          description: Date of birth
+        admission_date:
+          type: string
+          format: date
+          description: Admission date
+        address:
+          type: string
+          nullable: true
+          description: Address
+        medical_notes:
+          type: string
+          nullable: true
+          description: Medical notes
+        current_status:
+          allOf:
+          - $ref: '#/components/schemas/StudentInputCurrentStatusEnum'
+          description: |-
+            Status
+
+            * `active` - active
+            * `inactive` - inactive
+            * `graduated` - graduated
+            * `transferred` - transferred
+            * `suspended` - suspended
+    PatchedUserUpdateInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email
+        full_name:
+          type: string
+          minLength: 1
+          description: Full name
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            Role
+
+            * `student` - Student
+            * `teacher` - Teacher
+            * `secretary` - Secretary
+            * `manager_school` - School Manager
+            * `manager_workstream` - Workstream Manager
+            * `guardian` - Guardian
+            * `admin` - Admin
+            * `guest` - Guest
+        work_stream:
+          type: integer
+          nullable: true
+          description: Workstream ID
+        school:
+          type: integer
+          nullable: true
+          description: School ID
+        is_active:
+          type: boolean
+          description: Active status
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+    PatchedWorkstreamUpdateInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Workstream name
+        description:
+          type: string
+          description: Description
+        manager_id:
+          type: integer
+          description: Manager user ID
+        max_user:
+          type: integer
+          minimum: 1
+          description: Max users
+        is_active:
+          type: boolean
+          description: Active status
+    PortalLoginInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: User's email address
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: User's password
+      required:
+      - email
+      - password
+    PortalRegisterInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: User's email address
+        full_name:
+          type: string
+          minLength: 1
+          description: User's full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+          description: Password (min 8 characters)
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 8
+          description: Confirm password
+      required:
+      - email
+      - full_name
+      - password
+      - password_confirm
+    RoleEnum:
+      enum:
+      - student
+      - teacher
+      - secretary
+      - manager_school
+      - manager_workstream
+      - guardian
+      - admin
+      - guest
+      type: string
+      description: |-
+        * `student` - Student
+        * `teacher` - Teacher
+        * `secretary` - Secretary
+        * `manager_school` - School Manager
+        * `manager_workstream` - Workstream Manager
+        * `guardian` - Guardian
+        * `admin` - Admin
+        * `guest` - Guest
+    SchoolInputRequest:
+      type: object
+      description: Input serializer for creating/updating schools.
+      properties:
+        school_name:
+          type: string
+          minLength: 1
+          description: School name
+          maxLength: 255
+        work_stream_id:
+          type: integer
+          description: Workstream ID
+        manager_id:
+          type: integer
+          description: Manager user ID
+      required:
+      - manager_id
+      - school_name
+      - work_stream_id
+    SchoolOutput:
+      type: object
+      description: Output serializer for school responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        school_name:
+          type: string
+          description: School name
+          maxLength: 255
+        work_stream:
+          type: integer
+          description: Workstream this school belongs to
+        work_stream_name:
+          type: string
+          readOnly: true
+        manager:
+          type: integer
+          nullable: true
+          description: School manager
+        manager_name:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - id
+      - manager_name
+      - school_name
+      - work_stream
+      - work_stream_name
+    SchoolStudentCount:
+      type: object
+      properties:
+        school_id:
+          type: integer
+          description: School ID
+        school_name:
+          type: string
+          description: School Name
+        total_students:
+          type: integer
+          description: Total students in school
+        by_grade:
+          type: array
+          items: {}
+          description: Student count per grade
+        by_classroom:
+          type: array
+          items: {}
+          description: Student count per classroom
+      required:
+      - by_classroom
+      - by_grade
+      - school_id
+      - school_name
+      - total_students
+    SecretaryInputRequest:
+      type: object
+      description: Input serializer for creating/updating secretaries.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email address
+        full_name:
+          type: string
+          minLength: 1
+          description: Full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+        school_id:
+          type: integer
+          description: School ID
+        department:
+          type: string
+          minLength: 1
+          description: Department
+          maxLength: 100
+        office_number:
+          type: string
+          nullable: true
+          description: Office number
+          maxLength: 50
+        hire_date:
+          type: string
+          format: date
+          description: Hire date
+    SecretaryOutput:
+      type: object
+      description: Output serializer for secretary responses.
+      properties:
+        user_id:
+          type: integer
+          description: User account for this secretary/registrar
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        school_name:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          description: Department this secretary belongs to
+          maxLength: 100
+        office_number:
+          type: string
+          nullable: true
+          description: Office number
+          maxLength: 50
+        hire_date:
+          type: string
+          format: date
+          description: Date of hire
+      required:
+      - department
+      - email
+      - full_name
+      - hire_date
+      - is_active
+      - school_name
+      - user_id
+    StaffEvaluationInputRequest:
+      type: object
+      description: Input serializer for creating/updating staff evaluations.
+      properties:
+        reviewee_id:
+          type: integer
+          description: User ID of person being reviewed
+        evaluation_date:
+          type: string
+          format: date
+          description: Date of evaluation
+        rating_score:
+          type: integer
+          description: Rating score (1-5)
+        comments:
+          type: string
+          nullable: true
+          description: Comments
+    StaffEvaluationOutput:
+      type: object
+      description: Output serializer for staff evaluation responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reviewer:
+          type: integer
+          readOnly: true
+          description: User who performed the evaluation
+        reviewer_name:
+          type: string
+          readOnly: true
+        reviewee:
+          type: integer
+          description: User being evaluated
+        reviewee_name:
+          type: string
+          readOnly: true
+        evaluation_date:
+          type: string
+          format: date
+          description: Date of evaluation
+        rating_score:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Rating score
+        comments:
+          type: string
+          nullable: true
+          description: Evaluation comments
+      required:
+      - evaluation_date
+      - id
+      - rating_score
+      - reviewee
+      - reviewee_name
+      - reviewer
+      - reviewer_name
+    StudentInputCurrentStatusEnum:
+      enum:
+      - active
+      - inactive
+      - graduated
+      - transferred
+      - suspended
+      type: string
+      description: |-
+        * `active` - active
+        * `inactive` - inactive
+        * `graduated` - graduated
+        * `transferred` - transferred
+        * `suspended` - suspended
+    StudentInputRequest:
+      type: object
+      description: Input serializer for creating/updating students.
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email address
+        full_name:
+          type: string
+          minLength: 1
+          description: Full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+        school_id:
+          type: integer
+          description: School ID
+        grade_id:
+          type: integer
+          description: Grade ID
+        date_of_birth:
+          type: string
+          format: date
+          description: Date of birth
+        admission_date:
+          type: string
+          format: date
+          description: Admission date
+        address:
+          type: string
+          nullable: true
+          description: Address
+        medical_notes:
+          type: string
+          nullable: true
+          description: Medical notes
+        current_status:
+          allOf:
+          - $ref: '#/components/schemas/StudentInputCurrentStatusEnum'
+          description: |-
+            Status
+
+            * `active` - active
+            * `inactive` - inactive
+            * `graduated` - graduated
+            * `transferred` - transferred
+            * `suspended` - suspended
+    StudentOutput:
+      type: object
+      description: Output serializer for student responses.
+      properties:
+        user_id:
+          type: integer
+          description: User account for this student
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        school:
+          type: integer
+          description: School this student belongs to
+        school_name:
+          type: string
+          readOnly: true
+        work_stream_id:
+          type: integer
+          readOnly: true
+        grade:
+          type: integer
+          nullable: true
+          description: Current grade level
+        grade_name:
+          type: string
+          readOnly: true
+          nullable: true
+        date_of_birth:
+          type: string
+          format: date
+          description: Student date of birth
+        admission_date:
+          type: string
+          format: date
+          description: Date of admission
+        current_status:
+          allOf:
+          - $ref: '#/components/schemas/StudentOutputCurrentStatusEnum'
+          description: |-
+            Current enrollment status
+
+            * `active` - Active
+            * `inactive` - Inactive
+            * `graduated` - Graduated
+            * `transferred` - Transferred
+            * `suspended` - Suspended
+        address:
+          type: string
+          nullable: true
+          description: Student address
+        medical_notes:
+          type: string
+          nullable: true
+          description: Medical information/notes
+      required:
+      - admission_date
+      - date_of_birth
+      - email
+      - full_name
+      - grade_name
+      - is_active
+      - school
+      - school_name
+      - user_id
+      - work_stream_id
+    StudentOutputCurrentStatusEnum:
+      enum:
+      - active
+      - inactive
+      - graduated
+      - transferred
+      - suspended
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+        * `graduated` - Graduated
+        * `transferred` - Transferred
+        * `suspended` - Suspended
+    TeacherStudentCount:
+      type: object
+      properties:
+        teacher_id:
+          type: integer
+          description: Teacher's User ID
+        teacher_name:
+          type: string
+          description: Teacher's Full Name
+        total_students:
+          type: integer
+          description: Total students taught by this teacher
+        by_course:
+          type: array
+          items: {}
+          description: Student count per course
+        by_classroom:
+          type: array
+          items: {}
+          description: Student count per classroom
+      required:
+      - by_classroom
+      - by_course
+      - teacher_id
+      - teacher_name
+      - total_students
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    UserCreateInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: User's email
+        full_name:
+          type: string
+          minLength: 1
+          description: User's full name
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User's role
+
+            * `student` - Student
+            * `teacher` - Teacher
+            * `secretary` - Secretary
+            * `manager_school` - School Manager
+            * `manager_workstream` - Workstream Manager
+            * `guardian` - Guardian
+            * `admin` - Admin
+            * `guest` - Guest
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: Password
+        work_stream:
+          type: integer
+          nullable: true
+          description: Workstream ID
+        school:
+          type: integer
+          nullable: true
+          description: School ID
+      required:
+      - email
+      - full_name
+      - password
+      - role
+    UserOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          description: Email address used for login
+          maxLength: 254
+        full_name:
+          type: string
+          description: Full name of the user
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User role
+
+            * `student` - Student
+            * `teacher` - Teacher
+            * `secretary` - Secretary
+            * `manager_school` - School Manager
+            * `manager_workstream` - Workstream Manager
+            * `guardian` - Guardian
+            * `admin` - Admin
+            * `guest` - Guest
+        work_stream:
+          type: integer
+          nullable: true
+          description: Workstream this user belongs to
+        work_stream_name:
+          type: string
+          readOnly: true
+        school:
+          type: integer
+          nullable: true
+          description: School this user belongs to
+        school_name:
+          type: string
+          readOnly: true
+        password:
+          type: string
+          maxLength: 128
+        is_active:
+          type: boolean
+          description: Designates whether this user can log in.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - full_name
+      - id
+      - password
+      - school_name
+      - work_stream_name
+    WorkstreamCreateInputRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Workstream name
+          maxLength: 255
+        description:
+          type: string
+          description: Optional description
+        manager_id:
+          type: integer
+          description: User ID of the workstream manager
+        max_user:
+          type: integer
+          minimum: 1
+          description: Maximum number of users allowed
+      required:
+      - manager_id
+      - max_user
+      - name
+    WorkstreamCreateOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        manager:
+          type: integer
+        max_user:
+          type: integer
+        is_active:
+          type: boolean
+      required:
+      - description
+      - id
+      - is_active
+      - manager
+      - max_user
+      - name
+    WorkstreamDetailOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Workstream name
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          description: Workstream description
+        max_user:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          description: Maximum number of users
+        is_active:
+          type: boolean
+          description: Whether this workstream is active
+      required:
+      - id
+      - max_user
+      - name
+    WorkstreamListOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Workstream name
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          description: Workstream description
+        max_user:
+          type: integer
+          maximum: 2147483647
+          minimum: 1
+          description: Maximum number of users
+        is_active:
+          type: boolean
+          description: Whether this workstream is active
+      required:
+      - id
+      - max_user
+      - name
+    WorkstreamLoginInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: User's email address
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: User's password
+      required:
+      - email
+      - password
+    WorkstreamRegisterInputRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          description: User's email address
+        full_name:
+          type: string
+          minLength: 1
+          description: User's full name
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+          description: Password (min 8 characters)
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 8
+          description: Confirm password
+      required:
+      - email
+      - full_name
+      - password
+      - password_confirm
+    WorkstreamStudentCount:
+      type: object
+      properties:
+        workstream_id:
+          type: integer
+          description: Workstream ID
+        workstream_name:
+          type: string
+          description: Workstream Name
+        total_students:
+          type: integer
+          description: Total students in workstream
+        school_count:
+          type: integer
+          description: Number of schools in workstream
+        by_school:
+          type: array
+          items: {}
+          description: Student count per school
+      required:
+      - by_school
+      - school_count
+      - total_students
+      - workstream_id
+      - workstream_name
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

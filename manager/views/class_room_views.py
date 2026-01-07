@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
 from accounts.permissions import IsAdminOrManager
 from manager.models import ClassRoom
@@ -31,6 +31,7 @@ class ClassRoomOutputSerializer(serializers.ModelSerializer):
         fields = ['id', 'classroom_name', 'school', 'academic_year', 'grade', 'grade_name', 'homeroom_teacher', 'homeroom_teacher_name']
         read_only_fields = ['id', 'school', 'academic_year']
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_homeroom_teacher_name(self, obj):
         if obj.homeroom_teacher:
             return obj.homeroom_teacher.user.full_name

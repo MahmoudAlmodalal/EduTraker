@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
+from accounts.serializers import MessageSerializer
+
 from accounts.models import CustomUser
 from accounts.permissions import IsStaffUser, IsAdminOrManagerOrSecretary
 from student.models import Student
@@ -273,28 +275,15 @@ class StudentDeactivateApi(APIView):
         summary='Deactivate student',
         description='Deactivate a student account (soft delete).',
         parameters=[OpenApiParameter(name='student_id', type=int, location=OpenApiParameter.PATH, description='Student ID')],
+        request=None,
         responses={
             200: OpenApiResponse(
-                response=StudentOutputSerializer,
+                response=MessageSerializer,
+                description='Student deactivated successfully',
                 examples=[
                     OpenApiExample(
                         'Student Deactivated',
-                        value={
-                            'user_id': 20,
-                            'email': 'student1@example.com',
-                            'full_name': 'John Student',
-                            'is_active': False,
-                            'school': 1,
-                            'school_name': 'Global Academy',
-                            'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
-                            'date_of_birth': '2010-05-15',
-                            'admission_date': '2024-09-01',
-                            'current_status': 'inactive',
-                            'address': '123 Study Lane',
-                            'medical_notes': 'None'
-                        }
+                        value={'detail': 'Student deactivated successfully.'}
                     )
                 ]
             )
@@ -302,5 +291,5 @@ class StudentDeactivateApi(APIView):
     )
     def post(self, request, student_id):
         student = student_get(student_id=student_id, actor=request.user)
-        deactivated_student = student_deactivate(student=student, actor=request.user)
-        return Response(StudentOutputSerializer(deactivated_student).data, status=status.HTTP_200_OK)
+        student_deactivate(student=student, actor=request.user)
+        return Response({"detail": "Student deactivated successfully."}, status=status.HTTP_200_OK)

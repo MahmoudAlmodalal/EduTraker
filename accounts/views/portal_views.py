@@ -19,7 +19,7 @@ class PortalRegisterView(APIView):
     """
     permission_classes = [AllowAny]
     
-    class InputSerializer(serializers.Serializer):
+    class PortalRegisterInputSerializer(serializers.Serializer):
         email = serializers.EmailField(help_text="User's email address")
         full_name = serializers.CharField(max_length=150, help_text="User's full name")
         password = serializers.CharField(write_only=True, min_length=8, help_text="Password (min 8 characters)")
@@ -32,7 +32,7 @@ class PortalRegisterView(APIView):
                 })
             return data
     
-    class OutputSerializer(serializers.Serializer):
+    class PortalRegisterOutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         full_name = serializers.CharField()
@@ -44,7 +44,7 @@ class PortalRegisterView(APIView):
         tags=['Portal Authentication'],
         summary='Register a new portal user',
         description='Register a new user in the portal with GUEST role. Account requires admin approval before login.',
-        request=InputSerializer,
+        request=PortalRegisterInputSerializer,
         examples=[
             OpenApiExample(
                 'Registration Request',
@@ -81,7 +81,7 @@ class PortalRegisterView(APIView):
         }
     )
     def post(self, request):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.PortalRegisterInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
@@ -94,7 +94,7 @@ class PortalRegisterView(APIView):
             return Response(
                 {
                     'message': 'Registration successful. Your account is pending approval.',
-                    'user': self.OutputSerializer(user).data,
+                    'user': self.PortalRegisterOutputSerializer(user).data,
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -114,11 +114,11 @@ class PortalLoginView(APIView):
     """
     permission_classes = [AllowAny]
     
-    class InputSerializer(serializers.Serializer):
+    class PortalLoginInputSerializer(serializers.Serializer):
         email = serializers.EmailField(help_text="User's email address")
         password = serializers.CharField(write_only=True, help_text="User's password")
     
-    class OutputSerializer(serializers.Serializer):
+    class PortalLoginOutputSerializer(serializers.Serializer):
         user = serializers.SerializerMethodField()
         tokens = serializers.DictField(help_text="JWT access and refresh tokens")
         
@@ -138,7 +138,7 @@ class PortalLoginView(APIView):
         tags=['Portal Authentication'],
         summary='Login to portal',
         description='Authenticate portal users (Admin, Workstream Managers) and receive JWT tokens.',
-        request=InputSerializer,
+        request=PortalLoginInputSerializer,
         examples=[
             OpenApiExample(
                 'Login Request',
@@ -178,7 +178,7 @@ class PortalLoginView(APIView):
         }
     )
     def post(self, request):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.PortalLoginInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
@@ -188,7 +188,7 @@ class PortalLoginView(APIView):
             )
             
             return Response(
-                self.OutputSerializer(result).data,
+                self.PortalLoginOutputSerializer(result).data,
                 status=status.HTTP_200_OK
             )
             

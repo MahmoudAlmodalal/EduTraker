@@ -10,6 +10,7 @@ from accounts.permissions import IsSuperAdmin
 from workstream.models import WorkStream
 from workstream.services.workstream_services import workstream_update
 from workstream.services.workstream_services import workstream_deactivate
+from accounts.serializers import MessageSerializer
 
 
 class WorkstreamInfoView(APIView):
@@ -52,7 +53,7 @@ class WorkstreamListView(APIView):
     """List all workstreams. Admin only."""
     permission_classes = [IsSuperAdmin]
     
-    class OutputSerializer(serializers.ModelSerializer):
+    class WorkstreamListOutputSerializer(serializers.ModelSerializer):
         class Meta:
             model = WorkStream
             fields = ['id', 'name', 'description', 'max_user', 'is_active']
@@ -62,7 +63,7 @@ class WorkstreamListView(APIView):
         summary='List all workstreams',
         description='Get a list of all workstreams. Requires Super Admin authentication.',
         responses={
-            200: OutputSerializer(many=True),
+            200: WorkstreamListOutputSerializer(many=True),
         },
         examples=[
             OpenApiExample(
@@ -76,14 +77,14 @@ class WorkstreamListView(APIView):
         from workstream.selectors.workstream_selectors import workstream_list
         filters = request.query_params.dict()
         workstreams = workstream_list(filters=filters, user=request.user)
-        return Response(self.OutputSerializer(workstreams, many=True).data)
+        return Response(self.WorkstreamListOutputSerializer(workstreams, many=True).data)
 
 
 class WorkstreamDetailView(APIView):
     """Get details of a specific workstream. Admin only."""
     permission_classes = [IsSuperAdmin]
     
-    class OutputSerializer(serializers.ModelSerializer):
+    class WorkstreamDetailOutputSerializer(serializers.ModelSerializer):
         class Meta:
             model = WorkStream
             fields = ['id', 'name', 'description', 'max_user', 'is_active']
@@ -97,7 +98,7 @@ class WorkstreamDetailView(APIView):
         ],
         responses={
             200: OpenApiResponse(
-                response=OutputSerializer,
+                response=WorkstreamDetailOutputSerializer,
                 examples=[OpenApiExample('Workstream Details', value={'id': 1, 'name': 'Main Workstream', 'description': 'Primary workstream', 'max_user': 100, 'is_active': True})]
             )
         }
@@ -105,20 +106,20 @@ class WorkstreamDetailView(APIView):
     def get(self, request, workstream_id):
         from workstream.selectors.workstream_selectors import workstream_get
         workstream = workstream_get(workstream_id=workstream_id, actor=request.user)
-        return Response(self.OutputSerializer(workstream).data)
+        return Response(self.WorkstreamDetailOutputSerializer(workstream).data)
 
 
 class WorkstreamCreateView(APIView):
     """Create a new WorkStream. Admin-only endpoint."""
     permission_classes = [IsSuperAdmin]
     
-    class InputSerializer(serializers.Serializer):
+    class WorkstreamCreateInputSerializer(serializers.Serializer):
         name = serializers.CharField(max_length=255, help_text="Workstream name")
         description = serializers.CharField(required=False, allow_blank=True, help_text="Optional description")
         manager_id = serializers.IntegerField(required=True, help_text="User ID of the workstream manager")
         max_user = serializers.IntegerField(required=True, min_value=1, help_text="Maximum number of users allowed")
 
-    class OutputSerializer(serializers.Serializer):
+    class WorkstreamCreateOutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         name = serializers.CharField()
         description = serializers.CharField()
@@ -130,7 +131,7 @@ class WorkstreamCreateView(APIView):
         tags=['Workstream Management'],
         summary='Create a new workstream',
         description='Create a new workstream with a designated manager. Requires Super Admin authentication.',
-        request=InputSerializer,
+        request=WorkstreamCreateInputSerializer,
         examples=[
             OpenApiExample(
                 'Create Workstream Request',
@@ -145,7 +146,7 @@ class WorkstreamCreateView(APIView):
         ],
         responses={
             201: OpenApiResponse(
-                response=OutputSerializer,
+                response=WorkstreamCreateOutputSerializer,
                 examples=[OpenApiExample('Created Workstream', value={'id': 5, 'name': 'New Workstream', 'description': 'Description', 'manager': 1, 'max_user': 100, 'is_active': True})]
             ),
             400: OpenApiResponse(description='Validation error or manager not found'),
@@ -153,7 +154,7 @@ class WorkstreamCreateView(APIView):
         }
     )
     def post(self, request):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.WorkstreamCreateInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -168,7 +169,7 @@ class WorkstreamCreateView(APIView):
             )
 
             return Response(
-                self.OutputSerializer(workstream).data,
+                self.WorkstreamCreateOutputSerializer(workstream).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -193,7 +194,7 @@ class WorkstreamUpdateView(APIView):
     """Update a workstream. Admin only."""
     permission_classes = [IsSuperAdmin]
     
-    class InputSerializer(serializers.Serializer):
+    class WorkstreamUpdateInputSerializer(serializers.Serializer):
         name = serializers.CharField(required=False, help_text="Workstream name")
         description = serializers.CharField(required=False, allow_blank=True, help_text="Description")
         manager_id = serializers.IntegerField(required=False, help_text="Manager user ID")
@@ -207,7 +208,7 @@ class WorkstreamUpdateView(APIView):
         parameters=[
             OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID'),
         ],
-        request=InputSerializer,
+        request=WorkstreamUpdateInputSerializer,
         examples=[
             OpenApiExample(
                 'Update Workstream Request',
@@ -229,7 +230,7 @@ class WorkstreamUpdateView(APIView):
         }
     )
     def patch(self, request, workstream_id):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.WorkstreamUpdateInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -247,7 +248,7 @@ class WorkstreamUpdateView(APIView):
             )
 
             return Response(
-                {"id": workstream.id, "name": workstream.name, "message": "Workstream updated successfully.","data": WorkstreamCreateView.OutputSerializer(workstream).data },
+                {"id": workstream.id, "name": workstream.name, "message": "Workstream updated successfully.","data": WorkstreamCreateView.WorkstreamCreateOutputSerializer(workstream).data },
                 status=status.HTTP_200_OK,
             )
 
@@ -270,8 +271,10 @@ class WorkstreamDeactivateView(APIView):
         parameters=[
             OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID'),
         ],
+        request=None,
         responses={
             200: OpenApiResponse(
+                response=MessageSerializer,
                 description='Workstream deactivated successfully',
                 examples=[OpenApiExample('Deactivated', value={'detail': 'Workstream deactivated successfully.'})]
             ),

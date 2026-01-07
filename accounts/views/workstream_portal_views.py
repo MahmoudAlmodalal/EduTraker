@@ -19,7 +19,7 @@ class WorkstreamRegisterView(APIView):
     """
     permission_classes = [AllowAny]
     
-    class InputSerializer(serializers.Serializer):
+    class WorkstreamRegisterInputSerializer(serializers.Serializer):
         email = serializers.EmailField(help_text="User's email address")
         full_name = serializers.CharField(max_length=150, help_text="User's full name")
         password = serializers.CharField(write_only=True, min_length=8, help_text="Password (min 8 characters)")
@@ -32,12 +32,12 @@ class WorkstreamRegisterView(APIView):
                 })
             return data
     
-    class OutputSerializer(serializers.Serializer): 
+    class WorkstreamRegisterOutputSerializer(serializers.Serializer): 
         id = serializers.IntegerField()
         email = serializers.EmailField()
         full_name = serializers.CharField()
         role = serializers.CharField()
-        work_stream = serializers.IntegerField()
+        work_stream = serializers.IntegerField(source='work_stream.id')
         work_stream_name = serializers.CharField()
         is_active = serializers.BooleanField()
         date_joined = serializers.DateTimeField()
@@ -49,7 +49,7 @@ class WorkstreamRegisterView(APIView):
         parameters=[
             OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID'),
         ],
-        request=InputSerializer,
+        request=WorkstreamRegisterInputSerializer,
         examples=[
             OpenApiExample(
                 'Register Request',
@@ -79,7 +79,7 @@ class WorkstreamRegisterView(APIView):
         }
     )
     def post(self, request, workstream_id):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.WorkstreamRegisterInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
@@ -93,7 +93,7 @@ class WorkstreamRegisterView(APIView):
             return Response(
                 {
                     'message': 'Registration successful. You can now login.',
-                    'user': self.OutputSerializer(user).data,
+                    'user': self.WorkstreamRegisterOutputSerializer(user).data,
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -114,11 +114,11 @@ class WorkstreamLoginView(APIView):
     """
     permission_classes = [AllowAny]
     
-    class InputSerializer(serializers.Serializer):
+    class WorkstreamLoginInputSerializer(serializers.Serializer):
         email = serializers.EmailField(help_text="User's email address")
         password = serializers.CharField(write_only=True, help_text="User's password")
     
-    class OutputSerializer(serializers.Serializer):
+    class WorkstreamLoginOutputSerializer(serializers.Serializer):
         user = serializers.SerializerMethodField()
         tokens = serializers.DictField(help_text="JWT access and refresh tokens")
         
@@ -143,7 +143,7 @@ class WorkstreamLoginView(APIView):
         parameters=[
             OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID'),
         ],
-        request=InputSerializer,
+        request=WorkstreamLoginInputSerializer,
         examples=[
             OpenApiExample(
                 'Login Request',
@@ -172,7 +172,7 @@ class WorkstreamLoginView(APIView):
         }
     )
     def post(self, request, workstream_id):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.WorkstreamLoginInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         try:
@@ -183,7 +183,7 @@ class WorkstreamLoginView(APIView):
             )
             
             return Response(
-                self.OutputSerializer(result).data,
+                self.WorkstreamLoginOutputSerializer(result).data,
                 status=status.HTTP_200_OK
             )
             
