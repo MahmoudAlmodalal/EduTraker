@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManager
-from manager.models import Grade
+from school.models import Grade
 from manager.selectors.grade_selectors import grade_list, grade_get
 from manager.services.grade_services import grade_create, grade_update, grade_delete
 

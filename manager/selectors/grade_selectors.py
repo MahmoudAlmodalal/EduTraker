@@ -1,6 +1,6 @@
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
-from manager.models import Grade
+from school.models import Grade
 
 def grade_list(*, filters: dict) -> QuerySet[Grade]:
     """Return a QuerySet of all Grades with optional filters."""

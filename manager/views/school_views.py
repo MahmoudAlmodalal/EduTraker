@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 
 from accounts.models import CustomUser
 from accounts.permissions import IsAdminOrManager
-from manager.models import School
+from school.models import School
 from manager.selectors.school_selectors import school_list, school_get
 from manager.services.school_services import school_create, school_update, school_delete
 

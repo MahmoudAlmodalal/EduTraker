@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 
 from accounts.models import CustomUser, Role
 from accounts.policies.user_policies import _has_school_access, _can_create_in_workstream
-from manager.models import School
+from school.models import School
 from workstream.models import WorkStream
 
 

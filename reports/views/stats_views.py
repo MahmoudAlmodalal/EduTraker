@@ -401,7 +401,7 @@ class DashboardStatisticsView(APIView):
                 from student.models import Student
                 from teacher.models import Teacher
                 from workstream.models import WorkStream
-                from manager.models import School, ClassRoom
+                from school.models import School, ClassRoom
                 
                 stats = {
                     'total_students': Student.objects.filter(current_status='active').count(),
@@ -449,7 +449,7 @@ class DashboardStatisticsView(APIView):
                 }
             
             elif user.role == 'secretary':
-                from manager.models import School
+                from school.models import School
                 from student.models import Student
                 
                 school = School.objects.get(id=user.school_id)

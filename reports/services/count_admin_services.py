@@ -4,7 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
-from manager.models import School, ClassRoom, Course
+from school.models import School, ClassRoom, Course
 from teacher.models import Teacher
 from student.models import Student
 from typing import Dict

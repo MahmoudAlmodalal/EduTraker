@@ -10,7 +10,7 @@ from rest_framework.exceptions import ValidationError
 
 from accounts.models import CustomUser, Role
 from student.models import Student, StudentEnrollment
-from manager.models import School, ClassRoom, AcademicYear
+from school.models import School, ClassRoom, AcademicYear
 from accounts.policies.user_policies import _can_manage_school
 
 
