@@ -70,13 +70,13 @@ class CourseAllocation(models.Model):
     Schema: Course_Allocations table
     """
     course = models.ForeignKey(
-        'manager.Course',
+        'school.Course',
         on_delete=models.CASCADE,
         related_name="allocations",
         help_text="Course being allocated"
     )
     class_room = models.ForeignKey(
-        'manager.ClassRoom',
+        'school.ClassRoom',
         on_delete=models.CASCADE,
         related_name="course_allocations",
         help_text="Classroom where course is taught"
@@ -162,19 +162,19 @@ class LearningMaterial(models.Model):
         help_text="Material code"
     )
     course = models.ForeignKey(
-        'manager.Course',
+        'school.Course',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Course this material belongs to"
     )
     classroom = models.ForeignKey(
-        'manager.ClassRoom',
+        'school.ClassRoom',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Classroom this material is for"
     )
     academic_year = models.ForeignKey(
-        'manager.AcademicYear',
+        'school.AcademicYear',
         on_delete=models.CASCADE,
         related_name="learning_materials",
         help_text="Academic year for this material"
@@ -252,13 +252,13 @@ class Attendance(models.Model):
         help_text="Student attendance record"
     )
     course = models.ForeignKey(
-        'manager.Course',
+        'school.Course',
         on_delete=models.CASCADE,
         related_name="attendances",
         help_text="Course for this attendance"
     )
     class_room = models.ForeignKey(
-        'manager.ClassRoom',
+        'school.ClassRoom',
         on_delete=models.CASCADE,
         related_name="attendances",
         help_text="Classroom for this attendance"

@@ -1,7 +1,7 @@
 from django.db.models import Count, Q, Avg, Sum
 from django.core.exceptions import PermissionDenied
 from accounts.models import CustomUser, Role
-from manager.models import ClassRoom, Course
+from school.models import ClassRoom, Course
 from teacher.models import CourseAllocation, Assignment, Attendance, Mark
 from student.models import Student, StudentEnrollment
 from typing import Dict
