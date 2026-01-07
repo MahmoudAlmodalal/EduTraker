@@ -14,7 +14,7 @@ from accounts.models import CustomUser, Role
 from accounts.services.user_services import user_create
 from student.models import Student, StudentEnrollment
 from student.selectors.student_selectors import can_access_student
-from manager.models import School, Grade, ClassRoom, AcademicYear
+from school.models import School, Grade, ClassRoom, AcademicYear
 from accounts.policies.user_policies import _has_school_access, _can_manage_school
 
 

@@ -5,7 +5,7 @@ from datetime import date
 
 from accounts.models import CustomUser, Role
 from secretary.models import Secretary
-from manager.models import School
+from school.models import School
 from accounts.services.user_services import user_create
 from accounts.policies.user_policies import _has_school_access
 

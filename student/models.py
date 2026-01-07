@@ -22,13 +22,13 @@ class Student(models.Model):
         help_text="User account for this student"
     )
     school = models.ForeignKey(
-        'manager.School',
+        'school.School',
         on_delete=models.CASCADE,
         related_name="students",
         help_text="School this student belongs to"
     )
     grade = models.ForeignKey(
-        'manager.Grade',
+        'school.Grade',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -75,13 +75,13 @@ class StudentEnrollment(models.Model):
         help_text="Enrolled student"
     )
     class_room = models.ForeignKey(
-        'manager.ClassRoom',
+        'school.ClassRoom',
         on_delete=models.CASCADE,
         related_name="enrollments",
         help_text="Classroom student is enrolled in"
     )
     academic_year = models.ForeignKey(
-        'manager.AcademicYear',
+        'school.AcademicYear',
         on_delete=models.CASCADE,
         related_name="enrollments",
         help_text="Academic year for this enrollment"

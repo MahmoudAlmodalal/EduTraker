@@ -82,7 +82,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text="Workstream this user belongs to"
     )
     school = models.ForeignKey(
-        'manager.School',
+        'school.School',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -121,7 +121,7 @@ class SystemConfiguration(models.Model):
     Schema: System_Configurations table
     """
     school = models.ForeignKey(
-        "manager.School",
+        "school.School",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

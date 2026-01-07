@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManager
-from manager.models import Course
+from school.models import Course
 from manager.selectors.school_selectors import school_get
 from manager.selectors.course_selectors import course_list, course_get
 from manager.services.course_services import course_create, course_update, course_delete

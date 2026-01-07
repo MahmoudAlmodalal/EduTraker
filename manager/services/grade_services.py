@@ -3,7 +3,7 @@ from django.core.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from accounts.models import CustomUser, Role
-from manager.models import Grade
+from school.models import Grade
 
 
 @transaction.atomic

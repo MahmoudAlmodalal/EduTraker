@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
 from accounts.models import CustomUser, Role
-from manager.models import School
+from school.models import School
 
 
 def school_list(*, filters: dict, user: CustomUser) -> QuerySet[School]:

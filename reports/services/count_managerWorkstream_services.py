@@ -2,7 +2,7 @@ from django.db.models import Count, Q
 from django.core.exceptions import PermissionDenied
 from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
-from manager.models import School, ClassRoom, Course
+from school.models import School, ClassRoom, Course
 from teacher.models import Teacher
 from student.models import Student
 from typing import Dict

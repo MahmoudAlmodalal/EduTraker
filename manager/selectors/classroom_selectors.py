@@ -2,7 +2,7 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
-from manager.models import ClassRoom
+from school.models import ClassRoom
 from accounts.models import CustomUser
 from accounts.policies.user_policies import _has_school_access
 

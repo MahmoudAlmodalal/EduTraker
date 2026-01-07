@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
 from accounts.permissions import IsAdminOrManager
-from manager.models import ClassRoom
+from school.models import ClassRoom
 from manager.selectors.school_selectors import school_get
 from manager.selectors.classroom_selectors import classroom_list, classroom_get
 from manager.services.classroom_services import classroom_create, classroom_update, classroom_delete

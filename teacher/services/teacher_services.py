@@ -6,7 +6,7 @@ from typing import Optional
 from accounts.models import CustomUser, Role
 from accounts.services.user_services import user_create
 from teacher.models import Teacher
-from manager.models import School
+from school.models import School
 
 
 @transaction.atomic

@@ -3,14 +3,14 @@ from django.core.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied, ValidationError as DRFValidationError
 from .models import CustomUser, Role
 from workstream.models import WorkStream
-from manager.models import School
+from school.models import School
 
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import PermissionDenied, ValidationError as DRFValidationError
 from .models import CustomUser, Role
 from workstream.models import WorkStream
-from manager.models import School
+from school.models import School
 # Import selectors to fetch users safely before update/delete
 from . import selectors 
 

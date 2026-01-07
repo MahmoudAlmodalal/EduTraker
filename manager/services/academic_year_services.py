@@ -3,7 +3,7 @@ from django.core.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from accounts.models import CustomUser
-from manager.models import School, AcademicYear
+from school.models import School, AcademicYear
 from accounts.policies.user_policies import _has_school_access
 
 

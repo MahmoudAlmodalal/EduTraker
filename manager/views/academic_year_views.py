@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManager
-from manager.models import AcademicYear
+from school.models import AcademicYear
 from manager.selectors.school_selectors import school_get
 from manager.selectors.academic_year_selectors import academic_year_list, academic_year_get
 from manager.services.academic_year_services import academic_year_create, academic_year_update, academic_year_delete
