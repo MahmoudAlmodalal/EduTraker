@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.db import transaction
 from django.core.exceptions import ValidationError, PermissionDenied
 from accounts.models import CustomUser, Role
@@ -73,7 +75,7 @@ def workstream_update(
     # Permission check
     if actor.role == Role.ADMIN:
         # Admins can update all fields
-        allowed_fields = ['name', 'description', 'capacity', 'is_active']
+        allowed_fields = ['name', 'description', 'max_user', 'is_active', 'manager']
     elif actor.role == Role.MANAGER_WORKSTREAM:
         # Workstream managers can only update limited fields of their own workstream
         if workstream.id != actor.work_stream_id:

@@ -6,7 +6,8 @@ from .views.user_views import (
     UserListApi,
     UserCreateApi,
     UserUpdateApi,
-    UserDeactivateApi
+    UserDeactivateApi,
+    UserActivateApi
 )
 
 urlpatterns = [
@@ -22,4 +23,5 @@ urlpatterns = [
     path('users/create/', UserCreateApi.as_view(), name='user-create'),
     path('users/<int:user_id>/', UserUpdateApi.as_view(), name='user-update'),
     path('users/<int:user_id>/deactivate/', UserDeactivateApi.as_view(), name='user-deactivate'),
+    path('users/<int:user_id>/activate/', UserActivateApi.as_view(), name='user-activate'),
 ]

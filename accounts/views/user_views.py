@@ -1,14 +1,17 @@
 from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 from accounts.models import CustomUser, Role
 from accounts.selectors.user_selectors import user_list, user_get
 from accounts.services.user_services import (
     user_create, 
     user_update, 
     user_delete, 
-    user_deactivate
+    user_deactivate,
+    user_activate
 )
+from accounts.serializers import MessageSerializer
 from accounts.permissions import (IsAdminOrManager, 
     IsWorkStreamManager, 
     IsSchoolManager, 
@@ -21,16 +24,16 @@ from django.core.exceptions import PermissionDenied
 
 
 class UserListApi(APIView):
+    """List all users accessible to current user."""
     permission_classes = [IsAdminOrManager]
 
     class FilterSerializer(serializers.Serializer):
-        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False)
-        search = serializers.CharField(required=False)
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False, help_text="Filter by role")
+        search = serializers.CharField(required=False, help_text="Search by name or email")
 
-    class OutputSerializer(serializers.ModelSerializer):
+    class UserOutputSerializer(serializers.ModelSerializer):
         work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
         school_name = serializers.CharField(source='school.school_name', read_only=True)
-
         class Meta:
             model = CustomUser
             fields = [
@@ -40,6 +43,25 @@ class UserListApi(APIView):
                 'is_active', 'date_joined'
             ]
 
+    @extend_schema(
+        tags=['User Management'],
+        summary='List all users',
+        description='Get a list of all users. Filtered by role permissions.',
+        parameters=[
+            OpenApiParameter(name='role', type=str, description='Filter by role'),
+            OpenApiParameter(name='search', type=str, description='Search by name or email'),
+        ],
+        responses={
+            200: UserOutputSerializer(many=True),
+        },
+        examples=[
+            OpenApiExample(
+                'User List Response',
+                value=[{'id': 1, 'email': 'admin@test.com', 'full_name': 'Admin User', 'password': "12345678", 'role': 'admin', 'work_stream': None, 'work_stream_name': None, 'school': None, 'school_name': None, 'is_active': True, 'date_joined': '2026-01-01T00:00:00Z'}],
+                response_only=True, status_codes=['200']
+            )
+        ]
+    )
     def get(self, request):
         filter_serializer = self.FilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
@@ -49,23 +71,57 @@ class UserListApi(APIView):
             user=request.user
         )
         
-        data = self.OutputSerializer(users, many=True).data
+        data = self.UserOutputSerializer(users, many=True).data
         return Response(data)
 
 
 class UserCreateApi(APIView):
+    """Create a new user."""
     permission_classes = [IsStaffUser]
 
-    class InputSerializer(serializers.Serializer):
-        email = serializers.EmailField()
-        full_name = serializers.CharField(max_length=150)
-        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES)
-        password = serializers.CharField(write_only=True)
-        work_stream = serializers.IntegerField(required=False, allow_null=True)
-        school = serializers.IntegerField(required=False, allow_null=True)
+    class UserCreateInputSerializer(serializers.Serializer):
+        email = serializers.EmailField(help_text="User's email")
+        full_name = serializers.CharField(max_length=150, help_text="User's full name")
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, help_text="User's role")
+        password = serializers.CharField(write_only=True, help_text="Password")
+        work_stream = serializers.IntegerField(source='work_stream_id', required=False, allow_null=True, help_text="Workstream ID")
+        school = serializers.IntegerField(source='school_id', required=False, allow_null=True, help_text="School ID")
 
+    @extend_schema(
+        tags=['User Management'],
+        summary='Create a new user',
+        description='Create a new user with specified role and optional workstream/school assignment.',
+        request=UserCreateInputSerializer,
+        examples=[
+            OpenApiExample(
+                'Create User Request',
+                value={
+                    'email': 'newuser@example.com',
+                    'full_name': 'New User',
+                    'role': 'student',
+                    'password': 'SecurePass123!',
+                    'work_stream': 1,
+                    'school': None
+                },
+                request_only=True,
+            ),
+        ],
+        responses={
+            201: OpenApiResponse(
+                response=UserListApi.UserOutputSerializer,
+                description='User created successfully',
+                examples=[
+                    OpenApiExample(
+                        'Created User',
+                        value={'id': 5, 'email': 'newuser@example.com', 'full_name': 'New User', 'role': 'student', 'work_stream': 1, 'work_stream_name': 'Main Workstream', 'school': None, 'school_name': None, 'is_active': True, 'date_joined': '2026-01-06T12:00:00Z'}
+                    )
+                ]
+            ),
+            400: OpenApiResponse(description='Validation error'),
+        }
+    )
     def post(self, request):
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.UserCreateInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user = user_create(
@@ -74,39 +130,91 @@ class UserCreateApi(APIView):
         )
 
         return Response(
-            UserListApi.OutputSerializer(user).data,
+            UserListApi.UserOutputSerializer(user).data,
             status=status.HTTP_201_CREATED
         )
 
 
 class UserUpdateApi(APIView):
+    """Get, update or delete a user."""
     permission_classes = [IsStaffUser]
 
-    class InputSerializer(serializers.Serializer):
-        email = serializers.EmailField(required=False)
-        full_name = serializers.CharField(max_length=150, required=False)
-        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False)
-        work_stream = serializers.IntegerField(required=False, allow_null=True)
-        school = serializers.IntegerField(required=False, allow_null=True)
-        is_active = serializers.BooleanField(required=False)
+    class UserUpdateInputSerializer(serializers.Serializer):
+        email = serializers.EmailField(required=False, help_text="Email")
+        full_name = serializers.CharField(max_length=150, required=False, help_text="Full name")
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False, help_text="Role")
+        work_stream = serializers.IntegerField(source='work_stream_id', required=False, allow_null=True, help_text="Workstream ID")
+        school = serializers.IntegerField(source='school_id', required=False, allow_null=True, help_text="School ID")
+        is_active = serializers.BooleanField(required=False, help_text="Active status")
+        password = serializers.CharField(required=False, write_only=True, help_text="Password")
 
+    @extend_schema(
+        tags=['User Management'],
+        summary='Get user details',
+        description='Get details of a specific user.',
+        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
+        responses={
+            200: OpenApiResponse(
+                response=UserListApi.UserOutputSerializer,
+                examples=[
+                    OpenApiExample(
+                        'User Details',
+                        value={'id': 1, 'email': 'user@test.com', 'full_name': 'Test User', 'role': 'teacher', 'work_stream': 1, 'work_stream_name': 'Main Workstream', 'school': 2, 'school_name': 'Main School', 'is_active': True, 'date_joined': '2026-01-01T00:00:00Z'}
+                    )
+                ]
+            )
+        }
+    )
     def get(self, request, user_id):
         user = user_get(user_id=user_id,actor=request.user)
-        return Response(UserListApi.OutputSerializer(user).data)
+        return Response(UserListApi.UserOutputSerializer(user).data)
 
+    @extend_schema(
+        tags=['User Management'],
+        summary='Update a user',
+        description='Update user details. Available fields depend on your role.',
+        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
+        request=UserUpdateInputSerializer,
+        examples=[
+            OpenApiExample(
+                'Update User Request',
+                value={
+                    'email': 'apdateuser@example.com',
+                    'full_name': 'Update User',
+                    'role': 'student',
+                    'password': 'SecurePass123!',
+                    'work_stream': 1,
+                    'school': None,
+                    'is_active': True,
+                },
+                request_only=True,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=UserListApi.UserOutputSerializer,
+                examples=[
+                    OpenApiExample(
+                        'Updated User',
+                        value={'id': 1, 'email': 'user@test.com', 'full_name': 'Updated Name', 'role': 'teacher', 'work_stream': 1, 'work_stream_name': 'Main Workstream', 'school': 2, 'school_name': 'Main School', 'is_active': True, 'date_joined': '2026-01-01T00:00:00Z'}
+                    )
+                ]
+            )
+        }
+    )
     def patch(self, request, user_id):
         user = user_get(user_id=user_id, actor=request.user)
 
-        serializer = self.InputSerializer(data=request.data)
+        serializer = self.UserUpdateInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
 
-        if request.user.role == CustomUser.Role.ADMIN:
+        if request.user.role == Role.ADMIN:
             pass
 
         # WORKSTREAM MANAGER
-        elif request.user.role == CustomUser.Role.MANAGER_WORKSTREAM:
+        elif request.user.role == Role.MANAGER_WORKSTREAM:
             data.pop("role", None)
             data.pop("work_stream", None)
 
@@ -124,20 +232,40 @@ class UserUpdateApi(APIView):
         user = user_update(user=user, data=data)
 
         return Response(
-            UserListApi.OutputSerializer(user).data,
+            UserListApi.UserOutputSerializer(user).data,
             status=status.HTTP_200_OK
         )
 
-
+    @extend_schema(
+        tags=['User Management'],
+        summary='Delete a user',
+        description='Delete is disabled. Use deactivate endpoint instead.',
+        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
+        responses={403: OpenApiResponse(description='Use deactivate instead of delete')}
+    )
     def delete(self, request, user_id):
         raise PermissionDenied("Use deactivate instead of delete.")
-        # user = user_get(user_id=user_id,actor=request.user)
-        # user_delete(user=user)
-        # return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserDeactivateApi(APIView):
+    """Deactivate a user."""
     permission_classes = [IsAdminOrManagerOrSecretary]
+    
+    @extend_schema(
+        tags=['User Management'],
+        summary='Deactivate a user',
+        description='Deactivate a user account (soft delete). You cannot deactivate yourself.',
+        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=MessageSerializer,
+                description='User deactivated successfully',
+                examples=[OpenApiExample('Success', value={'detail': 'User deactivated successfully.'})]
+            ),
+            400: OpenApiResponse(response=MessageSerializer, description='Cannot deactivate yourself'),
+        }
+    )
     def post(self, request, user_id):
         if request.user.id == user_id:
             return Response(
@@ -147,3 +275,32 @@ class UserDeactivateApi(APIView):
         user = user_get(user_id=user_id,actor=request.user)
         user_deactivate(user=user)
         return Response({"detail": "User deactivated successfully."}, status=status.HTTP_200_OK)
+
+class UserActivateApi(APIView):
+    """Activate a user."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
+    
+    @extend_schema(
+        tags=['User Management'],
+        summary='Activate a user',
+        description='Activate a user account. You cannot activate yourself.',
+        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=MessageSerializer,
+                description='User activated successfully',
+                examples=[OpenApiExample('Success', value={'detail': 'User activated successfully.'})]
+            ),
+            400: OpenApiResponse(response=MessageSerializer, description='Cannot activate yourself'),
+        }
+    )
+    def post(self, request, user_id):
+        if request.user.id == user_id:
+            return Response(
+                {"detail": "You cannot activate yourself."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = user_get(user_id=user_id,actor=request.user)
+        user_activate(user=user)
+        return Response({"detail": "User activated successfully."}, status=status.HTTP_200_OK)
