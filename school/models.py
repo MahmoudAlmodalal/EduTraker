@@ -4,17 +4,11 @@ from django.db import models
 
 
 class School(models.Model):
-    """
-    School entity within a workstream.
-    Schema: Schools table
-    """
-
-    school_name = models.CharField(max_length=255, help_text="School name")
+    school_name = models.CharField(max_length=255)
     work_stream = models.ForeignKey(
         "workstream.WorkStream",
         on_delete=models.CASCADE,
         related_name="schools",
-        help_text="Workstream this school belongs to",
     )
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -22,18 +16,16 @@ class School(models.Model):
         null=True,
         blank=True,
         related_name="managed_schools",
-        help_text="School manager",
     )
+
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "schools"
-        verbose_name = "School"
-        verbose_name_plural = "Schools"
         ordering = ["school_name"]
 
     def __str__(self):
         return self.school_name
-
 
 class AcademicYear(models.Model):
     """
