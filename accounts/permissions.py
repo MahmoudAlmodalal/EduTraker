@@ -74,3 +74,9 @@ class IsAdminOrManagerOrSecretary(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL,Role.SECRETARY] 
+class IsAdminOrManagerWorkstream(permissions.BasePermission):
+    """
+    Allows access to Admins and Workstream Managers.
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM]
