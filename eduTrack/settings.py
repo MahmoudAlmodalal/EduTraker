@@ -151,7 +151,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'edutraker',  # Name of the database you created in MySQL
         'USER': 'root',          # Your MySQL username
-        'PASSWORD': '120210653', # Your MySQL password
+        'PASSWORD': '', # Your MySQL password
         'HOST': 'localhost',     # Or the IP address if hosted remotely
         'PORT': '3306',          # Default MySQL port
     }

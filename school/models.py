@@ -42,8 +42,13 @@ class AcademicYear(models.Model):
         related_name="academic_years",
         help_text="School this academic year belongs to",
     )
+    models.UniqueConstraint(
+    fields=["school", "academic_year_code"],
+    name="unique_school_academic_year_code",
+    )
     start_date = models.DateField(help_text="Academic year start date")
     end_date = models.DateField(help_text="Academic year end date")
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "academic_years"
