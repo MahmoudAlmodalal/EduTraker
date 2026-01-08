@@ -2,41 +2,6 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 
-class ManagerProfile(models.Model):
-    """
-    Manager profile linked to User.
-    Schema: Managers table
-    """
-    user = models.OneToOneField(
-        'accounts.CustomUser',
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="manager_profile",
-        help_text="User account for this manager"
-    )
-    hire_date = models.DateField(help_text="Date of hire")
-    department = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        help_text="Department this manager oversees"
-    )
-    office_location = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        help_text="Office location"
-    )
-    
-    class Meta:
-        db_table = "managers"
-        verbose_name = "Manager"
-        verbose_name_plural = "Managers"
-        ordering = ["user__full_name"]
-    
-    def __str__(self):
-        return f"{self.user.full_name} ({self.user.email})"
-
 
 class StaffEvaluation(models.Model):
     """

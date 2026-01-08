@@ -1,14 +1,6 @@
 from django.contrib import admin
-from .models import ManagerProfile, StaffEvaluation
 
-
-@admin.register(ManagerProfile)
-class ManagerProfileAdmin(admin.ModelAdmin):
-    list_display = ["user", "hire_date", "department", "office_location"]
-    list_filter = ["department", "hire_date"]
-    search_fields = ["user__email", "user__full_name", "department"]
-    ordering = ["user__full_name"]
-
+from .models import StaffEvaluation
 
 @admin.register(StaffEvaluation)
 class StaffEvaluationAdmin(admin.ModelAdmin):

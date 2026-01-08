@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import School, AcademicYear, Grade, Course, ClassRoom
+
+
+from .models import AcademicYear, ClassRoom, Course, Grade, School
 
 
 @admin.register(School)
@@ -36,7 +38,15 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(ClassRoom)
 class ClassRoomAdmin(admin.ModelAdmin):
-    list_display = ["id", "classroom_name", "school", "academic_year", "grade", "homeroom_teacher"]
+
+    list_display = [
+        "id",
+        "classroom_name",
+        "school",
+        "academic_year",
+        "grade",
+        "homeroom_teacher",
+    ]
     list_filter = ["school", "academic_year", "grade"]
     search_fields = ["classroom_name", "school__school_name", "homeroom_teacher__user__email"]
     ordering = ["academic_year", "grade", "classroom_name"]
