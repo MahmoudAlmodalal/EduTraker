@@ -5,9 +5,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 
 from accounts.permissions import IsAdminOrManager
 from school.models import ClassRoom
-from manager.selectors.school_selectors import school_get
-from manager.selectors.classroom_selectors import classroom_list, classroom_get
-from manager.services.classroom_services import classroom_create, classroom_update, classroom_delete
+from school.selectors.school_selectors import school_get
+from school.selectors.classroom_selectors import classroom_list, classroom_get
+from school.services.classroom_services import classroom_create, classroom_update, classroom_delete
 
 
 # =============================================================================

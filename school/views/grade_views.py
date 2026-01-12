@@ -5,8 +5,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 
 from accounts.permissions import IsAdminOrManager
 from school.models import Grade
-from manager.selectors.grade_selectors import grade_list, grade_get
-from manager.services.grade_services import grade_create, grade_update, grade_delete
+from school.selectors.grade_selectors import grade_list, grade_get
+from school.services.grade_services import grade_create, grade_update, grade_delete
 
 
 # =============================================================================
