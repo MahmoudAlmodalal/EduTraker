@@ -75,67 +75,6 @@ class UserListApi(APIView):
         return Response(data)
 
 
-class UserCreateApi(APIView):
-    """Create a new user."""
-    permission_classes = [IsStaffUser]
-
-    class UserCreateInputSerializer(serializers.Serializer):
-        email = serializers.EmailField(help_text="User's email")
-        full_name = serializers.CharField(max_length=150, help_text="User's full name")
-        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, help_text="User's role")
-        password = serializers.CharField(write_only=True, help_text="Password")
-        work_stream = serializers.IntegerField(source='work_stream_id', required=False, allow_null=True, help_text="Workstream ID")
-        school = serializers.IntegerField(source='school_id', required=False, allow_null=True, help_text="School ID")
-        # Role-specific profile data (optional)
-        profile_data = serializers.DictField(required=False, allow_null=True, help_text="Role-specific profile fields: secretary(department, hire_date), teacher(hire_date, employment_status), student(date_of_birth, admission_date, grade_id), guardian(phone_number)")
-
-    @extend_schema(
-        tags=['User Management'],
-        summary='Create a new user',
-        description='Create a new user with specified role and optional workstream/school assignment. Include profile_data for role-specific fields.',
-        request=UserCreateInputSerializer,
-        examples=[
-            OpenApiExample(
-                'Create User Request',
-                value={
-                    'email': 'newuser@example.com',
-                    'full_name': 'New User',
-                    'role': 'student',
-                    'password': 'SecurePass123!',
-                    'work_stream': 1,
-                    'school': None
-                },
-                request_only=True,
-            ),
-        ],
-        responses={
-            201: OpenApiResponse(
-                response=UserListApi.UserOutputSerializer,
-                description='User created successfully',
-                examples=[
-                    OpenApiExample(
-                        'Created User',
-                        value={'id': 5, 'email': 'newuser@example.com', 'full_name': 'New User', 'role': 'student', 'work_stream': 1, 'work_stream_name': 'Main Workstream', 'school': None, 'school_name': None, 'is_active': True, 'date_joined': '2026-01-06T12:00:00Z'}
-                    )
-                ]
-            ),
-            400: OpenApiResponse(description='Validation error'),
-        }
-    )
-    def post(self, request):
-        serializer = self.UserCreateInputSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = user_create(
-            creator=request.user,
-            **serializer.validated_data
-        )
-
-        return Response(
-            UserListApi.UserOutputSerializer(user).data,
-            status=status.HTTP_201_CREATED
-        )
-
 
 class UserUpdateApi(APIView):
     """Get, update or delete a user."""
