@@ -86,11 +86,13 @@ class UserCreateApi(APIView):
         password = serializers.CharField(write_only=True, help_text="Password")
         work_stream = serializers.IntegerField(source='work_stream_id', required=False, allow_null=True, help_text="Workstream ID")
         school = serializers.IntegerField(source='school_id', required=False, allow_null=True, help_text="School ID")
+        # Role-specific profile data (optional)
+        profile_data = serializers.DictField(required=False, allow_null=True, help_text="Role-specific profile fields: secretary(department, hire_date), teacher(hire_date, employment_status), student(date_of_birth, admission_date, grade_id), guardian(phone_number)")
 
     @extend_schema(
         tags=['User Management'],
         summary='Create a new user',
-        description='Create a new user with specified role and optional workstream/school assignment.',
+        description='Create a new user with specified role and optional workstream/school assignment. Include profile_data for role-specific fields.',
         request=UserCreateInputSerializer,
         examples=[
             OpenApiExample(

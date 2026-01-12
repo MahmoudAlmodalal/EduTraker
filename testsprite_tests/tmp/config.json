@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "basic token",
+  "backendUsername": "admin@test.com",
+  "backendPassword": "test1234",
+  "executionArgs": {
+    "projectName": "EduTraker",
+    "projectPath": "/home/mahmoud/Desktop/front/EduTraker",
+    "testIds": [],
+    "additionalInstruction": "1. JWT Tokens: Login responses return 'tokens': {'access', 'refresh'}. Use response.json()['tokens']['access'].\n2. Registration Responses: Both portal and workstream registration responses return a 'user' object (e.g., response.json()['user']['full_name']). Do not look for user fields at the root level.\n3. Workstream Creation: REQUIRES 'name', 'manager_id', and 'max_user'. 'manager_id' must be a user with 'manager_workstream' role.\n4. School Creation: REQUIRES 'school_name', 'work_stream_id'. 'manager_id' is optional but must have 'manager_school' role if provided.\n5. User Creation: REQUIRES 'email', 'full_name', 'password', 'role'. Choices: student, teacher, secretary, manager_school, manager_workstream, guardian, admin, guest.\n6. Auth: Use 'admin@test.com' / 'test1234' for all portal administrative tasks.\n7. Creation Prerequisites: To create a Workstream or School, ALWAYS create a user with the required manager role first via /api/users/create/ and use that ID.\n",
+    "envs": {
+      "API_KEY": "sk-user-gyEMyf5uw5QFywhKZgd6-dCA2_yNT4x0NhqzNZvvYA_hZ-kVrFphw46g9IGRiDYTnNK6yWFd_Ygvex0akCiFbYbzfUdkUhZdgXbUiMkzRiSw12J3-rsGNPc1mawMdadGsiA"
+    }
+  },
+  "proxy": "http://272ea9c4-79ab-4875-8f1a-3a010f59c267:B8yQd7Fn0MJWcH8R3mP6eRvlmtVQHmOJ@tun.testsprite.com:8080"
+}
