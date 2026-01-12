@@ -1,0 +1,309 @@
+{
+    "tech_stack": [
+        "Python",
+        "Django",
+        "Django REST Framework",
+        "MySQL",
+        "JWT Authentication"
+    ],
+    "features": [
+        {
+            "name": "Authentication",
+            "description": "JWT-based authentication with portal and workstream login/registration",
+            "files": [
+                "accounts/views/portal_views.py",
+                "workstream/views/workstream_views.py"
+            ],
+            "api_doc": {
+                "/api/auth/token/refresh/": {
+                    "post": "Refresh JWT access token"
+                },
+                "/api/portal/auth/login/": {
+                    "post": "Portal user login. Returns nested 'tokens' object with 'access' and 'refresh'."
+                },
+                "/api/portal/auth/register/": {
+                    "post": "Portal user registration. Requires 'password_confirm' field matching 'password'."
+                },
+                "/api/workstream/{workstream_id}/auth/login/": {
+                    "post": "Workstream user login. Returns nested 'tokens' object."
+                },
+                "/api/workstream/{workstream_id}/auth/register/": {
+                    "post": "Workstream user registration. Requires 'password_confirm'."
+                }
+            }
+        },
+        {
+            "name": "User Management",
+            "description": "CRUD operations for users with role-based access",
+            "files": [
+                "accounts/views/user_views.py",
+                "accounts/services/user_services.py"
+            ],
+            "api_doc": {
+                "/api/users/": {
+                    "get": "List all users"
+                },
+                "/api/users/{user_id}/": {
+                    "get": "Retrieve user",
+                    "patch": "Update user",
+                    "delete": "Delete user"
+                },
+                "/api/users/create/": {
+                    "post": "Create new user. Required: email, full_name, password, role (choices: student, teacher, secretary, manager_school, manager_workstream, guardian, admin, guest). Optional: work_stream (int), school (int), profile_data (dict)."
+                },
+                "/api/users/{user_id}/activate/": {
+                    "post": "Activate user"
+                },
+                "/api/users/{user_id}/deactivate/": {
+                    "post": "Deactivate user"
+                }
+            }
+        },
+        {
+            "name": "Workstream Management",
+            "description": "CRUD operations for workstreams",
+            "files": [
+                "workstream/views/workstream_views.py",
+                "workstream/services/workstream_services.py"
+            ],
+            "api_doc": {
+                "/api/workstream/": {
+                    "get": "List workstreams",
+                    "post": "Create workstream. Required: name, manager_id, max_user."
+                },
+                "/api/workstreams/{workstream_id}/": {
+                    "get": "Get workstream details"
+                },
+                "/api/workstreams/{workstream_id}/update/": {
+                    "patch": "Update workstream"
+                },
+                "/api/workstreams/{workstream_id}/deactivate/": {
+                    "post": "Deactivate workstream"
+                },
+                "/api/workstreams/{workstream_id}/info/": {
+                    "get": "Get workstream info"
+                }
+            }
+        },
+        {
+            "name": "School Management",
+            "description": "CRUD operations for schools",
+            "files": [
+                "manager/views/school_views.py",
+                "school/services/school_services.py"
+            ],
+            "api_doc": {
+                "/api/manager/schools/": {
+                    "get": "List schools"
+                },
+                "/api/manager/schools/{school_id}/": {
+                    "get": "Get school",
+                    "patch": "Update school",
+                    "delete": "Delete school"
+                },
+                "/api/manager/schools/create/": {
+                    "post": "Create school. Required: school_name, work_stream_id. Optional: manager_id (must be MANAGER_SCHOOL)."
+                }
+            }
+        },
+        {
+            "name": "Academic Year Management",
+            "description": "CRUD operations for academic years within schools",
+            "files": [
+                "manager/views/academic_year_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/schools/{school_id}/academic-years/": {
+                    "get": "List academic years"
+                },
+                "/api/manager/schools/{school_id}/academic-years/{academic_year_id}/": {
+                    "get": "Get academic year",
+                    "patch": "Update academic year",
+                    "delete": "Delete academic year"
+                },
+                "/api/manager/schools/{school_id}/academic-years/create/": {
+                    "post": "Create academic year"
+                }
+            }
+        },
+        {
+            "name": "Classroom Management",
+            "description": "CRUD operations for classrooms within academic years",
+            "files": [
+                "manager/views/classroom_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/": {
+                    "get": "List classrooms"
+                },
+                "/api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/{classroom_id}/": {
+                    "get": "Get classroom",
+                    "patch": "Update classroom",
+                    "delete": "Delete classroom"
+                },
+                "/api/manager/schools/{school_id}/academic-years/{academic_year_id}/classrooms/create/": {
+                    "post": "Create classroom"
+                }
+            }
+        },
+        {
+            "name": "Student Management",
+            "description": "CRUD operations for students and their enrollments",
+            "files": [
+                "manager/views/student_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/students/": {
+                    "get": "List students"
+                },
+                "/api/manager/students/{student_id}/": {
+                    "get": "Get student",
+                    "patch": "Update student",
+                    "delete": "Delete student"
+                },
+                "/api/manager/students/create/": {
+                    "post": "Create student"
+                },
+                "/api/manager/students/{student_id}/deactivate/": {
+                    "post": "Deactivate student"
+                },
+                "/api/manager/students/{student_id}/enrollments/": {
+                    "get": "List student enrollments"
+                }
+            }
+        },
+        {
+            "name": "Grade Management",
+            "description": "CRUD operations for grades",
+            "files": [
+                "manager/views/grade_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/grades/": {
+                    "get": "List grades"
+                },
+                "/api/manager/grades/{grade_id}/": {
+                    "get": "Get grade",
+                    "patch": "Update grade",
+                    "delete": "Delete grade"
+                },
+                "/api/manager/grades/create/": {
+                    "post": "Create grade"
+                }
+            }
+        },
+        {
+            "name": "Enrollment Management",
+            "description": "CRUD operations for student enrollments",
+            "files": [
+                "manager/views/enrollment_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/enrollments/{enrollment_id}/": {
+                    "get": "Get enrollment",
+                    "patch": "Update enrollment",
+                    "delete": "Delete enrollment"
+                },
+                "/api/manager/enrollments/create/": {
+                    "post": "Create enrollment"
+                }
+            }
+        },
+        {
+            "name": "Course Management",
+            "description": "CRUD operations for courses",
+            "files": [
+                "manager/views/course_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/schools/{school_id}/courses/": {
+                    "get": "List courses"
+                },
+                "/api/manager/schools/{school_id}/courses/{course_id}/": {
+                    "get": "Get course",
+                    "patch": "Update course",
+                    "delete": "Delete course"
+                },
+                "/api/manager/schools/{school_id}/courses/create/": {
+                    "post": "Create course"
+                }
+            }
+        },
+        {
+            "name": "Secretary Management",
+            "description": "CRUD operations for secretaries",
+            "files": [
+                "secretary/views.py"
+            ],
+            "api_doc": {
+                "/api/secretary/": {
+                    "get": "List secretaries"
+                },
+                "/api/secretary/{secretary_id}/": {
+                    "get": "Get secretary",
+                    "patch": "Update secretary",
+                    "delete": "Delete secretary"
+                },
+                "/api/secretary/create/": {
+                    "post": "Create secretary"
+                },
+                "/api/secretary/{secretary_id}/deactivate/": {
+                    "post": "Deactivate secretary"
+                }
+            }
+        },
+        {
+            "name": "Staff Evaluations",
+            "description": "CRUD operations for staff evaluations",
+            "files": [
+                "manager/views/evaluation_views.py"
+            ],
+            "api_doc": {
+                "/api/manager/staff-evaluations/": {
+                    "get": "List evaluations"
+                },
+                "/api/manager/staff-evaluations/{evaluation_id}/": {
+                    "get": "Get evaluation",
+                    "patch": "Update evaluation",
+                    "delete": "Delete evaluation"
+                },
+                "/api/manager/staff-evaluations/create/": {
+                    "post": "Create evaluation"
+                }
+            }
+        },
+        {
+            "name": "Statistics & Reports",
+            "description": "Dashboard and role-based statistics endpoints",
+            "files": [
+                "reports/views/statistics_views.py"
+            ],
+            "api_doc": {
+                "/api/statistics/dashboard/": {
+                    "get": "Get dashboard statistics"
+                },
+                "/api/statistics/comprehensive/": {
+                    "get": "Get comprehensive statistics"
+                },
+                "/api/statistics/workstream/{workstream_id}/": {
+                    "get": "Get workstream statistics"
+                },
+                "/api/statistics/school/{school_id}/": {
+                    "get": "Get school statistics"
+                },
+                "/api/statistics/school-manager/{manager_id}/": {
+                    "get": "Get school manager statistics"
+                },
+                "/api/statistics/teacher/{teacher_id}/": {
+                    "get": "Get teacher statistics"
+                },
+                "/api/statistics/classroom/{classroom_id}/": {
+                    "get": "Get classroom statistics"
+                },
+                "/api/statistics/course/{course_id}/": {
+                    "get": "Get course statistics"
+                }
+            }
+        }
+    ]
+}

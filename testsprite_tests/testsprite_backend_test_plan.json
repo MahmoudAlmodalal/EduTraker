@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "test_jwt_token_refresh",
+    "description": "Verify that the /api/auth/token/refresh/ endpoint successfully refreshes the JWT access token when provided with a valid refresh token."
+  },
+  {
+    "id": "TC002",
+    "title": "test_portal_user_login",
+    "description": "Verify that the /api/portal/auth/login/ endpoint allows portal users to login and returns a nested tokens object containing access and refresh tokens."
+  },
+  {
+    "id": "TC003",
+    "title": "test_portal_user_registration",
+    "description": "Verify that the /api/portal/auth/register/ endpoint allows portal user registration only when password and password_confirm fields match, and returns appropriate success or error responses."
+  },
+  {
+    "id": "TC004",
+    "title": "test_workstream_user_login",
+    "description": "Verify that the /api/workstream/{workstream_id}/auth/login/ endpoint allows workstream users to login and returns a nested tokens object containing access and refresh tokens."
+  },
+  {
+    "id": "TC005",
+    "title": "test_workstream_user_registration",
+    "description": "Verify that the /api/workstream/{workstream_id}/auth/register/ endpoint allows workstream user registration only when password and password_confirm fields match, and returns appropriate success or error responses."
+  },
+  {
+    "id": "TC006",
+    "title": "test_user_creation_with_role_validation",
+    "description": "Verify that the /api/users/create/ endpoint creates a new user with required fields including email, full_name, password, and role, and validates role choices correctly."
+  },
+  {
+    "id": "TC007",
+    "title": "test_user_activation",
+    "description": "Verify that the /api/users/{user_id}/activate/ endpoint activates a user account and returns the appropriate success response."
+  },
+  {
+    "id": "TC008",
+    "title": "test_workstream_creation",
+    "description": "Verify that the /api/workstream/ endpoint creates a new workstream with required fields name, manager_id, and max_user, and returns the created workstream details."
+  },
+  {
+    "id": "TC009",
+    "title": "test_school_creation_with_manager_validation",
+    "description": "Verify that the /api/manager/schools/create/ endpoint creates a new school with required school_name and work_stream_id, and optionally assigns a manager with role MANAGER_SCHOOL."
+  },
+  {
+    "id": "TC010",
+    "title": "test_academic_year_creation",
+    "description": "Verify that the /api/manager/schools/{school_id}/academic-years/create/ endpoint creates a new academic year for the specified school and returns the created academic year details."
+  }
+]

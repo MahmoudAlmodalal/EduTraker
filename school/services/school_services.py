@@ -1,3 +1,4 @@
+from __future__ import annotations
 from django.core.exceptions import PermissionDenied, ValidationError
 from school.models import School
 from accounts.policies.school_policies import (

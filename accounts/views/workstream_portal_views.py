@@ -38,7 +38,7 @@ class WorkstreamRegisterView(APIView):
         full_name = serializers.CharField()
         role = serializers.CharField()
         work_stream = serializers.IntegerField(source='work_stream.id')
-        work_stream_name = serializers.CharField()
+        work_stream_name = serializers.CharField(source='work_stream.name')
         is_active = serializers.BooleanField()
         date_joined = serializers.DateTimeField()
         

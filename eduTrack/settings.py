@@ -149,9 +149,9 @@ WSGI_APPLICATION = 'eduTrack.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'edutraker',  # Name of the database you created in MySQL
+        'NAME': 'edutraker_db',  # Name of the database you created in MySQL
         'USER': 'root',          # Your MySQL username
-        'PASSWORD': '', # Your MySQL password
+        'PASSWORD': 'EduTraker@2025!', # Your MySQL password
         'HOST': 'localhost',     # Or the IP address if hosted remotely
         'PORT': '3306',          # Default MySQL port
     }
