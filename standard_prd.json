@@ -1,0 +1,31 @@
+{
+    "project_goal": "A robust Educational Management System with clear role separations and data isolation between schools and workstreams.",
+    "key_features": [
+        {
+            "name": "Authentication & RBAC",
+            "description": "JWT-based authentication with role-specific login endpoints. Role-based access control implemented at service and permission layers."
+        },
+        {
+            "name": "Multi-Tenancy",
+            "description": "Data isolation between Workstreams and Schools. Users are assigned to specific entities and can only access/manage data within their scope."
+        },
+        {
+            "name": "User Management",
+            "description": "Admin and managers can create, update, and deactivate users according to an allowed management map."
+        },
+        {
+            "name": "Student & Enrollment",
+            "description": "Manage student records and their enrollment in schools and courses."
+        },
+        {
+            "name": "Academic Statistics",
+            "description": "Role-based dashboards showing counts and status of students, teachers, etc."
+        }
+    ],
+    "api_standard": {
+        "auth_header": "Authorization: Bearer <token>",
+        "response_format": "JSON",
+        "error_handling": "Standard DRF error responses (400, 401, 403, 404)."
+    },
+    "test_instructions": "Focus on testing RBAC boundaries. Ensure that a School Manager cannot create a Workstream Manager, and that users cannot access data outside their assigned School/Workstream."
+}
