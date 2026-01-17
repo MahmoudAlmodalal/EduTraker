@@ -12,7 +12,9 @@ class WorkStream(models.Model):
     description = models.TextField(null=True, blank=True, help_text="Workstream description")
     manager = models.ForeignKey(
         'accounts.CustomUser',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="managed_workstreams",
         help_text="Manager of this workstream"
     )
@@ -21,12 +23,17 @@ class WorkStream(models.Model):
         help_text="Maximum number of users"
     )
     is_active = models.BooleanField(default=True, help_text="Whether this workstream is active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "work_streams"
         verbose_name = "Workstream"
         verbose_name_plural = "Workstreams"
         ordering = ["name"]
+        indexes = [
+            models.Index(fields=["manager"], name="idx_work_streams_manager"),
+        ]
     
     def __str__(self):
         return self.name

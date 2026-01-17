@@ -53,12 +53,17 @@ class Teacher(models.Model):
         blank=True,
         help_text="Office location"
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "teachers"
         verbose_name = "Teacher"
         verbose_name_plural = "Teachers"
         ordering = ["user__full_name"]
+        indexes = [
+            models.Index(fields=["specialization"], name="idx_teachers_specialization"),
+        ]
     
     def __str__(self):
         return f"{self.user.full_name} ({self.user.email})"
@@ -87,6 +92,17 @@ class CourseAllocation(models.Model):
         related_name="course_allocations",
         help_text="Teacher assigned to teach this course"
     )
+    academic_year = models.ForeignKey(
+        'school.AcademicYear',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="course_allocations",
+        help_text="Academic year for this allocation"
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "course_allocations"
@@ -94,11 +110,15 @@ class CourseAllocation(models.Model):
         verbose_name_plural = "Course Allocations"
         constraints = [
             models.UniqueConstraint(
-                fields=["course", "class_room", "teacher"],
-                name="unique_course_classroom_teacher"
+                fields=["course", "class_room", "academic_year"],
+                name="unique_course_classroom_year"
             )
         ]
         ordering = ["course", "class_room"]
+        indexes = [
+            models.Index(fields=["teacher"], name="idx_allocation_teacher"),
+            models.Index(fields=["academic_year"], name="idx_allocation_year"),
+        ]
     
     def __str__(self):
         return f"{self.course.name} - {self.class_room.classroom_name} ({self.teacher.user.full_name})"
@@ -119,7 +139,16 @@ class Assignment(models.Model):
     
     assignment_code = models.CharField(
         max_length=50,
+        unique=True,
         help_text="Assignment code"
+    )
+    course_allocation = models.ForeignKey(
+        CourseAllocation,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="assignments",
+        help_text="Course allocation this assignment belongs to"
     )
     created_by = models.ForeignKey(
         Teacher,
@@ -129,7 +158,7 @@ class Assignment(models.Model):
     )
     title = models.CharField(max_length=150, help_text="Assignment title")
     description = models.TextField(null=True, blank=True, help_text="Assignment description")
-    due_date = models.DateField(null=True, blank=True, help_text="Due date")
+    due_date = models.DateTimeField(null=True, blank=True, help_text="Due date and time")
     exam_type = models.CharField(
         max_length=50,
         choices=EXAM_TYPE_CHOICES,
@@ -141,12 +170,19 @@ class Assignment(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Full marks for this assignment"
     )
+    is_published = models.BooleanField(default=False, help_text="Whether the assignment is published")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "assignments"
         verbose_name = "Assignment"
         verbose_name_plural = "Assignments"
         ordering = ["-due_date", "title"]
+        indexes = [
+            models.Index(fields=["due_date"], name="idx_assignments_due_date"),
+            models.Index(fields=["is_published"], name="idx_assignments_published"),
+        ]
     
     def __str__(self):
         return f"{self.assignment_code} - {self.title}"
@@ -159,6 +195,7 @@ class LearningMaterial(models.Model):
     """
     material_code = models.CharField(
         max_length=50,
+        unique=True,
         help_text="Material code"
     )
     course = models.ForeignKey(
@@ -188,12 +225,20 @@ class LearningMaterial(models.Model):
     title = models.CharField(max_length=150, help_text="Material title")
     description = models.TextField(null=True, blank=True, help_text="Material description")
     file_url = models.CharField(max_length=255, help_text="URL/path to the material file")
+    file_type = models.CharField(max_length=50, null=True, blank=True, help_text="File type/extension")
+    file_size = models.IntegerField(null=True, blank=True, help_text="File size in bytes")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "learning_materials"
         verbose_name = "Learning Material"
         verbose_name_plural = "Learning Materials"
         ordering = ["-academic_year", "course", "title"]
+        indexes = [
+            models.Index(fields=["course", "academic_year"], name="idx_materials_course_year"),
+        ]
     
     def __str__(self):
         return f"{self.material_code} - {self.title}"
@@ -222,12 +267,33 @@ class Mark(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))],
         help_text="Score/mark received"
     )
+    feedback = models.TextField(null=True, blank=True, help_text="Feedback on the submission")
+    graded_by = models.ForeignKey(
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="graded_marks",
+        help_text="Teacher who graded this"
+    )
+    graded_at = models.DateTimeField(null=True, blank=True, help_text="When this was graded")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "marks"
         verbose_name = "Mark"
         verbose_name_plural = "Marks"
         ordering = ["-assignment__due_date", "student"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "assignment"],
+                name="unique_student_assignment"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["assignment"], name="idx_marks_assignment"),
+        ]
     
     def __str__(self):
         return f"{self.student.user.full_name} - {self.assignment.title}: {self.score}"
@@ -251,17 +317,13 @@ class Attendance(models.Model):
         related_name="attendances",
         help_text="Student attendance record"
     )
-    course = models.ForeignKey(
-        'school.Course',
+    course_allocation = models.ForeignKey(
+        CourseAllocation,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="attendances",
-        help_text="Course for this attendance"
-    )
-    class_room = models.ForeignKey(
-        'school.ClassRoom',
-        on_delete=models.CASCADE,
-        related_name="attendances",
-        help_text="Classroom for this attendance"
+        help_text="Course allocation for this attendance"
     )
     date = models.DateField(help_text="Attendance date")
     status = models.CharField(
@@ -270,16 +332,32 @@ class Attendance(models.Model):
         help_text="Attendance status"
     )
     note = models.TextField(null=True, blank=True, help_text="Additional notes")
+    recorded_by = models.ForeignKey(
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_attendances",
+        help_text="Teacher who recorded this attendance"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "attendance"
         verbose_name = "Attendance"
         verbose_name_plural = "Attendances"
         ordering = ["-date", "student"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "course_allocation", "date"],
+                name="unique_student_allocation_date"
+            )
+        ]
         indexes = [
-            models.Index(fields=["date", "student"]),
-            models.Index(fields=["course", "date"]),
+            models.Index(fields=["date"], name="idx_attendance_date"),
+            models.Index(fields=["status"], name="idx_attendance_status"),
         ]
     
     def __str__(self):
-        return f"{self.student.user.full_name} - {self.course.name} ({self.date}): {self.status}"
+        return f"{self.student.user.full_name} - {self.course_allocation.course.name} ({self.date}): {self.status}"

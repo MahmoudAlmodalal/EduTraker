@@ -17,10 +17,13 @@ class WorkstreamCreateInputSerializer(serializers.Serializer):
 class WorkstreamOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(required=False)
-    description = serializers.CharField(required=False, allow_blank=True)
+    description = serializers.SerializerMethodField()
     manager_id = serializers.IntegerField(required=False)
     max_user = serializers.IntegerField(required=False, min_value=1)
     is_active = serializers.BooleanField(required=False)
+
+    def get_description(self, obj):
+        return obj.description or ""
     
 class WorkstreamUpdateInputSerializer(serializers.Serializer):
     name = serializers.CharField(required=False)

@@ -5,6 +5,7 @@ class Student(models.Model):
     """
     Student profile linked to User.
     Schema: Students table
+    Note: school_id and grade_id removed - use user.school and student_enrollments
     """
     STATUS_CHOICES = [
         ("active", "Active"),
@@ -21,20 +22,6 @@ class Student(models.Model):
         related_name="student_profile",
         help_text="User account for this student"
     )
-    school = models.ForeignKey(
-        'school.School',
-        on_delete=models.CASCADE,
-        related_name="students",
-        help_text="School this student belongs to"
-    )
-    grade = models.ForeignKey(
-        'school.Grade',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="students",
-        help_text="Current grade level"
-    )
     date_of_birth = models.DateField(help_text="Student date of birth")
     admission_date = models.DateField(help_text="Date of admission")
     current_status = models.CharField(
@@ -45,12 +32,18 @@ class Student(models.Model):
     )
     address = models.TextField(null=True, blank=True, help_text="Student address")
     medical_notes = models.TextField(null=True, blank=True, help_text="Medical information/notes")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "students"
         verbose_name = "Student"
         verbose_name_plural = "Students"
         ordering = ["user__full_name"]
+        indexes = [
+            models.Index(fields=["current_status"], name="idx_students_status"),
+            models.Index(fields=["date_of_birth"], name="idx_students_dob"),
+        ]
     
     def __str__(self):
         return f"{self.user.full_name} ({self.user.email})"
@@ -62,6 +55,7 @@ class StudentEnrollment(models.Model):
     Schema: Student_enrollments table
     """
     STATUS_CHOICES = [
+        ("active", "Active"),
         ("enrolled", "Enrolled"),
         ("completed", "Completed"),
         ("withdrawn", "Withdrawn"),
@@ -89,10 +83,13 @@ class StudentEnrollment(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        null=True,
-        blank=True,
+        default="active",
         help_text="Enrollment status"
     )
+    enrollment_date = models.DateField(null=True, blank=True, help_text="Date of enrollment")
+    completion_date = models.DateField(null=True, blank=True, help_text="Date of completion")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "student_enrollments"
@@ -100,11 +97,15 @@ class StudentEnrollment(models.Model):
         verbose_name_plural = "Student Enrollments"
         constraints = [
             models.UniqueConstraint(
-                fields=["student", "class_room"],
-                name="unique_student_classroom"
+                fields=["student", "class_room", "academic_year"],
+                name="unique_student_classroom_year"
             )
         ]
         ordering = ["academic_year", "class_room", "student"]
+        indexes = [
+            models.Index(fields=["status"], name="idx_enrollment_status"),
+            models.Index(fields=["academic_year"], name="idx_enrollment_year"),
+        ]
     
     def __str__(self):
         return f"{self.student.user.full_name} - {self.class_room.classroom_name} ({self.academic_year.academic_year_code})"

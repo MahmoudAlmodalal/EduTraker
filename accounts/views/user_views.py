@@ -75,6 +75,136 @@ class UserListApi(APIView):
         return Response(data)
 
 
+# Roles that have separate profile tables - these should NOT be created via this endpoint
+ROLES_WITH_PROFILES = [Role.TEACHER, Role.STUDENT, Role.SECRETARY, Role.GUARDIAN]
+
+
+class UserCreateApi(APIView):
+    """Create a new user without a profile.
+    
+    For roles that have associated profiles (teacher, student, secretary, guardian),
+    use the dedicated creation endpoints in their respective apps.
+    """
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    class UserCreateInputSerializer(serializers.Serializer):
+        email = serializers.EmailField(help_text="User email address")
+        full_name = serializers.CharField(max_length=150, help_text="Full name")
+        password = serializers.CharField(write_only=True, help_text="Password")
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, help_text="User role")
+        work_stream = serializers.IntegerField(
+            source='work_stream_id', required=False, allow_null=True, 
+            help_text="Workstream ID"
+        )
+        school = serializers.IntegerField(
+            source='school_id', required=False, allow_null=True, 
+            help_text="School ID"
+        )
+
+    @extend_schema(
+        tags=['User Management'],
+        summary='Create a new user',
+        description='''Create a new user account.
+        
+**Important:** Roles with profiles (teacher, student, secretary, guardian) cannot be created 
+through this endpoint. Use their dedicated endpoints instead:
+- Teachers: `/api/teacher/`
+- Students: `/api/student/`
+- Secretaries: `/api/secretary/`
+- Guardians: `/api/guardian/`
+
+This endpoint is for creating: admin, manager_workstream, manager_school, guest roles.''',
+        request=UserCreateInputSerializer,
+        examples=[
+            OpenApiExample(
+                'Create Manager User',
+                value={
+                    'email': 'manager@example.com',
+                    'full_name': 'Workstream Manager',
+                    'password': 'SecurePass123!',
+                    'role': 'manager_workstream',
+                    'work_stream': 1,
+                },
+                request_only=True,
+            ),
+        ],
+        responses={
+            201: OpenApiResponse(
+                response=UserListApi.UserOutputSerializer,
+                description='User created successfully',
+                examples=[
+                    OpenApiExample(
+                        'Created User',
+                        value={
+                            'id': 1,
+                            'email': 'manager@example.com',
+                            'full_name': 'Workstream Manager',
+                            'role': 'manager_workstream',
+                            'work_stream': 1,
+                            'work_stream_name': 'Main Workstream',
+                            'school': None,
+                            'school_name': None,
+                            'is_active': True,
+                            'date_joined': '2026-01-17T00:00:00Z'
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Validation error or role with profile',
+                examples=[
+                    OpenApiExample(
+                        'Role With Profile Error',
+                        value={
+                            'role': 'Users with role "teacher" have a profile. '
+                                    'Please use the dedicated /api/teacher/ endpoint instead.'
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(description='Not allowed to create user with this role'),
+        }
+    )
+    def post(self, request):
+        serializer = self.UserCreateInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        data = serializer.validated_data
+        role = data.get('role')
+        
+        # Block roles that have profiles
+        if role in ROLES_WITH_PROFILES:
+            endpoint_map = {
+                Role.TEACHER: '/api/teacher/',
+                Role.STUDENT: '/api/student/',
+                Role.SECRETARY: '/api/secretary/',
+                Role.GUARDIAN: '/api/guardian/',
+            }
+            endpoint = endpoint_map.get(role, 'their dedicated endpoint')
+            return Response(
+                {
+                    'role': f'Users with role "{role}" have a profile. '
+                            f'Please use the dedicated {endpoint} endpoint instead.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = user_create(
+            creator=request.user,
+            email=data['email'],
+            full_name=data['full_name'],
+            password=data['password'],
+            role=role,
+            work_stream_id=data.get('work_stream_id'),
+            school_id=data.get('school_id'),
+        )
+        
+        return Response(
+            UserListApi.UserOutputSerializer(user).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
 
 class UserUpdateApi(APIView):
     """Get, update or delete a user."""
