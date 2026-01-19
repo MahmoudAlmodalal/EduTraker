@@ -1,5 +1,48 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
+from django.utils import timezone
+
+
+class ActiveManager(models.Manager):
+    """Manager to filter for active records by default."""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
+class SoftDeleteModel(models.Model):
+    """
+    Abstract base model for soft delete functionality.
+    ALL educational models must inherit from this.
+    """
+    is_active = models.BooleanField(default=True, db_index=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True)
+    deactivated_by = models.ForeignKey(
+        'accounts.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(class)s_deactivations"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    objects = ActiveManager()  # Default: active records only
+    all_objects = models.Manager()  # All records including inactive
+    
+    class Meta:
+        abstract = True
+    
+    def deactivate(self, user=None):
+        self.is_active = False
+        self.deactivated_at = timezone.now()
+        self.deactivated_by = user
+        self.save(update_fields=['is_active', 'deactivated_at', 'deactivated_by'])
+    
+    def activate(self):
+        self.is_active = True
+        self.deactivated_at = None
+        self.deactivated_by = None
+        self.save(update_fields=['is_active', 'deactivated_at', 'deactivated_by'])
 
 
 class Role:
@@ -14,8 +57,8 @@ class Role:
     GUEST = "guest"
 
 
-class UserManager(BaseUserManager):
-    """Custom user manager for email-based authentication."""
+class UserManager(BaseUserManager, ActiveManager):
+    """Custom user manager for email-based authentication with soft delete support."""
     
     def create_user(self, email, password=None, **extra_fields):
         """Create and return a regular user with email and password."""
@@ -41,7 +84,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     """
     Custom User model with email-based authentication and role-based access control.
     Schema: Users table
@@ -89,18 +132,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         related_name="users",
         help_text="School this user belongs to"
     )
-    # Django auth fields
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Designates whether this user can log in."
-    )
+    # Django auth specific fields
     is_staff = models.BooleanField(
         default=False,
         help_text="Designates whether the user can log into this admin site."
     )
     date_joined = models.DateTimeField(auto_now_add=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     objects = UserManager()
     
@@ -123,7 +160,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return f"{self.email} ({self.get_role_display()})"
 
 
-class SystemConfiguration(models.Model):
+class SystemConfiguration(SoftDeleteModel):
     """
     System-wide or school-specific configuration settings.
     Schema: System_Configurations table

@@ -1,9 +1,9 @@
-from django.conf import settings
-from django.core.validators import MinValueValidator
 from django.db import models
+from django.core.validators import MinValueValidator
+from accounts.models import SoftDeleteModel
 
 
-class School(models.Model):
+class School(SoftDeleteModel):
     """
     School within a workstream.
     Schema: Schools table
@@ -15,15 +15,12 @@ class School(models.Model):
         related_name="schools",
     )
     manager = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'accounts.CustomUser',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="managed_schools",
     )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "schools"
@@ -36,7 +33,7 @@ class School(models.Model):
         return self.school_name
 
 
-class AcademicYear(models.Model):
+class AcademicYear(SoftDeleteModel):
     """
     Academic year for a school.
     Schema: Academic_years table
@@ -52,9 +49,7 @@ class AcademicYear(models.Model):
     )
     start_date = models.DateField(help_text="Academic year start date")
     end_date = models.DateField(help_text="Academic year end date")
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    end_date = models.DateField(help_text="Academic year end date")
 
     class Meta:
         db_table = "academic_years"
@@ -75,7 +70,7 @@ class AcademicYear(models.Model):
         return f"{self.academic_year_code} - {self.school.school_name}"
 
 
-class Grade(models.Model):
+class Grade(SoftDeleteModel):
     """
     Grade/level in the educational system.
     Schema: Grades table
@@ -92,8 +87,6 @@ class Grade(models.Model):
     max_age = models.IntegerField(
         validators=[MinValueValidator(0)], help_text="Maximum age for this grade"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "grades"
@@ -109,7 +102,7 @@ class Grade(models.Model):
         return self.name
 
 
-class Course(models.Model):
+class Course(SoftDeleteModel):
     """
     Course offered in a school for a specific grade.
     Schema: Courses table
@@ -129,9 +122,6 @@ class Course(models.Model):
     )
     name = models.CharField(max_length=150, help_text="Course name")
     description = models.TextField(null=True, blank=True, help_text="Course description")
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "courses"
@@ -152,7 +142,7 @@ class Course(models.Model):
         return f"{self.course_code} - {self.name}"
 
 
-class ClassRoom(models.Model):
+class ClassRoom(SoftDeleteModel):
     """
     Classroom for a specific grade in an academic year.
     Schema: Class_rooms table
@@ -185,9 +175,6 @@ class ClassRoom(models.Model):
         help_text="Homeroom teacher for this classroom",
     )
     capacity = models.IntegerField(null=True, blank=True, help_text="Classroom capacity")
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "class_rooms"

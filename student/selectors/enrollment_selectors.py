@@ -2,15 +2,20 @@ from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 from student.models import StudentEnrollment
 from student.selectors.student_selectors import can_access_student, student_get
 
 
-def enrollment_get(*, enrollment_id: int, actor: CustomUser) -> StudentEnrollment:
+def enrollment_get(*, enrollment_id: int, actor: CustomUser, include_inactive: bool = False) -> StudentEnrollment:
     """Retrieve a single StudentEnrollment by ID with permission check."""
+    if include_inactive and actor.role == Role.ADMIN:
+        base_qs = StudentEnrollment.all_objects
+    else:
+        base_qs = StudentEnrollment.objects
+
     enrollment = get_object_or_404(
-        StudentEnrollment.objects.select_related(
+        base_qs.select_related(
             'student', 'student__user', 'student__school',
             'class_room', 'academic_year'
         ),
@@ -23,11 +28,17 @@ def enrollment_get(*, enrollment_id: int, actor: CustomUser) -> StudentEnrollmen
 
     return enrollment
 
-def student_enrollment_list(*, student_id: int, actor: CustomUser) -> QuerySet[StudentEnrollment]:
+
+def student_enrollment_list(*, student_id: int, actor: CustomUser, include_inactive: bool = False) -> QuerySet[StudentEnrollment]:
     """Return a QuerySet of StudentEnrollments for a specific student."""
     # Validate actor can access the student
-    student_get(student_id=student_id, actor=actor)
+    student_get(student_id=student_id, actor=actor, include_inactive=include_inactive)
 
-    return StudentEnrollment.objects.select_related(
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = StudentEnrollment.all_objects
+    else:
+        qs = StudentEnrollment.objects
+
+    return qs.select_related(
         'class_room', 'class_room__grade', 'academic_year'
     ).filter(student_id=student_id)

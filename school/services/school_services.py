@@ -6,7 +6,7 @@ from accounts.policies.school_policies import (
     can_update_school,
     can_deactivate_school,
 )
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
 
 
@@ -46,6 +46,17 @@ def deactivate_school(*, actor: CustomUser, school: School) -> School:
     if not school.is_active:
         raise ValidationError("School already deactivated.")
 
-    school.is_active = False
-    school.save(update_fields=["is_active"])
+    school.deactivate(user=actor)
+    return school
+
+
+def activate_school(*, actor: CustomUser, school: School) -> School:
+    # Admin/WorkstreamManager can activate
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM]:
+         raise PermissionDenied("Only Admins or Workstream Managers can activate schools.")
+
+    if school.is_active:
+        raise ValidationError("School is already active.")
+
+    school.activate()
     return school

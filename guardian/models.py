@@ -1,7 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
 
-class Guardian(models.Model):
+class Guardian(SoftDeleteModel):
     """
     Guardian profile linked to User.
     Schema: Guardians table
@@ -19,8 +20,6 @@ class Guardian(models.Model):
         blank=True,
         help_text="Guardian phone number"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "guardians"
@@ -32,7 +31,7 @@ class Guardian(models.Model):
         return f"{self.user.full_name} ({self.user.email})"
 
 
-class GuardianStudentLink(models.Model):
+class GuardianStudentLink(SoftDeleteModel):
     """
     Many-to-many relationship between guardians and students with relationship type.
     Schema: Guardian_Student_Link table
@@ -61,8 +60,6 @@ class GuardianStudentLink(models.Model):
         choices=RELATIONSHIP_CHOICES,
         help_text="Type of relationship"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "guardian_student_link"

@@ -1,12 +1,14 @@
 from django.db import transaction
 from datetime import date
-from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
+from rest_framework.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied
 from typing import Optional
 
 from accounts.models import CustomUser, Role
 from accounts.services.user_services import user_create
 from teacher.models import Teacher
 from school.models import School
+from accounts.policies.user_policies import _has_school_access, _can_manage_school
 
 
 @transaction.atomic
@@ -26,30 +28,6 @@ def teacher_create(
 ) -> Teacher:
     """
     Create a new Teacher with their CustomUser account.
-    
-    This is an atomic operation that:
-    1. Creates the CustomUser with TEACHER role
-    2. Creates the Teacher profile linked to the user
-    
-    Args:
-        creator: The user creating this teacher
-        email: Teacher's email address
-        full_name: Teacher's full name
-        password: Account password
-        school_id: ID of the school
-        hire_date: Date of hire
-        employment_status: Employment status (full_time, part_time, contract, substitute)
-        specialization: Optional teaching specialization
-        highest_degree: Optional highest educational degree
-        years_of_experience: Optional years of teaching experience
-        office_location: Optional office location
-    
-    Returns:
-        Teacher: The created teacher profile
-    
-    Raises:
-        ValidationError: If validation fails
-        PermissionDenied: If creator lacks permission
     """
     # Validate school exists
     try:
@@ -57,6 +35,10 @@ def teacher_create(
     except School.DoesNotExist:
         raise ValidationError({"school_id": "School not found."})
     
+    # Authorization check
+    if not _can_manage_school(creator, school):
+        raise PermissionDenied("You don't have permission to create teachers for this school.")
+
     # Validate employment_status
     valid_statuses = ["full_time", "part_time", "contract", "substitute"]
     if employment_status not in valid_statuses:
@@ -96,10 +78,14 @@ def teacher_create(
 
 
 @transaction.atomic
-def teacher_update(*, teacher: Teacher, data: dict) -> Teacher:
+def teacher_update(*, teacher: Teacher, actor: CustomUser, data: dict) -> Teacher:
     """
     Update teacher profile fields.
     """
+    if not _has_school_access(actor, teacher.user.school):
+        if actor.id != teacher.user_id:
+            raise PermissionDenied("You don't have permission to update this teacher.")
+
     for field, value in data.items():
         if hasattr(teacher, field):
             setattr(teacher, field, value)
@@ -107,3 +93,42 @@ def teacher_update(*, teacher: Teacher, data: dict) -> Teacher:
     teacher.full_clean()
     teacher.save()
     return teacher
+
+
+@transaction.atomic
+def teacher_deactivate(*, teacher: Teacher, actor: CustomUser) -> None:
+    """
+    Deactivate a teacher (soft delete).
+    """
+    if not _can_manage_school(actor, teacher.user.school):
+        raise PermissionDenied("You don't have permission to deactivate this teacher.")
+
+    if not teacher.is_active:
+        raise ValidationError("Teacher already deactivated.")
+
+    # Deactivate associated user
+    teacher.user.deactivate(user=actor)
+
+    # Deactivate teacher profile
+    teacher.deactivate(user=actor)
+
+
+@transaction.atomic
+def teacher_activate(*, teacher: Teacher, actor: CustomUser) -> None:
+    """
+    Activate a teacher.
+    """
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("You don't have permission to activate teachers.")
+
+    if not _can_manage_school(actor, teacher.user.school):
+        raise PermissionDenied("You don't have permission to activate teachers for this school.")
+
+    if teacher.is_active:
+        raise ValidationError("Teacher is already active.")
+
+    # Activate associated user
+    teacher.user.activate()
+
+    # Activate teacher profile
+    teacher.activate()

@@ -7,7 +7,8 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from teacher.models import Assignment, Teacher
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
+from accounts.policies.user_policies import _can_manage_school
 
 
 def _generate_assignment_code() -> str:
@@ -28,22 +29,6 @@ def assignment_create(
 ) -> Assignment:
     """
     Create a new Assignment.
-    
-    Args:
-        creator: The user creating the assignment (must be a teacher)
-        title: Assignment title
-        exam_type: Type of assignment/exam
-        full_mark: Full marks for this assignment
-        assignment_code: Optional assignment code (auto-generated if not provided)
-        description: Optional assignment description
-        due_date: Optional due date
-    
-    Returns:
-        Assignment: The created assignment
-    
-    Raises:
-        PermissionDenied: If creator is not a teacher
-        ValidationError: If validation fails
     """
     # Verify creator is a teacher
     if not hasattr(creator, 'teacher_profile'):
@@ -91,22 +76,11 @@ def assignment_update(
 ) -> Assignment:
     """
     Update an existing Assignment.
-    
-    Args:
-        assignment: The assignment to update
-        actor: The user making the update
-        data: Dictionary of fields to update
-    
-    Returns:
-        Assignment: The updated assignment
-    
-    Raises:
-        PermissionDenied: If actor is not the owner of the assignment
-        ValidationError: If validation fails
     """
-    # Verify ownership
-    if not hasattr(actor, 'teacher_profile') or assignment.created_by != actor.teacher_profile:
-        raise PermissionDenied("You don't have permission to update this assignment.")
+    # Verify ownership or management
+    is_owner = hasattr(actor, 'teacher_profile') and assignment.created_by == actor.teacher_profile
+    if not (is_owner or actor.role == Role.ADMIN):
+         raise PermissionDenied("You don't have permission to update this assignment.")
     
     # Check for duplicate assignment code if updating
     if "assignment_code" in data:
@@ -146,19 +120,30 @@ def assignment_update(
 
 
 @transaction.atomic
-def assignment_delete(*, assignment: Assignment, actor: CustomUser) -> None:
+def assignment_deactivate(*, assignment: Assignment, actor: CustomUser) -> None:
     """
-    Delete an Assignment.
-    
-    Args:
-        assignment: The assignment to delete
-        actor: The user making the request
-    
-    Raises:
-        PermissionDenied: If actor is not the owner of the assignment
+    Deactivate an Assignment (soft delete).
     """
-    # Verify ownership
-    if not hasattr(actor, 'teacher_profile') or assignment.created_by != actor.teacher_profile:
-        raise PermissionDenied("You don't have permission to delete this assignment.")
-    
-    assignment.delete()
+    # Verify ownership or management
+    is_owner = hasattr(actor, 'teacher_profile') and assignment.created_by == actor.teacher_profile
+    if not (is_owner or actor.role == Role.ADMIN):
+        raise PermissionDenied("You don't have permission to deactivate this assignment.")
+
+    if not assignment.is_active:
+        raise ValidationError("Assignment already deactivated.")
+
+    assignment.deactivate(user=actor)
+
+
+@transaction.atomic
+def assignment_activate(*, assignment: Assignment, actor: CustomUser) -> None:
+    """
+    Activate an Assignment.
+    """
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("You don't have permission to activate assignments.")
+
+    if assignment.is_active:
+        raise ValidationError("Assignment is already active.")
+
+    assignment.activate()

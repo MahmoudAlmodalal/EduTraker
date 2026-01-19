@@ -1,9 +1,9 @@
-from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator
+from accounts.models import SoftDeleteModel
 
 
-class WorkStream(models.Model):
+class WorkStream(SoftDeleteModel):
     """
     Workstream managed by a manager.
     Schema: Work_streams table
@@ -22,9 +22,6 @@ class WorkStream(models.Model):
         validators=[MinValueValidator(1)],
         help_text="Maximum number of users"
     )
-    is_active = models.BooleanField(default=True, help_text="Whether this workstream is active")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "work_streams"

@@ -1,10 +1,15 @@
-from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from school.models import Grade
+from accounts.models import CustomUser, Role
 
-def grade_list(*, filters: dict) -> QuerySet[Grade]:
+from django.db.models import QuerySet
+
+def grade_list(*, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Grade]:
     """Return a QuerySet of all Grades with optional filters."""
-    qs = Grade.objects.all()
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = Grade.all_objects.all()
+    else:
+        qs = Grade.objects.all()
 
     if name := filters.get("name"):
         qs = qs.filter(name__icontains=name)
@@ -15,6 +20,11 @@ def grade_list(*, filters: dict) -> QuerySet[Grade]:
     return qs
 
 
-def grade_get(*, grade_id: int) -> Grade:
+def grade_get(*, actor: CustomUser, grade_id: int, include_inactive: bool = False) -> Grade:
     """Retrieve a single Grade by ID."""
-    return get_object_or_404(Grade, id=grade_id)
+    if include_inactive and actor.role == Role.ADMIN:
+        base_qs = Grade.all_objects
+    else:
+        base_qs = Grade.objects
+    
+    return get_object_or_404(base_qs, id=grade_id)

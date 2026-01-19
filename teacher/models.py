@@ -1,10 +1,10 @@
-from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from accounts.models import SoftDeleteModel
 
 
-class Teacher(models.Model):
+class Teacher(SoftDeleteModel):
     """
     Teacher profile linked to User.
     Schema: Teachers table
@@ -53,8 +53,6 @@ class Teacher(models.Model):
         blank=True,
         help_text="Office location"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "teachers"
@@ -69,7 +67,7 @@ class Teacher(models.Model):
         return f"{self.user.full_name} ({self.user.email})"
 
 
-class CourseAllocation(models.Model):
+class CourseAllocation(SoftDeleteModel):
     """
     Allocation of a course to a classroom with a teacher.
     Schema: Course_Allocations table
@@ -100,9 +98,6 @@ class CourseAllocation(models.Model):
         related_name="course_allocations",
         help_text="Academic year for this allocation"
     )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "course_allocations"
@@ -124,7 +119,7 @@ class CourseAllocation(models.Model):
         return f"{self.course.name} - {self.class_room.classroom_name} ({self.teacher.user.full_name})"
 
 
-class Assignment(models.Model):
+class Assignment(SoftDeleteModel):
     """
     Assignment or exam created by a teacher.
     Schema: Assignments table
@@ -171,8 +166,6 @@ class Assignment(models.Model):
         help_text="Full marks for this assignment"
     )
     is_published = models.BooleanField(default=False, help_text="Whether the assignment is published")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "assignments"
@@ -188,7 +181,7 @@ class Assignment(models.Model):
         return f"{self.assignment_code} - {self.title}"
 
 
-class LearningMaterial(models.Model):
+class LearningMaterial(SoftDeleteModel):
     """
     Learning materials uploaded for courses.
     Schema: Learning_materials table
@@ -227,9 +220,6 @@ class LearningMaterial(models.Model):
     file_url = models.CharField(max_length=255, help_text="URL/path to the material file")
     file_type = models.CharField(max_length=50, null=True, blank=True, help_text="File type/extension")
     file_size = models.IntegerField(null=True, blank=True, help_text="File size in bytes")
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "learning_materials"
@@ -244,7 +234,7 @@ class LearningMaterial(models.Model):
         return f"{self.material_code} - {self.title}"
 
 
-class Mark(models.Model):
+class Mark(SoftDeleteModel):
     """
     Marks/scores for students on assignments.
     Schema: Marks table
@@ -277,8 +267,6 @@ class Mark(models.Model):
         help_text="Teacher who graded this"
     )
     graded_at = models.DateTimeField(null=True, blank=True, help_text="When this was graded")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "marks"
@@ -299,7 +287,7 @@ class Mark(models.Model):
         return f"{self.student.user.full_name} - {self.assignment.title}: {self.score}"
 
 
-class Attendance(models.Model):
+class Attendance(SoftDeleteModel):
     """
     Student attendance records.
     Schema: Attendance table
@@ -340,8 +328,6 @@ class Attendance(models.Model):
         related_name="recorded_attendances",
         help_text="Teacher who recorded this attendance"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "attendance"

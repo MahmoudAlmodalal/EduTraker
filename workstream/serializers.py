@@ -10,8 +10,8 @@ class WorkstreamListQuerySerializer(serializers.Serializer):
 class WorkstreamCreateInputSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     description = serializers.CharField(required=False, allow_blank=True)
-    manager_id = serializers.IntegerField()
-    max_user = serializers.IntegerField(min_value=1)
+    manager_id = serializers.IntegerField(required=False, allow_null=True)
+    max_user = serializers.IntegerField(min_value=1, default=100)
 
 
 class WorkstreamOutputSerializer(serializers.Serializer):

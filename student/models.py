@@ -1,7 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
 
-class Student(models.Model):
+class Student(SoftDeleteModel):
     """
     Student profile linked to User.
     Schema: Students table
@@ -32,8 +33,6 @@ class Student(models.Model):
     )
     address = models.TextField(null=True, blank=True, help_text="Student address")
     medical_notes = models.TextField(null=True, blank=True, help_text="Medical information/notes")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "students"
@@ -49,7 +48,7 @@ class Student(models.Model):
         return f"{self.user.full_name} ({self.user.email})"
 
 
-class StudentEnrollment(models.Model):
+class StudentEnrollment(SoftDeleteModel):
     """
     Student enrollment in a classroom for an academic year.
     Schema: Student_enrollments table
@@ -88,8 +87,6 @@ class StudentEnrollment(models.Model):
     )
     enrollment_date = models.DateField(null=True, blank=True, help_text="Date of enrollment")
     completion_date = models.DateField(null=True, blank=True, help_text="Date of completion")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "student_enrollments"

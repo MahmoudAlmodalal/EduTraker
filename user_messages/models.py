@@ -1,7 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
 
-class Message(models.Model):
+class Message(SoftDeleteModel):
     """
     Messages between users.
     Schema: Messages table
@@ -29,7 +30,7 @@ class Message(models.Model):
     is_read = models.BooleanField(default=False, help_text="Whether the message has been read")
     read_at = models.DateTimeField(null=True, blank=True, help_text="When the message was read")
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True, help_text="When the message was read")
     
     class Meta:
         db_table = "messages"

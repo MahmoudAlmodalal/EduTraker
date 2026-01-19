@@ -5,7 +5,7 @@ from school.models import AcademicYear, School
 class AcademicYearListQuerySerializer(serializers.Serializer):
     """Query serializer for academic year list endpoint."""
     school_id = serializers.IntegerField(required=False, help_text="Filter by school ID")
-    is_active = serializers.BooleanField(required=False, help_text="Filter by active status")
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
 
 class AcademicYearCreateInputSerializer(serializers.Serializer):
@@ -24,12 +24,14 @@ class AcademicYearUpdateInputSerializer(serializers.Serializer):
 class AcademicYearOutputSerializer(serializers.ModelSerializer):
     """Output serializer for academic year responses."""
     school_name = serializers.CharField(source='school.school_name', read_only=True)
+    deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = AcademicYear
         fields = [
             'id', 'academic_year_code', 'school', 'school_name',
             'start_date', 'end_date', 'is_active',
+            'deactivated_at', 'deactivated_by', 'deactivated_by_name',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'academic_year_code', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'academic_year_code', 'created_at', 'updated_at', 'deactivated_by_name']

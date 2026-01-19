@@ -16,19 +16,21 @@ def workstream_create(
     creator: CustomUser,
     name: str,
     description: str | None,
-    manager: CustomUser,
-    max_user: int,
+    manager: CustomUser | None = None,
+    max_user: int = 100,
 ) -> WorkStream:
 
     if not can_create_workstream(actor=creator):
         raise PermissionDenied("Only admins can create workstreams.")
 
-    if manager.role != Role.MANAGER_WORKSTREAM:
-        raise ValidationError("Assigned manager must have MANAGER_WORKSTREAM role.")
+    # Only validate manager if provided
+    if manager is not None:
+        if manager.role != Role.MANAGER_WORKSTREAM:
+            raise ValidationError("Assigned manager must have MANAGER_WORKSTREAM role.")
 
-    # Check if manager is already assigned to another workstream
-    if manager.work_stream is not None:
-        raise ValidationError("Manager is already assigned to workstream")
+        # Check if manager is already assigned to another workstream
+        if manager.work_stream is not None:
+            raise ValidationError("Manager is already assigned to workstream")
 
     if WorkStream.objects.filter(name__iexact=name).exists():
         raise ValidationError("Workstream with this name already exists.")
@@ -43,9 +45,10 @@ def workstream_create(
     workstream.full_clean()
     workstream.save()
 
-    # Assign the workstream to the manager's work_stream field
-    manager.work_stream = workstream
-    manager.save(update_fields=['work_stream'])
+    # Assign the workstream to the manager's work_stream field if manager exists
+    if manager is not None:
+        manager.work_stream = workstream
+        manager.save(update_fields=['work_stream'])
 
     return workstream
 

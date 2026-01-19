@@ -1,9 +1,3 @@
-"""
-Enrollment services for creating, updating, and deleting StudentEnrollment entities.
-
-All business logic, permission checks, validations, and workflows are centralized here.
-Services use @transaction.atomic for data-modifying operations.
-"""
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
@@ -27,14 +21,6 @@ def enrollment_create(
 ) -> StudentEnrollment:
     """
     Create a new StudentEnrollment.
-
-    Authorization:
-        ADMIN, MANAGER_SCHOOL, SECRETARY can create enrollments.
-
-    Validates:
-        - Student, ClassRoom, AcademicYear exist
-        - All belong to the same school
-        - No duplicate enrollment (unique constraint)
     """
     # Authorization check
     if creator.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
@@ -46,7 +32,7 @@ def enrollment_create(
     except Student.DoesNotExist:
         raise ValidationError({"student_id": "Student not found."})
 
-    # Check creator can manage this student's school (via user.school)
+    # Check creator can manage this student's school
     if not _can_manage_school(creator, student.user.school):
         raise PermissionDenied("You don't have permission to enroll students in this school.")
 
@@ -62,14 +48,14 @@ def enrollment_create(
     except AcademicYear.DoesNotExist:
         raise ValidationError({"academic_year_id": "Academic year not found."})
 
-    # Validate all belong to the same school (using user.school_id)
+    # Validate all belong to the same school
     if class_room.school_id != student.user.school_id:
         raise ValidationError({"class_room_id": "Classroom does not belong to the student's school."})
 
     if academic_year.school_id != student.user.school_id:
         raise ValidationError({"academic_year_id": "Academic year does not belong to the student's school."})
 
-    # Check for duplicate enrollment (now includes academic_year in unique constraint)
+    # Check for duplicate enrollment
     if StudentEnrollment.objects.filter(
         student=student, class_room=class_room, academic_year=academic_year
     ).exists():
@@ -102,17 +88,11 @@ def enrollment_update(
 ) -> StudentEnrollment:
     """
     Update a StudentEnrollment.
-
-    Authorization:
-        ADMIN, MANAGER_SCHOOL, SECRETARY can update enrollments.
-
-    Allowed fields: status, completion_date
-    Valid statuses: active, enrolled, completed, withdrawn, transferred
     """
     if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         raise PermissionDenied("You don't have permission to update enrollments.")
 
-    # Check actor can manage this school (via student.user.school)
+    # Check actor can manage this school
     if not _can_manage_school(actor, enrollment.student.user.school):
         raise PermissionDenied("You don't have permission to update enrollments in this school.")
 
@@ -136,18 +116,36 @@ def enrollment_update(
 
 
 @transaction.atomic
-def enrollment_delete(*, enrollment: StudentEnrollment, actor: CustomUser) -> None:
+def enrollment_deactivate(*, enrollment: StudentEnrollment, actor: CustomUser) -> None:
     """
-    Delete a StudentEnrollment.
-
-    Authorization:
-        ADMIN, MANAGER_SCHOOL, SECRETARY can delete enrollments.
+    Deactivate a StudentEnrollment (soft delete).
     """
     if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
-        raise PermissionDenied("You don't have permission to delete enrollments.")
+        raise PermissionDenied("You don't have permission to deactivate enrollments.")
 
-    # Check actor can manage this school (via student.user.school)
+    # Check actor can manage this school
     if not _can_manage_school(actor, enrollment.student.user.school):
-        raise PermissionDenied("You don't have permission to delete enrollments in this school.")
+        raise PermissionDenied("You don't have permission to deactivate enrollments in this school.")
 
-    enrollment.delete()
+    if not enrollment.is_active:
+        raise ValidationError("Enrollment already deactivated.")
+
+    enrollment.deactivate(user=actor)
+
+
+@transaction.atomic
+def enrollment_activate(*, enrollment: StudentEnrollment, actor: CustomUser) -> None:
+    """
+    Activate a StudentEnrollment.
+    """
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("You don't have permission to activate enrollments.")
+
+    # Check actor can manage this school
+    if not _can_manage_school(actor, enrollment.student.user.school):
+        raise PermissionDenied("You don't have permission to activate enrollments in this school.")
+
+    if enrollment.is_active:
+        raise ValidationError("Enrollment is already active.")
+
+    enrollment.activate()

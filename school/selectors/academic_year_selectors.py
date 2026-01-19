@@ -11,12 +11,15 @@ def list_academic_years(
     *,
     actor: CustomUser,
     school_id: Optional[int] = None,
-    is_active: Optional[bool] = None,
+    include_inactive: bool = False,
 ) -> QuerySet[AcademicYear]:
     """
     List academic years based on actor's permissions.
     """
-    qs = AcademicYear.objects.select_related("school")
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = AcademicYear.all_objects.select_related("school")
+    else:
+        qs = AcademicYear.objects.select_related("school")
 
     # Role-based filtering
     if actor.role == Role.ADMIN:
@@ -32,17 +35,19 @@ def list_academic_years(
     if school_id is not None:
         qs = qs.filter(school_id=school_id)
 
-    if is_active is not None:
-        qs = qs.filter(is_active=is_active)
-
     return qs.order_by('-start_date')
 
 
-def get_academic_year(*, actor: CustomUser, academic_year_id: int) -> AcademicYear:
+def get_academic_year(*, actor: CustomUser, academic_year_id: int, include_inactive: bool = False) -> AcademicYear:
     """
     Get a specific academic year by ID with permission check.
     """
-    ay = AcademicYear.objects.select_related("school").filter(
+    if include_inactive and actor.role == Role.ADMIN:
+        base_qs = AcademicYear.all_objects
+    else:
+        base_qs = AcademicYear.objects
+
+    ay = base_qs.select_related("school").filter(
         id=academic_year_id,
     ).first()
 

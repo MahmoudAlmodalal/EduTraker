@@ -1,27 +1,52 @@
 [
   {
     "id": "TC001",
-    "title": "get public workstream info",
-    "description": "Test the public API endpoint to retrieve basic workstream information by workstream_id. Verify successful response with correct id and name, and 404 response when workstream does not exist."
+    "title": "portal registration guest user creation",
+    "description": "Test the /api/portal/auth/register/ endpoint to ensure guest users can register successfully with required fields and optional name fields, and that password confirmation is validated. Verify response status codes 201 for success and 400 for validation errors."
   },
   {
     "id": "TC002",
-    "title": "list all workstreams with filters",
-    "description": "Test the SuperAdmin-only endpoint to list all workstreams. Verify filtering by search term and is_active status. Check for 200 response with correct data, 401 for unauthorized access, and 403 for forbidden access by non-SuperAdmin users."
+    "title": "portal login jwt token issuance",
+    "description": "Test the /api/portal/auth/login/ endpoint to verify that portal roles (Admin, Manager Workstream) can login successfully and receive valid JWT access and refresh tokens with correct expiration. Confirm 200 status on success and 403 for unauthorized roles."
   },
   {
     "id": "TC003",
-    "title": "create new workstream with validation",
-    "description": "Test the SuperAdmin-only endpoint to create a new workstream. Validate required fields (name, manager_id, max_user), minimum value for max_user, and proper error responses for validation errors, unauthorized access, forbidden access, and manager not found."
+    "title": "workstream registration student user creation",
+    "description": "Test the /api/workstream/{workstream_id}/auth/register/ endpoint to ensure students can register under a specific workstream with required and optional fields. Validate correct handling of non-existent workstream with 404 response and successful creation with 201."
   },
   {
     "id": "TC004",
-    "title": "update existing workstream partially",
-    "description": "Test the SuperAdmin-only endpoint to update an existing workstream by ID with optional fields. Verify successful update with valid data, validation error handling, unauthorized and forbidden access, and 404 when workstream not found."
+    "title": "workstream login jwt token issuance",
+    "description": "Test the /api/workstream/{workstream_id}/auth/login/ endpoint to verify that workstream users can login successfully and receive valid JWT access and refresh tokens. Confirm 200 status and correct token structure."
   },
   {
     "id": "TC005",
-    "title": "deactivate workstream without deletion",
-    "description": "Test the SuperAdmin-only endpoint to deactivate a workstream by ID. Verify that the workstream is marked inactive without deletion, successful response with confirmation message, and proper handling of unauthorized, forbidden, and not found errors."
+    "title": "user management list users with rbac",
+    "description": "Test the GET /api/users/ endpoint to ensure users are listed according to RBAC filters and multi-tenancy isolation, preventing data leakage across workstreams and schools."
+  },
+  {
+    "id": "TC006",
+    "title": "user management create user with role assignment",
+    "description": "Test the POST /api/users/create/ endpoint to create users with various roles, including first and last name fields, ensuring proper role assignment and validation."
+  },
+  {
+    "id": "TC007",
+    "title": "user management get user detail",
+    "description": "Test the GET /api/users/{id}/ endpoint to retrieve user details, verifying correct data is returned and 404 status with 'User not found.' message for invalid user IDs."
+  },
+  {
+    "id": "TC008",
+    "title": "user management update user information",
+    "description": "Test the PATCH /api/users/{id}/ endpoint to update user information, ensuring 204 No Content status on success and proper RBAC enforcement."
+  },
+  {
+    "id": "TC009",
+    "title": "user management deactivate user",
+    "description": "Test the POST /api/users/{id}/deactivate/ endpoint to deactivate users, verifying 204 No Content response with no body and RBAC restrictions."
+  },
+  {
+    "id": "TC010",
+    "title": "user management activate user",
+    "description": "Test the POST /api/users/{id}/activate/ endpoint to activate users, verifying 204 No Content response with no body and RBAC restrictions."
   }
 ]

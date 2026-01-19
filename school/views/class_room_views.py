@@ -7,7 +7,7 @@ from accounts.permissions import IsAdminOrManager
 from school.models import ClassRoom
 from school.selectors.school_selectors import school_get
 from school.selectors.classroom_selectors import classroom_list, classroom_get
-from school.services.classroom_services import classroom_create, classroom_update, classroom_delete
+from school.services.classroom_services import classroom_create, classroom_update, classroom_deactivate, classroom_activate
 
 
 # =============================================================================
@@ -25,11 +25,17 @@ class ClassRoomOutputSerializer(serializers.ModelSerializer):
     """Output serializer for classroom responses."""
     grade_name = serializers.CharField(source='grade.name', read_only=True)
     homeroom_teacher_name = serializers.SerializerMethodField()
+    deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = ClassRoom
-        fields = ['id', 'classroom_name', 'school', 'academic_year', 'grade', 'grade_name', 'homeroom_teacher', 'homeroom_teacher_name']
-        read_only_fields = ['id', 'school', 'academic_year']
+        fields = [
+            'id', 'classroom_name', 'school', 'academic_year', 'grade', 'grade_name', 
+            'homeroom_teacher', 'homeroom_teacher_name',
+            'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'school', 'academic_year', 'created_at', 'updated_at', 'deactivated_by_name']
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_homeroom_teacher_name(self, obj):
@@ -42,6 +48,7 @@ class ClassRoomFilterSerializer(serializers.Serializer):
     """Filter serializer for classroom list endpoint."""
     classroom_name = serializers.CharField(required=False, help_text="Filter by name")
     grade_id = serializers.IntegerField(required=False, help_text="Filter by grade")
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
 
 # =============================================================================
@@ -61,6 +68,7 @@ class ClassRoomListApi(APIView):
             OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
             OpenApiParameter(name='classroom_name', type=str, description='Filter by name'),
             OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
         ],
         responses={200: ClassRoomOutputSerializer(many=True)},
         examples=[
@@ -84,7 +92,13 @@ class ClassRoomListApi(APIView):
         school_get(school_id=school_id, actor=request.user)
         filter_serializer = ClassRoomFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
-        classrooms = classroom_list(school_id=school_id, academic_year_id=academic_year_id, filters=filter_serializer.validated_data)
+        classrooms = classroom_list(
+            school_id=school_id, 
+            academic_year_id=academic_year_id, 
+            actor=request.user,
+            filters=filter_serializer.validated_data,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         return Response(ClassRoomOutputSerializer(classrooms, many=True).data)
 
 
@@ -137,7 +151,7 @@ class ClassRoomCreateApi(APIView):
 
 
 class ClassRoomDetailApi(APIView):
-    """Retrieve, update, or delete a specific classroom."""
+    """Retrieve, update, or deactivate a specific classroom."""
     permission_classes = [IsAdminOrManager]
 
     @extend_schema(
@@ -213,18 +227,44 @@ class ClassRoomDetailApi(APIView):
         updated_classroom = classroom_update(classroom=classroom, actor=request.user, data=serializer.validated_data)
         return Response(ClassRoomOutputSerializer(updated_classroom).data)
 
+
+class ClassRoomDeactivateApi(APIView):
+    """Deactivate a classroom."""
+    permission_classes = [IsAdminOrManager]
+
     @extend_schema(
         tags=['Classroom Management'],
-        summary='Delete classroom',
-        description='Delete a classroom permanently.',
+        summary='Deactivate classroom',
+        description='Deactivate a classroom (soft delete).',
         parameters=[
             OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
             OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
             OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID'),
         ],
-        responses={204: OpenApiResponse(description='Deleted successfully')}
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
-    def delete(self, request, school_id, academic_year_id, classroom_id):
+    def post(self, request, school_id, academic_year_id, classroom_id):
         classroom = classroom_get(classroom_id=classroom_id, school_id=school_id, academic_year_id=academic_year_id, actor=request.user)
-        classroom_delete(classroom=classroom, actor=request.user)
+        classroom_deactivate(classroom=classroom, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ClassRoomActivateApi(APIView):
+    """Activate a classroom."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Classroom Management'],
+        summary='Activate classroom',
+        description='Activate a previously deactivated classroom.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
+            OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID'),
+        ],
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
+    def post(self, request, school_id, academic_year_id, classroom_id):
+        classroom = classroom_get(classroom_id=classroom_id, school_id=school_id, academic_year_id=academic_year_id, actor=request.user, include_inactive=True)
+        classroom_activate(classroom=classroom, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

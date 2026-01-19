@@ -196,10 +196,10 @@ class WorkstreamListCreateAPIView(APIView):
         in_ser = WorkstreamCreateInputSerializer(data=request.data)
         in_ser.is_valid(raise_exception=True)
 
-        manager = get_object_or_404(
-            CustomUser,
-            id=in_ser.validated_data["manager_id"],
-        )
+        manager = None
+        manager_id = in_ser.validated_data.get("manager_id")
+        if manager_id:
+            manager = get_object_or_404(CustomUser, id=manager_id)
 
         try:
             workstream = workstream_create(
@@ -207,7 +207,7 @@ class WorkstreamListCreateAPIView(APIView):
                 name=in_ser.validated_data["name"],
                 description=in_ser.validated_data.get("description"),
                 manager=manager,
-                max_user=in_ser.validated_data["max_user"],
+                max_user=in_ser.validated_data.get("max_user", 100),
             )
         except ValidationError as e:
             return Response(

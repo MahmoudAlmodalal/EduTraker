@@ -2,8 +2,10 @@ from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 from accounts.models import CustomUser
+from workstream.models import WorkStream
 from accounts.services.auth_services import (
     workstream_register_user,
     workstream_login,
@@ -81,6 +83,10 @@ class WorkstreamRegisterView(APIView):
     def post(self, request, workstream_id):
         serializer = self.WorkstreamRegisterInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        
+        # Ensure workstream exists and is active before proceeding
+        if not WorkStream.objects.filter(id=workstream_id, is_active=True).exists():
+            return Response({"detail": "Workstream not found."}, status=status.HTTP_404_NOT_FOUND)
         
         try:
             user = workstream_register_user(

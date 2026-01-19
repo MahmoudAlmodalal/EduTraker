@@ -37,12 +37,14 @@ def can_access_student(*, actor: CustomUser, student: Student) -> bool:
     return False
 
 
-def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
+def student_list(*, filters: dict, user: CustomUser, include_inactive: bool = False) -> QuerySet[Student]:
     """Return a QuerySet of Students filtered by user role and optional filters."""
-    # Use user__school instead of school
-    qs = Student.objects.select_related('user', 'user__school', 'user__school__work_stream')
+    if include_inactive and user.role == Role.ADMIN:
+        qs = Student.all_objects.select_related('user', 'user__school', 'user__school__work_stream')
+    else:
+        qs = Student.objects.select_related('user', 'user__school', 'user__school__work_stream')
 
-    # Role-based filtering - use user__school instead of school
+    # Role-based filtering
     if user.role == Role.ADMIN:
         pass  # Full access
     elif user.role == Role.MANAGER_WORKSTREAM:
@@ -50,7 +52,6 @@ def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
     elif user.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
         qs = qs.filter(user__school_id=user.school_id)
     elif user.role == Role.GUARDIAN:
-        # Only students linked to this guardian
         linked_student_ids = GuardianStudentLink.objects.filter(
             guardian__user=user
         ).values_list('student_id', flat=True)
@@ -60,11 +61,10 @@ def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
     else:
         qs = qs.none()
 
-    # Apply optional filters - use user__school instead of school
+    # Apply optional filters
     if school_id := filters.get("school_id"):
         qs = qs.filter(user__school_id=school_id)
 
-    # Grade filter - use enrollments to filter by grade
     if grade_id := filters.get("grade_id"):
         qs = qs.filter(enrollments__class_room__grade_id=grade_id).distinct()
 
@@ -77,10 +77,15 @@ def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
     return qs
 
 
-def student_get(*, student_id: int, actor: CustomUser) -> Student:
+def student_get(*, student_id: int, actor: CustomUser, include_inactive: bool = False) -> Student:
     """Retrieve a single Student by ID with permission check using get_object_or_404."""
+    if include_inactive and actor.role == Role.ADMIN:
+        base_qs = Student.all_objects
+    else:
+        base_qs = Student.objects
+
     student = get_object_or_404(
-        Student.objects.select_related('user', 'user__school', 'user__school__work_stream'),
+        base_qs.select_related('user', 'user__school', 'user__school__work_stream'),
         user_id=student_id
     )
 

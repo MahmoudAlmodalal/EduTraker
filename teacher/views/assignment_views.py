@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary
 from teacher.serializers.assignment_serializers import (
     AssignmentInputSerializer,
     AssignmentUpdateSerializer,
@@ -14,7 +14,8 @@ from teacher.selectors.assignment_selectors import assignment_list, assignment_g
 from teacher.services.assignment_services import (
     assignment_create,
     assignment_update,
-    assignment_delete,
+    assignment_deactivate,
+    assignment_activate,
 )
 
 
@@ -23,73 +24,57 @@ from teacher.services.assignment_services import (
 # =============================================================================
 
 class AssignmentListCreateApi(APIView):
-    """List and create assignments for the authenticated teacher."""
-    permission_classes = [IsTeacher]
+    """List and create assignments."""
+    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         operation_id='teacher_assignments_list',
         tags=['Teacher - Assignments'],
         summary='List assignments',
-        description='Get all assignments created by the authenticated teacher with optional filtering.',
+        description='Get assignments with optional filtering and RBAC.',
         parameters=[
-            OpenApiParameter(
-                name='exam_type',
-                type=str,
-                description='Filter by exam type (assignment, quiz, midterm, final, project)'
-            ),
-            OpenApiParameter(
-                name='due_date_from',
-                type=str,
-                description='Filter assignments due on or after this date (YYYY-MM-DD)'
-            ),
-            OpenApiParameter(
-                name='due_date_to',
-                type=str,
-                description='Filter assignments due on or before this date (YYYY-MM-DD)'
-            ),
-            OpenApiParameter(
-                name='title',
-                type=str,
-                description='Filter by title (partial match)'
-            ),
+            OpenApiParameter(name='exam_type', type=str, description='Filter by exam type'),
+            OpenApiParameter(name='due_date_from', type=str, description='Filter by due date from'),
+            OpenApiParameter(name='due_date_to', type=str, description='Filter by due date to'),
+            OpenApiParameter(name='title', type=str, description='Filter by title'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
         ],
-        responses={
-            200: OpenApiResponse(
-                response=AssignmentOutputSerializer(many=True),
-                examples=[
-                    OpenApiExample(
-                        'Assignment List Response',
-                        value=[{
-                            'id': 1,
-                            'assignment_code': 'ASN-A1B2C3D4',
-                            'created_by': 1,
-                            'created_by_name': 'John Smith',
-                            'title': 'Mathematics Quiz 1',
-                            'description': 'Basic algebra quiz',
-                            'due_date': '2026-02-15',
-                            'exam_type': 'quiz',
-                            'exam_type_display': 'Quiz',
-                            'full_mark': '100.00'
-                        }],
-                        response_only=True
-                    )
-                ]
+        responses={200: AssignmentOutputSerializer(many=True)},
+        examples=[
+            OpenApiExample(
+                'Assignment List Response',
+                value=[{
+                    'id': 1,
+                    'assignment_code': 'ASN-A1B2C3D4',
+                    'created_by': 1,
+                    'created_by_name': 'John Smith',
+                    'title': 'Mathematics Quiz 1',
+                    'description': 'Basic algebra quiz',
+                    'due_date': '2026-02-15',
+                    'exam_type': 'quiz',
+                    'exam_type_display': 'Quiz',
+                    'full_mark': '100.00'
+                }],
+                response_only=True
             )
-        }
+        ]
     )
     def get(self, request):
         filter_serializer = AssignmentFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
         
-        teacher = request.user.teacher_profile
-        assignments = assignment_list(teacher=teacher, filters=filter_serializer.validated_data)
+        assignments = assignment_list(
+            actor=request.user, 
+            filters=filter_serializer.validated_data,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         
         return Response(AssignmentOutputSerializer(assignments, many=True).data)
 
     @extend_schema(
         tags=['Teacher - Assignments'],
         summary='Create assignment',
-        description='Create a new assignment for the authenticated teacher.',
+        description='Create a new assignment. Must be a teacher.',
         request=AssignmentInputSerializer,
         examples=[
             OpenApiExample(
@@ -105,26 +90,7 @@ class AssignmentListCreateApi(APIView):
             )
         ],
         responses={
-            201: OpenApiResponse(
-                response=AssignmentOutputSerializer,
-                examples=[
-                    OpenApiExample(
-                        'Assignment Created',
-                        value={
-                            'id': 10,
-                            'assignment_code': 'ASN-E5F6G7H8',
-                            'created_by': 1,
-                            'created_by_name': 'John Smith',
-                            'title': 'Mathematics Quiz 1',
-                            'description': 'Basic algebra quiz covering chapters 1-3',
-                            'due_date': '2026-02-15',
-                            'exam_type': 'quiz',
-                            'exam_type_display': 'Quiz',
-                            'full_mark': '100.00'
-                        }
-                    )
-                ]
-            ),
+            201: OpenApiResponse(response=AssignmentOutputSerializer),
             400: OpenApiResponse(description='Validation error'),
             403: OpenApiResponse(description='Permission denied - not a teacher')
         }
@@ -150,46 +116,16 @@ class AssignmentListCreateApi(APIView):
 
 
 class AssignmentDetailApi(APIView):
-    """Retrieve, update, or delete a specific assignment."""
-    permission_classes = [IsTeacher]
+    """Retrieve, update, or deactivate a specific assignment."""
+    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         operation_id='teacher_assignment_retrieve',
         tags=['Teacher - Assignments'],
         summary='Get assignment details',
         description='Retrieve details of a specific assignment.',
-        parameters=[
-            OpenApiParameter(
-                name='assignment_id',
-                type=int,
-                location=OpenApiParameter.PATH,
-                description='Assignment ID'
-            ),
-        ],
-        responses={
-            200: OpenApiResponse(
-                response=AssignmentOutputSerializer,
-                examples=[
-                    OpenApiExample(
-                        'Assignment Details',
-                        value={
-                            'id': 1,
-                            'assignment_code': 'ASN-A1B2C3D4',
-                            'created_by': 1,
-                            'created_by_name': 'John Smith',
-                            'title': 'Mathematics Quiz 1',
-                            'description': 'Basic algebra quiz',
-                            'due_date': '2026-02-15',
-                            'exam_type': 'quiz',
-                            'exam_type_display': 'Quiz',
-                            'full_mark': '100.00'
-                        }
-                    )
-                ]
-            ),
-            403: OpenApiResponse(description='Permission denied'),
-            404: OpenApiResponse(description='Assignment not found')
-        }
+        parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
+        responses={200: OpenApiResponse(response=AssignmentOutputSerializer)}
     )
     def get(self, request, assignment_id):
         assignment = assignment_get(assignment_id=assignment_id, actor=request.user)
@@ -199,118 +135,47 @@ class AssignmentDetailApi(APIView):
         tags=['Teacher - Assignments'],
         summary='Update assignment',
         description='Update an existing assignment with partial data.',
-        parameters=[
-            OpenApiParameter(
-                name='assignment_id',
-                type=int,
-                location=OpenApiParameter.PATH,
-                description='Assignment ID'
-            ),
-        ],
+        parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
         request=AssignmentUpdateSerializer,
-        examples=[
-            OpenApiExample(
-                'Update Assignment Request',
-                value={
-                    'title': 'Updated Mathematics Quiz',
-                    'full_mark': '150.00'
-                },
-                request_only=True
-            )
-        ],
-        responses={
-            200: OpenApiResponse(
-                response=AssignmentOutputSerializer,
-                examples=[
-                    OpenApiExample(
-                        'Assignment Updated',
-                        value={
-                            'id': 1,
-                            'assignment_code': 'ASN-A1B2C3D4',
-                            'created_by': 1,
-                            'created_by_name': 'John Smith',
-                            'title': 'Updated Mathematics Quiz',
-                            'description': 'Basic algebra quiz',
-                            'due_date': '2026-02-15',
-                            'exam_type': 'quiz',
-                            'exam_type_display': 'Quiz',
-                            'full_mark': '150.00'
-                        }
-                    )
-                ]
-            ),
-            400: OpenApiResponse(description='Validation error'),
-            403: OpenApiResponse(description='Permission denied'),
-            404: OpenApiResponse(description='Assignment not found')
-        }
+        responses={200: OpenApiResponse(response=AssignmentOutputSerializer)}
     )
     def patch(self, request, assignment_id):
         assignment = assignment_get(assignment_id=assignment_id, actor=request.user)
-        
         serializer = AssignmentUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        updated_assignment = assignment_update(
-            assignment=assignment,
-            actor=request.user,
-            data=serializer.validated_data
-        )
-        
+        updated_assignment = assignment_update(assignment=assignment, actor=request.user, data=serializer.validated_data)
         return Response(AssignmentOutputSerializer(updated_assignment).data)
+
+
+class AssignmentDeactivateApi(APIView):
+    """Deactivate an assignment."""
+    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=['Teacher - Assignments'],
-        summary='Update assignment (full)',
-        description='Update an existing assignment with full data.',
-        parameters=[
-            OpenApiParameter(
-                name='assignment_id',
-                type=int,
-                location=OpenApiParameter.PATH,
-                description='Assignment ID'
-            ),
-        ],
-        request=AssignmentInputSerializer,
-        responses={
-            200: OpenApiResponse(response=AssignmentOutputSerializer),
-            400: OpenApiResponse(description='Validation error'),
-            403: OpenApiResponse(description='Permission denied'),
-            404: OpenApiResponse(description='Assignment not found')
-        }
+        summary='Deactivate assignment',
+        description='Deactivate an assignment (soft delete).',
+        parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
-    def put(self, request, assignment_id):
+    def post(self, request, assignment_id):
         assignment = assignment_get(assignment_id=assignment_id, actor=request.user)
-        
-        serializer = AssignmentInputSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        updated_assignment = assignment_update(
-            assignment=assignment,
-            actor=request.user,
-            data=serializer.validated_data
-        )
-        
-        return Response(AssignmentOutputSerializer(updated_assignment).data)
+        assignment_deactivate(assignment=assignment, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AssignmentActivateApi(APIView):
+    """Activate an assignment."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=['Teacher - Assignments'],
-        summary='Delete assignment',
-        description='Delete an assignment permanently.',
-        parameters=[
-            OpenApiParameter(
-                name='assignment_id',
-                type=int,
-                location=OpenApiParameter.PATH,
-                description='Assignment ID'
-            ),
-        ],
-        responses={
-            204: OpenApiResponse(description='Deleted successfully'),
-            403: OpenApiResponse(description='Permission denied'),
-            404: OpenApiResponse(description='Assignment not found')
-        }
+        summary='Activate assignment',
+        description='Activate a previously deactivated assignment.',
+        parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
+        responses={204: OpenApiResponse(description='Activated successfully')}
     )
-    def delete(self, request, assignment_id):
-        assignment = assignment_get(assignment_id=assignment_id, actor=request.user)
-        assignment_delete(assignment=assignment, actor=request.user)
+    def post(self, request, assignment_id):
+        assignment = assignment_get(assignment_id=assignment_id, actor=request.user, include_inactive=True)
+        assignment_activate(assignment=assignment, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

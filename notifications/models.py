@@ -1,7 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
 
-class Notification(models.Model):
+class Notification(SoftDeleteModel):
     """
     System notifications with different scopes.
     Schema: Notifications table
@@ -30,8 +31,7 @@ class Notification(models.Model):
     )
     title = models.CharField(max_length=150, help_text="Notification title")
     body = models.TextField(help_text="Notification body/content")
-    created_at = models.DateTimeField(auto_now_add=True, help_text="When the notification was created")
-    updated_at = models.DateTimeField(auto_now=True)
+    body = models.TextField(help_text="Notification body/content")
     
     class Meta:
         db_table = "notifications"
