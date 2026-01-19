@@ -19,10 +19,12 @@ def can_access_student(*, actor: CustomUser, student: Student) -> bool:
         return True
 
     if actor.role == Role.MANAGER_WORKSTREAM:
-        return student.school.work_stream_id == actor.work_stream_id
+        # Use user.school instead of student.school
+        return student.user.school and student.user.school.work_stream_id == actor.work_stream_id
 
     if actor.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
-        return student.school_id == actor.school_id
+        # Use user.school_id instead of student.school_id
+        return student.user.school_id == actor.school_id
 
     if actor.role == Role.GUARDIAN:
         return GuardianStudentLink.objects.filter(
@@ -37,15 +39,16 @@ def can_access_student(*, actor: CustomUser, student: Student) -> bool:
 
 def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
     """Return a QuerySet of Students filtered by user role and optional filters."""
-    qs = Student.objects.select_related('user', 'grade', 'school', 'school__work_stream')
+    # Use user__school instead of school
+    qs = Student.objects.select_related('user', 'user__school', 'user__school__work_stream')
 
-    # Role-based filtering
+    # Role-based filtering - use user__school instead of school
     if user.role == Role.ADMIN:
         pass  # Full access
     elif user.role == Role.MANAGER_WORKSTREAM:
-        qs = qs.filter(school__work_stream_id=user.work_stream_id)
+        qs = qs.filter(user__school__work_stream_id=user.work_stream_id)
     elif user.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
-        qs = qs.filter(school_id=user.school_id)
+        qs = qs.filter(user__school_id=user.school_id)
     elif user.role == Role.GUARDIAN:
         # Only students linked to this guardian
         linked_student_ids = GuardianStudentLink.objects.filter(
@@ -57,12 +60,13 @@ def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
     else:
         qs = qs.none()
 
-    # Apply optional filters
+    # Apply optional filters - use user__school instead of school
     if school_id := filters.get("school_id"):
-        qs = qs.filter(school_id=school_id)
+        qs = qs.filter(user__school_id=school_id)
 
+    # Grade filter - use enrollments to filter by grade
     if grade_id := filters.get("grade_id"):
-        qs = qs.filter(grade_id=grade_id)
+        qs = qs.filter(enrollments__class_room__grade_id=grade_id).distinct()
 
     if current_status := filters.get("current_status"):
         qs = qs.filter(current_status=current_status)
@@ -76,7 +80,7 @@ def student_list(*, filters: dict, user: CustomUser) -> QuerySet[Student]:
 def student_get(*, student_id: int, actor: CustomUser) -> Student:
     """Retrieve a single Student by ID with permission check using get_object_or_404."""
     student = get_object_or_404(
-        Student.objects.select_related('user', 'grade', 'school', 'school__work_stream'),
+        Student.objects.select_related('user', 'user__school', 'user__school__work_stream'),
         user_id=student_id
     )
 
@@ -84,9 +88,3 @@ def student_get(*, student_id: int, actor: CustomUser) -> Student:
         raise PermissionDenied("Access denied. You don't have permission to view this student.")
 
     return student
-
-
-
-
-
-

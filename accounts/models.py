@@ -99,6 +99,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text="Designates whether the user can log into this admin site."
     )
     date_joined = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     objects = UserManager()
     
@@ -110,6 +112,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name = "user"
         verbose_name_plural = "users"
         ordering = ["email"]
+        indexes = [
+            models.Index(fields=["email"], name="idx_users_email"),
+            models.Index(fields=["role"], name="idx_users_role"),
+            models.Index(fields=["work_stream"], name="idx_users_work_stream"),
+            models.Index(fields=["school"], name="idx_users_school"),
+        ]
     
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
@@ -130,6 +138,8 @@ class SystemConfiguration(models.Model):
     )
     config_key = models.CharField(max_length=100, help_text="Configuration key")
     config_value = models.TextField(help_text="Configuration value")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "system_configurations"
@@ -142,7 +152,7 @@ class SystemConfiguration(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["school", "config_key"]),
+            models.Index(fields=["school", "config_key"], name="idx_sys_config_lookup"),
         ]
     
     def __str__(self):

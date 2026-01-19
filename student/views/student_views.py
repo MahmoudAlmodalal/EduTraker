@@ -4,7 +4,7 @@ Student management API views.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
 from accounts.serializers import MessageSerializer
 
@@ -30,7 +30,7 @@ from student.services.student_services import (
 class StudentFilterSerializer(serializers.Serializer):
     """Filter serializer for student list endpoint."""
     school_id = serializers.IntegerField(required=False, help_text="Filter by school")
-    grade_id = serializers.IntegerField(required=False, help_text="Filter by grade")
+    grade_id = serializers.IntegerField(required=False, help_text="Filter by grade (via enrollments)")
     current_status = serializers.CharField(required=False, help_text="Filter by status")
     search = serializers.CharField(required=False, help_text="Search by name or email")
 
@@ -41,7 +41,7 @@ class StudentInputSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=150, required=False, help_text="Full name")
     password = serializers.CharField(write_only=True, required=False, help_text="Password")
     school_id = serializers.IntegerField(required=False, help_text="School ID")
-    grade_id = serializers.IntegerField(required=False, help_text="Grade ID")
+    grade_id = serializers.IntegerField(required=False, help_text="Grade ID (for initial enrollment)")
     date_of_birth = serializers.DateField(required=False, help_text="Date of birth")
     admission_date = serializers.DateField(required=False, help_text="Admission date")
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True, help_text="Address")
@@ -54,14 +54,45 @@ class StudentOutputSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     full_name = serializers.CharField(source='user.full_name', read_only=True)
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
-    school_name = serializers.CharField(source='school.school_name', read_only=True)
-    grade_name = serializers.CharField(source='grade.name', read_only=True, allow_null=True)
-    work_stream_id = serializers.IntegerField(source='school.work_stream_id', read_only=True)
+    # School info now from user
+    school_id = serializers.IntegerField(source='user.school_id', read_only=True, allow_null=True)
+    school_name = serializers.SerializerMethodField()
+    work_stream_id = serializers.SerializerMethodField()
+    # Grade from current enrollment
+    current_grade = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ['user_id', 'email', 'full_name', 'is_active', 'school', 'school_name', 'work_stream_id', 'grade', 'grade_name', 'date_of_birth', 'admission_date', 'current_status', 'address', 'medical_notes']
+        fields = [
+            'user_id', 'email', 'full_name', 'is_active',
+            'school_id', 'school_name', 'work_stream_id',
+            'current_grade', 'date_of_birth', 'admission_date',
+            'current_status', 'address', 'medical_notes'
+        ]
         read_only_fields = ['user_id']
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_school_name(self, obj):
+        if obj.user.school:
+            return obj.user.school.school_name
+        return None
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_work_stream_id(self, obj):
+        if obj.user.school:
+            return obj.user.school.work_stream_id
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True, child=serializers.CharField()))
+    def get_current_grade(self, obj):
+        """Get current grade from active enrollment."""
+        active_enrollment = obj.enrollments.filter(status='active').select_related('class_room__grade').first()
+        if active_enrollment and active_enrollment.class_room and active_enrollment.class_room.grade:
+            return {
+                'id': active_enrollment.class_room.grade.id,
+                'name': active_enrollment.class_room.grade.name
+            }
+        return None
 
 
 # =============================================================================
@@ -78,7 +109,7 @@ class StudentListApi(APIView):
         description='Get all students filtered by permissions and filters.',
         parameters=[
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
-            OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
+            OpenApiParameter(name='grade_id', type=int, description='Filter by grade (via enrollments)'),
             OpenApiParameter(name='current_status', type=str, description='Filter by status'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
         ],
@@ -91,11 +122,10 @@ class StudentListApi(APIView):
                     'email': 'student1@example.com',
                     'full_name': 'John Student',
                     'is_active': True,
-                    'school': 1,
+                    'school_id': 1,
                     'school_name': 'Global Academy',
                     'work_stream_id': 5,
-                    'grade': 2,
-                    'grade_name': 'Grade 10',
+                    'current_grade': {'id': 2, 'name': 'Grade 10'},
                     'date_of_birth': '2010-05-15',
                     'admission_date': '2024-09-01',
                     'current_status': 'active',
@@ -137,11 +167,10 @@ class StudentCreateApi(APIView):
                             'email': 'alice.young@example.com',
                             'full_name': 'Alice Young',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2011-03-20',
                             'admission_date': '2026-01-01',
                             'current_status': 'active',
@@ -192,11 +221,10 @@ class StudentDetailApi(APIView):
                             'email': 'student1@example.com',
                             'full_name': 'John Student',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2010-05-15',
                             'admission_date': '2024-09-01',
                             'current_status': 'active',
@@ -230,11 +258,10 @@ class StudentDetailApi(APIView):
                             'email': 'student1@example.com',
                             'full_name': 'John Student',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2010-05-15',
                             'admission_date': '2024-09-01',
                             'current_status': 'graduated',

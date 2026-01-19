@@ -19,6 +19,8 @@ class Guardian(models.Model):
         blank=True,
         help_text="Guardian phone number"
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "guardians"
@@ -59,6 +61,8 @@ class GuardianStudentLink(models.Model):
         choices=RELATIONSHIP_CHOICES,
         help_text="Type of relationship"
     )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "guardian_student_link"
@@ -71,6 +75,9 @@ class GuardianStudentLink(models.Model):
             )
         ]
         ordering = ["guardian", "student"]
+        indexes = [
+            models.Index(fields=["student"], name="idx_link_student"),
+        ]
     
     def __str__(self):
         return f"{self.guardian.user.full_name} → {self.student.user.full_name} ({self.get_relationship_type_display()})"

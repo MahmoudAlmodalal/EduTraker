@@ -28,6 +28,8 @@ class Message(models.Model):
     sent_at = models.DateTimeField(auto_now_add=True, help_text="When the message was sent")
     is_read = models.BooleanField(default=False, help_text="Whether the message has been read")
     read_at = models.DateTimeField(null=True, blank=True, help_text="When the message was read")
+
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = "messages"
@@ -35,8 +37,8 @@ class Message(models.Model):
         verbose_name_plural = "Messages"
         ordering = ["-sent_at"]
         indexes = [
-            models.Index(fields=["receiver", "is_read"]),
-            models.Index(fields=["sender", "sent_at"]),
+            models.Index(fields=["receiver", "is_read"], name="idx_messages_receiver_read"),
+            models.Index(fields=["sender", "sent_at"], name="idx_messages_sender_sent"),
         ]
     
     def __str__(self):

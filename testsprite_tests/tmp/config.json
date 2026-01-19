@@ -1,0 +1,24 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "Bearer token",
+  "backendCredential": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY4NjQ1NDQzLCJpYXQiOjE3Njg2NDE4NDMsImp0aSI6IjQ2ODJkZTg5ZWZmMDRiZTk5YTNjMjI4YjRjOGM4ZDc5IiwidXNlcl9pZCI6IjEwIn0.mY9dJd95jXA9si20UM6biP6fK0zPAWoFEvGE71WQ8N8",
+  "executionArgs": {
+    "projectName": "EduTraker",
+    "projectPath": "/home/mahmoud/Desktop/front/EduTraker",
+    "testIds": [
+      "TC001",
+      "TC002",
+      "TC003",
+      "TC004",
+      "TC005"
+    ],
+    "additionalInstruction": "Rerun workstream tests after data fixes.",
+    "envs": {
+      "API_KEY": "sk-user-gyEMyf5uw5QFywhKZgd6-dCA2_yNT4x0NhqzNZvvYA_hZ-kVrFphw46g9IGRiDYTnNK6yWFd_Ygvex0akCiFbYbzfUdkUhZdgXbUiMkzRiSw12J3-rsGNPc1mawMdadGsiA"
+    }
+  },
+  "proxy": "http://554fccbf-715f-4b2e-ba0a-0d6871e22583:XNsVKUuyxV2st70i3ctVhx7AJmxOIIhf@tun.testsprite.com:8080"
+}

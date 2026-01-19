@@ -31,6 +31,7 @@ class Notification(models.Model):
     title = models.CharField(max_length=150, help_text="Notification title")
     body = models.TextField(help_text="Notification body/content")
     created_at = models.DateTimeField(auto_now_add=True, help_text="When the notification was created")
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "notifications"
@@ -38,7 +39,8 @@ class Notification(models.Model):
         verbose_name_plural = "Notifications"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["scope_type", "scope_id"]),
+            models.Index(fields=["scope_type", "scope_id"], name="idx_notifications_scope"),
+            models.Index(fields=["created_at"], name="idx_notifications_created"),
         ]
     
     def __str__(self):

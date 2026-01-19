@@ -1,0 +1,27 @@
+[
+  {
+    "id": "TC001",
+    "title": "get public workstream info",
+    "description": "Test the public API endpoint to retrieve basic workstream information by workstream_id. Verify successful response with correct id and name, and 404 response when workstream does not exist."
+  },
+  {
+    "id": "TC002",
+    "title": "list all workstreams with filters",
+    "description": "Test the SuperAdmin-only endpoint to list all workstreams. Verify filtering by search term and is_active status. Check for 200 response with correct data, 401 for unauthorized access, and 403 for forbidden access by non-SuperAdmin users."
+  },
+  {
+    "id": "TC003",
+    "title": "create new workstream with validation",
+    "description": "Test the SuperAdmin-only endpoint to create a new workstream. Validate required fields (name, manager_id, max_user), minimum value for max_user, and proper error responses for validation errors, unauthorized access, forbidden access, and manager not found."
+  },
+  {
+    "id": "TC004",
+    "title": "update existing workstream partially",
+    "description": "Test the SuperAdmin-only endpoint to update an existing workstream by ID with optional fields. Verify successful update with valid data, validation error handling, unauthorized and forbidden access, and 404 when workstream not found."
+  },
+  {
+    "id": "TC005",
+    "title": "deactivate workstream without deletion",
+    "description": "Test the SuperAdmin-only endpoint to deactivate a workstream by ID. Verify that the workstream is marked inactive without deletion, successful response with confirmation message, and proper handling of unauthorized, forbidden, and not found errors."
+  }
+]

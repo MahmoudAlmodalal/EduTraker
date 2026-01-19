@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/', include('accounts.urls')),
     path('api/', include('workstream.urls')),
     path('api/', include('reports.urls')),
+    path('api/', include('school.urls')),
     path('api/manager/', include('manager.urls')),
     path('api/manager/', include('student.urls')),
     path('api/custom-admin/', include('custom_admin.urls')),

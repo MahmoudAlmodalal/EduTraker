@@ -138,6 +138,7 @@ class WorkstreamListCreateAPIView(APIView):
             filters=query_ser.validated_data,
             user=request.user,
         )
+        print(f"DEBUG: View found {workstreams.count()} workstreams: {list(workstreams.values_list('id', flat=True))}")
 
         return Response(
             WorkstreamOutputSerializer(workstreams, many=True).data,

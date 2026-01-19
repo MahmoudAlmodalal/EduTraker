@@ -67,7 +67,7 @@ def student_create(
     # Determine work_stream from school
     work_stream_id = school.work_stream_id
 
-    # Create the user account
+    # Create the user account (with school linked to user)
     user = user_create(
         creator=creator,
         email=email,
@@ -78,11 +78,9 @@ def student_create(
         school_id=school_id,
     )
 
-    # Create the student profile
+    # Create the student profile (school is on user, not student)
     student = Student(
         user=user,
-        school=school,
-        grade=grade,
         date_of_birth=date_of_birth,
         admission_date=admission_date,
         current_status=current_status,
@@ -92,6 +90,9 @@ def student_create(
 
     student.full_clean()
     student.save()
+
+    # Optionally: auto-enroll in a default classroom for the grade
+    # This can be added if needed
 
     return student
 
@@ -118,9 +119,8 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
     if actor.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
         allowed_fields = [
             'address', 'admission_date', 'current_status', 'medical_notes',
-            'grade_id', 'school_id'
         ]
-        allowed_user_fields = ['email', 'full_name']
+        allowed_user_fields = ['email', 'full_name', 'school_id']
     elif actor.role in [Role.TEACHER, Role.SECRETARY]:
         allowed_fields = ['address', 'admission_date', 'current_status', 'medical_notes']
         allowed_user_fields = []
@@ -130,7 +130,17 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
     # Handle user fields
     for field in allowed_user_fields:
         if field in data:
-            setattr(student.user, field, data[field])
+            if field == 'school_id':
+                # Only admins can change school
+                if actor.role != Role.ADMIN:
+                    raise PermissionDenied("Only admins can change the school of a student.")
+                try:
+                    school = School.objects.get(id=data[field])
+                    student.user.school = school
+                except School.DoesNotExist:
+                    raise ValidationError({"school_id": "School not found."})
+            else:
+                setattr(student.user, field, data[field])
 
     if any(f in data for f in allowed_user_fields):
         student.user.full_clean()
@@ -139,23 +149,7 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
     # Handle student profile fields
     for field in allowed_fields:
         if field in data:
-            if field == 'grade_id':
-                try:
-                    grade = Grade.objects.get(id=data[field])
-                    student.grade = grade
-                except Grade.DoesNotExist:
-                    raise ValidationError({"grade_id": "Grade not found."})
-            elif field == 'school_id':
-                # Only admins can change school
-                if actor.role != Role.ADMIN:
-                    raise PermissionDenied("Only admins can change the school of a student.")
-                try:
-                    school = School.objects.get(id=data[field])
-                    student.school = school
-                except School.DoesNotExist:
-                    raise ValidationError({"school_id": "School not found."})
-            else:
-                setattr(student, field, data[field])
+            setattr(student, field, data[field])
 
     student.full_clean()
     student.save()
@@ -196,4 +190,3 @@ def student_deactivate(*, student: Student, actor: CustomUser) -> Student:
     student.save()
 
     return student
-
