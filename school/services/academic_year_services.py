@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from rest_framework.exceptions import PermissionDenied
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 from accounts.policies.academic_year_policies import can_manage_academic_year
 from school.models import AcademicYear, School
 
@@ -72,6 +72,16 @@ def deactivate_academic_year(*, actor: CustomUser, academic_year: AcademicYear) 
     if not academic_year.is_active:
         raise ValidationError("Academic year already deactivated.")
 
-    academic_year.is_active = False
-    academic_year.save(update_fields=["is_active"])
+    academic_year.deactivate(user=actor)
+    return academic_year
+
+
+def activate_academic_year(*, actor: CustomUser, academic_year: AcademicYear) -> AcademicYear:
+    if not can_manage_academic_year(actor=actor, school=academic_year.school):
+        raise PermissionDenied("Not allowed to activate academic years for this school.")
+
+    if academic_year.is_active:
+        raise ValidationError("Academic year is already active.")
+
+    academic_year.activate()
     return academic_year

@@ -12,6 +12,7 @@ ROLE_CREATION_MATRIX = {
         Role.SECRETARY,
         Role.GUARDIAN,
         Role.STUDENT,
+        Role.GUEST,
     ],
     Role.MANAGER_WORKSTREAM: [
         Role.MANAGER_SCHOOL,
@@ -19,20 +20,24 @@ ROLE_CREATION_MATRIX = {
         Role.SECRETARY,
         Role.GUARDIAN,
         Role.STUDENT,
+        Role.GUEST,
     ],
     Role.MANAGER_SCHOOL: [
         Role.TEACHER,
         Role.SECRETARY,
         Role.GUARDIAN,
         Role.STUDENT,
+        Role.GUEST,
     ],
     Role.TEACHER: [
         Role.GUARDIAN,
         Role.STUDENT,
+        Role.GUEST,
     ],
     Role.SECRETARY: [
         Role.GUARDIAN,
         Role.STUDENT,
+        Role.GUEST,
     ],
 }
 

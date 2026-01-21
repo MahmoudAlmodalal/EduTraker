@@ -12,15 +12,15 @@ def _check_student_permission(actor: CustomUser, student_id: int) -> None:
     if actor.role == Role.ADMIN:
         return
     if actor.role == Role.MANAGER_WORKSTREAM:
-        # Check if student is in the same workstream
-        student = Student.objects.filter(user_id=student_id).select_related('school__work_stream').first()
-        if student and actor.work_stream_id == student.school.work_stream_id:
+        # Check if student is in the same workstream (via user.school)
+        student = Student.objects.filter(user_id=student_id).select_related('user__school__work_stream').first()
+        if student and student.user.school and actor.work_stream_id == student.user.school.work_stream_id:
             return
         raise PermissionDenied("Access denied. Student not in your workstream.")
     if actor.role == Role.MANAGER_SCHOOL:
-        # Check if student is in the same school
-        student = Student.objects.filter(user_id=student_id).first()
-        if student and actor.school_id == student.school_id:
+        # Check if student is in the same school (via user.school_id)
+        student = Student.objects.filter(user_id=student_id).select_related('user').first()
+        if student and actor.school_id == student.user.school_id:
             return
         raise PermissionDenied("Access denied. Student not in your school.")
     if actor.role == Role.TEACHER:
@@ -57,8 +57,7 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
             'email': str,
             'school_id': int,
             'school_name': str,
-            'grade_id': int | None,
-            'grade_name': str | None,
+            'current_grade': {...} | None,
             'current_status': str,
             'admission_date': str,
             'current_classroom': {...} | None
@@ -66,7 +65,7 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
     """
     try:
         student = Student.objects.select_related(
-            'user', 'school', 'grade'
+            'user', 'user__school'
         ).get(user_id=student_id)
     except Student.DoesNotExist:
         raise ValueError("Student not found.")
@@ -76,13 +75,14 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
     # Get current enrollment/classroom
     current_enrollment = StudentEnrollment.objects.filter(
         student=student,
-        status='enrolled'
+        status__in=['enrolled', 'active']
     ).select_related(
         'class_room', 'class_room__grade', 'class_room__academic_year',
         'class_room__homeroom_teacher__user'
     ).first()
     
     current_classroom = None
+    current_grade = None
     if current_enrollment:
         classroom = current_enrollment.class_room
         current_classroom = {
@@ -92,16 +92,19 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
             'academic_year': classroom.academic_year.academic_year_code,
             'homeroom_teacher': classroom.homeroom_teacher.user.full_name if classroom.homeroom_teacher else None
         }
+        current_grade = {
+            'grade_id': classroom.grade.id,
+            'grade_name': classroom.grade.name
+        }
     
     return {
         'student_id': student_id,
         'student_name': student.user.full_name,
         'email': student.user.email,
-        'school_id': student.school_id,
-        'school_name': student.school.school_name,
-        'grade_id': student.grade_id,
-        'grade_name': student.grade.name if student.grade else None,
-        'current_status': student.current_status,
+        'school_id': student.user.school_id,
+        'school_name': student.user.school.school_name if student.user.school else None,
+        'current_grade': current_grade,
+        'current_status': student.enrollment_status,
         'admission_date': str(student.admission_date),
         'current_classroom': current_classroom
     }
@@ -140,7 +143,7 @@ def get_student_courses(*, student_id: int, actor: CustomUser) -> Dict:
     # Get student's enrolled classrooms
     enrollments = StudentEnrollment.objects.filter(
         student=student,
-        status='enrolled'
+        status__in=['enrolled', 'active']
     ).values_list('class_room_id', flat=True)
     
     # Get course allocations for those classrooms
@@ -254,19 +257,15 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
             ) if stats['total_full_mark'] > 0 else 0
         }
     
-    # Get total assignments (including ungraded)
+    # Get total assignments (including ungraded) - now via course_allocation
     enrollments = StudentEnrollment.objects.filter(
         student=student,
-        status='enrolled'
+        status__in=['enrolled', 'active']
     ).values_list('class_room_id', flat=True)
     
-    # Count assignments for courses the student is enrolled in
-    allocations = CourseAllocation.objects.filter(
-        class_room_id__in=enrollments
-    ).values_list('teacher_id', flat=True)
-    
+    # Count assignments for courses the student is enrolled in via course allocations
     total_assignments = Assignment.objects.filter(
-        created_by_id__in=allocations
+        course_allocation__class_room_id__in=enrollments
     ).count()
     
     overall_average = round(
@@ -316,8 +315,10 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dic
     
     _check_student_permission(actor, student_id)
     
-    # Get all attendance records for this student
-    attendance_records = Attendance.objects.filter(student=student)
+    # Get all attendance records for this student (now via course_allocation)
+    attendance_records = Attendance.objects.filter(student=student).select_related(
+        'course_allocation__course'
+    )
     
     # Count by status
     status_counts = attendance_records.values('status').annotate(count=Count('id'))
@@ -329,9 +330,9 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dic
         (present_and_late / total_records) * 100, 2
     ) if total_records > 0 else 0
     
-    # Get attendance by course
+    # Get attendance by course (via course_allocation)
     course_stats = attendance_records.values(
-        'course__id', 'course__name'
+        'course_allocation__course__id', 'course_allocation__course__name'
     ).annotate(
         total_records=Count('id'),
         present_count=Count('id', filter=Q(status='present')),
@@ -342,8 +343,8 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dic
     
     by_course = [
         {
-            'course_id': stat['course__id'],
-            'course_name': stat['course__name'],
+            'course_id': stat['course_allocation__course__id'],
+            'course_name': stat['course_allocation__course__name'],
             'total_records': stat['total_records'],
             'present_count': stat['present_count'],
             'absent_count': stat['absent_count'],
@@ -390,7 +391,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
     # Get current enrollment
     current_enrollment = StudentEnrollment.objects.filter(
         student=student,
-        status='enrolled'
+        status__in=['enrolled', 'active']
     ).select_related('class_room').first()
     
     if not current_enrollment:
@@ -414,7 +415,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
     
     total_classmates = classmates.count()
     active_classmates = classmates.filter(
-        student__current_status='active'
+        student__enrollment_status='active'
     ).count()
     
     return {
@@ -442,4 +443,3 @@ def get_student_dashboard_statistics(*, student_id: int, actor: CustomUser) -> D
         'attendance': get_student_attendance_summary(student_id=student_id, actor=actor),
         'classmates': get_classmates_count(student_id=student_id, actor=actor)
     }
-

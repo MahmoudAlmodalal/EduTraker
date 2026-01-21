@@ -1,5 +1,48 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
+from django.utils import timezone
+
+
+class ActiveManager(models.Manager):
+    """Manager to filter for active records by default."""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
+class SoftDeleteModel(models.Model):
+    """
+    Abstract base model for soft delete functionality.
+    ALL educational models must inherit from this.
+    """
+    is_active = models.BooleanField(default=True, db_index=True)
+    deactivated_at = models.DateTimeField(null=True, blank=True)
+    deactivated_by = models.ForeignKey(
+        'accounts.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(class)s_deactivations"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    objects = ActiveManager()  # Default: active records only
+    all_objects = models.Manager()  # All records including inactive
+    
+    class Meta:
+        abstract = True
+    
+    def deactivate(self, user=None):
+        self.is_active = False
+        self.deactivated_at = timezone.now()
+        self.deactivated_by = user
+        self.save(update_fields=['is_active', 'deactivated_at', 'deactivated_by'])
+    
+    def activate(self):
+        self.is_active = True
+        self.deactivated_at = None
+        self.deactivated_by = None
+        self.save(update_fields=['is_active', 'deactivated_at', 'deactivated_by'])
 
 
 class Role:
@@ -14,8 +57,8 @@ class Role:
     GUEST = "guest"
 
 
-class UserManager(BaseUserManager):
-    """Custom user manager for email-based authentication."""
+class UserManager(BaseUserManager, ActiveManager):
+    """Custom user manager for email-based authentication with soft delete support."""
     
     def create_user(self, email, password=None, **extra_fields):
         """Create and return a regular user with email and password."""
@@ -41,7 +84,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     """
     Custom User model with email-based authentication and role-based access control.
     Schema: Users table
@@ -89,16 +132,22 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         related_name="users",
         help_text="School this user belongs to"
     )
-    # Django auth fields
-    is_active = models.BooleanField(
-        default=True,
-        help_text="Designates whether this user can log in."
+    # Audit fields
+    created_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_users",
+        help_text="User who created this account"
     )
+    # Django auth specific fields
     is_staff = models.BooleanField(
         default=False,
         help_text="Designates whether the user can log into this admin site."
     )
     date_joined = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(null=True, blank=True, help_text="Last login timestamp")
     
     objects = UserManager()
     
@@ -110,26 +159,42 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name = "user"
         verbose_name_plural = "users"
         ordering = ["email"]
+        indexes = [
+            models.Index(fields=["email"], name="idx_users_email"),
+            models.Index(fields=["role"], name="idx_users_role"),
+            models.Index(fields=["work_stream"], name="idx_users_work_stream"),
+            models.Index(fields=["school"], name="idx_users_school"),
+        ]
     
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
 
 
-class SystemConfiguration(models.Model):
+class SystemConfiguration(SoftDeleteModel):
     """
     System-wide or school-specific configuration settings.
     Schema: System_Configurations table
     """
+    work_stream = models.ForeignKey(
+        "workstream.WorkStream",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="configurations",
+        help_text="Workstream-specific config (null for global/school-specific)"
+    )
     school = models.ForeignKey(
         "school.School",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="configurations",
-        help_text="School-specific config (null for global)"
+        help_text="School-specific config (null for global/workstream-specific)"
     )
     config_key = models.CharField(max_length=100, help_text="Configuration key")
     config_value = models.TextField(help_text="Configuration value")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         db_table = "system_configurations"
@@ -137,12 +202,23 @@ class SystemConfiguration(models.Model):
         verbose_name_plural = "System Configurations"
         constraints = [
             models.UniqueConstraint(
+                fields=["work_stream", "config_key"],
+                condition=models.Q(school__isnull=True),
+                name="unique_workstream_config_key"
+            ),
+            models.UniqueConstraint(
                 fields=["school", "config_key"],
                 name="unique_school_config_key"
+            ),
+             models.UniqueConstraint(
+                fields=["config_key"],
+                condition=models.Q(school__isnull=True, work_stream__isnull=True),
+                name="unique_global_config_key"
             )
         ]
         indexes = [
-            models.Index(fields=["school", "config_key"]),
+            models.Index(fields=["school", "config_key"], name="idx_sys_config_school"),
+            models.Index(fields=["work_stream", "config_key"], name="idx_sys_config_workstream"),
         ]
     
     def __str__(self):

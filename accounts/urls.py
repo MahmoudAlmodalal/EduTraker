@@ -9,6 +9,7 @@ from .views.user_views import (
     UserDeactivateApi,
     UserActivateApi
 )
+from .views.configuration_views import SystemConfigurationListCreateView, SystemConfigurationDetailView
 
 urlpatterns = [
     # Auth endpoints
@@ -24,4 +25,8 @@ urlpatterns = [
     path('users/<int:user_id>/', UserUpdateApi.as_view(), name='user-update'),
     path('users/<int:user_id>/deactivate/', UserDeactivateApi.as_view(), name='user-deactivate'),
     path('users/<int:user_id>/activate/', UserActivateApi.as_view(), name='user-activate'),
+    
+    # System Configuration endpoints
+    path('system-config/', SystemConfigurationListCreateView.as_view(), name='system-config-list'),
+    path('system-config/<int:pk>/', SystemConfigurationDetailView.as_view(), name='system-config-detail'),
 ]

@@ -4,11 +4,11 @@ Student management API views.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
 from accounts.serializers import MessageSerializer
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 from accounts.permissions import IsStaffUser, IsAdminOrManagerOrSecretary
 from student.models import Student
 from student.selectors.student_selectors import (
@@ -18,8 +18,8 @@ from student.selectors.student_selectors import (
 from student.services.student_services import (
     student_create,
     student_update,
-    student_delete,
     student_deactivate,
+    student_activate,
 )
 
 
@@ -30,9 +30,10 @@ from student.services.student_services import (
 class StudentFilterSerializer(serializers.Serializer):
     """Filter serializer for student list endpoint."""
     school_id = serializers.IntegerField(required=False, help_text="Filter by school")
-    grade_id = serializers.IntegerField(required=False, help_text="Filter by grade")
+    grade_id = serializers.IntegerField(required=False, help_text="Filter by grade (via enrollments)")
     current_status = serializers.CharField(required=False, help_text="Filter by status")
     search = serializers.CharField(required=False, help_text="Search by name or email")
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
 
 class StudentInputSerializer(serializers.Serializer):
@@ -41,7 +42,7 @@ class StudentInputSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=150, required=False, help_text="Full name")
     password = serializers.CharField(write_only=True, required=False, help_text="Password")
     school_id = serializers.IntegerField(required=False, help_text="School ID")
-    grade_id = serializers.IntegerField(required=False, help_text="Grade ID")
+    grade_id = serializers.IntegerField(required=False, help_text="Grade ID (for initial enrollment)")
     date_of_birth = serializers.DateField(required=False, help_text="Date of birth")
     admission_date = serializers.DateField(required=False, help_text="Admission date")
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True, help_text="Address")
@@ -54,14 +55,50 @@ class StudentOutputSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     full_name = serializers.CharField(source='user.full_name', read_only=True)
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
-    school_name = serializers.CharField(source='school.school_name', read_only=True)
-    grade_name = serializers.CharField(source='grade.name', read_only=True, allow_null=True)
-    work_stream_id = serializers.IntegerField(source='school.work_stream_id', read_only=True)
+    # School info now from user
+    school_id = serializers.IntegerField(source='user.school_id', read_only=True, allow_null=True)
+    school_name = serializers.SerializerMethodField()
+    work_stream_id = serializers.SerializerMethodField()
+    # Grade from current enrollment
+    current_grade = serializers.SerializerMethodField()
+    
+    deactivated_at = serializers.DateTimeField(source='user.deactivated_at', read_only=True)
+    deactivated_by_name = serializers.CharField(source='user.deactivated_by.full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = Student
-        fields = ['user_id', 'email', 'full_name', 'is_active', 'school', 'school_name', 'work_stream_id', 'grade', 'grade_name', 'date_of_birth', 'admission_date', 'current_status', 'address', 'medical_notes']
-        read_only_fields = ['user_id']
+        fields = [
+            'user_id', 'email', 'full_name', 'is_active',
+            'school_id', 'school_name', 'work_stream_id',
+            'current_grade', 'date_of_birth', 'admission_date',
+            'current_status', 'address', 'medical_notes',
+            'deactivated_at', 'deactivated_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['user_id', 'created_at', 'updated_at', 'deactivated_by_name']
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_school_name(self, obj):
+        if obj.user.school:
+            return obj.user.school.school_name
+        return None
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_work_stream_id(self, obj):
+        if obj.user.school:
+            return obj.user.school.work_stream_id
+        return None
+
+    @extend_schema_field(serializers.DictField(allow_null=True, child=serializers.CharField()))
+    def get_current_grade(self, obj):
+        """Get current grade from active enrollment."""
+        active_enrollment = obj.enrollments.filter(status='active').select_related('class_room__grade').first()
+        if active_enrollment and active_enrollment.class_room and active_enrollment.class_room.grade:
+            return {
+                'id': active_enrollment.class_room.grade.id,
+                'name': active_enrollment.class_room.grade.name
+            }
+        return None
 
 
 # =============================================================================
@@ -78,9 +115,10 @@ class StudentListApi(APIView):
         description='Get all students filtered by permissions and filters.',
         parameters=[
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
-            OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
+            OpenApiParameter(name='grade_id', type=int, description='Filter by grade (via enrollments)'),
             OpenApiParameter(name='current_status', type=str, description='Filter by status'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
         ],
         responses={200: StudentOutputSerializer(many=True)},
         examples=[
@@ -91,11 +129,10 @@ class StudentListApi(APIView):
                     'email': 'student1@example.com',
                     'full_name': 'John Student',
                     'is_active': True,
-                    'school': 1,
+                    'school_id': 1,
                     'school_name': 'Global Academy',
                     'work_stream_id': 5,
-                    'grade': 2,
-                    'grade_name': 'Grade 10',
+                    'current_grade': {'id': 2, 'name': 'Grade 10'},
                     'date_of_birth': '2010-05-15',
                     'admission_date': '2024-09-01',
                     'current_status': 'active',
@@ -109,7 +146,11 @@ class StudentListApi(APIView):
     def get(self, request):
         filter_serializer = StudentFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
-        students = student_list(filters=filter_serializer.validated_data, user=request.user)
+        students = student_list(
+            filters=filter_serializer.validated_data, 
+            user=request.user,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         return Response(StudentOutputSerializer(students, many=True).data)
 
 
@@ -137,11 +178,10 @@ class StudentCreateApi(APIView):
                             'email': 'alice.young@example.com',
                             'full_name': 'Alice Young',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2011-03-20',
                             'admission_date': '2026-01-01',
                             'current_status': 'active',
@@ -173,7 +213,7 @@ class StudentCreateApi(APIView):
 
 
 class StudentDetailApi(APIView):
-    """Retrieve, update, or delete a specific student."""
+    """Retrieve, update, or deactivate a specific student."""
     permission_classes = [IsStaffUser]
 
     @extend_schema(
@@ -192,11 +232,10 @@ class StudentDetailApi(APIView):
                             'email': 'student1@example.com',
                             'full_name': 'John Student',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2010-05-15',
                             'admission_date': '2024-09-01',
                             'current_status': 'active',
@@ -230,11 +269,10 @@ class StudentDetailApi(APIView):
                             'email': 'student1@example.com',
                             'full_name': 'John Student',
                             'is_active': True,
-                            'school': 1,
+                            'school_id': 1,
                             'school_name': 'Global Academy',
                             'work_stream_id': 5,
-                            'grade': 2,
-                            'grade_name': 'Grade 10',
+                            'current_grade': {'id': 2, 'name': 'Grade 10'},
                             'date_of_birth': '2010-05-15',
                             'admission_date': '2024-09-01',
                             'current_status': 'graduated',
@@ -253,18 +291,6 @@ class StudentDetailApi(APIView):
         updated_student = student_update(student=student, actor=request.user, data=serializer.validated_data)
         return Response(StudentOutputSerializer(updated_student).data)
 
-    @extend_schema(
-        tags=['Student Management'],
-        summary='Delete student',
-        description='Delete a student permanently.',
-        parameters=[OpenApiParameter(name='student_id', type=int, location=OpenApiParameter.PATH, description='Student ID')],
-        responses={204: OpenApiResponse(description='Deleted successfully')}
-    )
-    def delete(self, request, student_id):
-        student = student_get(student_id=student_id, actor=request.user)
-        student_delete(student=student, actor=request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class StudentDeactivateApi(APIView):
     """Deactivate a student account."""
@@ -276,20 +302,27 @@ class StudentDeactivateApi(APIView):
         description='Deactivate a student account (soft delete).',
         parameters=[OpenApiParameter(name='student_id', type=int, location=OpenApiParameter.PATH, description='Student ID')],
         request=None,
-        responses={
-            200: OpenApiResponse(
-                response=MessageSerializer,
-                description='Student deactivated successfully',
-                examples=[
-                    OpenApiExample(
-                        'Student Deactivated',
-                        value={'detail': 'Student deactivated successfully.'}
-                    )
-                ]
-            )
-        }
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, student_id):
         student = student_get(student_id=student_id, actor=request.user)
         student_deactivate(student=student, actor=request.user)
-        return Response({"detail": "Student deactivated successfully."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentActivateApi(APIView):
+    """Activate a student account."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    @extend_schema(
+        tags=['Student Management'],
+        summary='Activate student',
+        description='Activate a previously deactivated student account.',
+        parameters=[OpenApiParameter(name='student_id', type=int, location=OpenApiParameter.PATH, description='Student ID')],
+        request=None,
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
+    def post(self, request, student_id):
+        student = student_get(student_id=student_id, actor=request.user, include_inactive=True)
+        student_activate(student=student, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

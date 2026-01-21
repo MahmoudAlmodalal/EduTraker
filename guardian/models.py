@@ -1,7 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
 
-class Guardian(models.Model):
+class Guardian(SoftDeleteModel):
     """
     Guardian profile linked to User.
     Schema: Guardians table
@@ -30,14 +31,15 @@ class Guardian(models.Model):
         return f"{self.user.full_name} ({self.user.email})"
 
 
-class GuardianStudentLink(models.Model):
+class GuardianStudentLink(SoftDeleteModel):
     """
     Many-to-many relationship between guardians and students with relationship type.
-    Schema: Guardian_Student_Link table
+    Schema: Guardian_Student_Link table (maps to SRS StudentGuardian)
     """
     RELATIONSHIP_CHOICES = [
         ("parent", "Parent"),
-        ("guardian", "Guardian"),
+        ("legal_guardian", "Legal Guardian"),
+        ("foster_parent", "Foster Parent"),
         ("sibling", "Sibling"),
         ("other", "Other"),
     ]
@@ -59,6 +61,14 @@ class GuardianStudentLink(models.Model):
         choices=RELATIONSHIP_CHOICES,
         help_text="Type of relationship"
     )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Is this the primary guardian?"
+    )
+    can_pickup = models.BooleanField(
+        default=True,
+        help_text="Can this guardian pick up the student?"
+    )
     
     class Meta:
         db_table = "guardian_student_link"
@@ -71,6 +81,10 @@ class GuardianStudentLink(models.Model):
             )
         ]
         ordering = ["guardian", "student"]
+        indexes = [
+            models.Index(fields=["student"], name="idx_link_student"),
+        ]
     
     def __str__(self):
         return f"{self.guardian.user.full_name} → {self.student.user.full_name} ({self.get_relationship_type_display()})"
+

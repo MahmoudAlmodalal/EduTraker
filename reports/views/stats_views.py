@@ -188,7 +188,21 @@ class SchoolManagerStudentCountView(APIView):
         description='Returns student count across all schools managed by a specific school manager.',
         parameters=[OpenApiParameter(name='manager_id', type=int, location=OpenApiParameter.PATH, description='Manager User ID')],
         responses={
-            200: serializers.DictField(help_text="Manager stats"),
+            200: OpenApiResponse(
+                description='Manager stats',
+                examples=[
+                    OpenApiExample(
+                        'Manager Stats Response',
+                        value={
+                            'manager_id': 2,
+                            'manager_name': 'Jane Manager',
+                            'total_schools': 2,
+                            'total_students': 550,
+                            'schools': [{'school_id': 1, 'school_name': 'West School', 'count': 300}]
+                        }
+                    )
+                ]
+            ),
             403: OpenApiResponse(description='Permission Denied'),
             404: OpenApiResponse(description='Manager not found')
         },

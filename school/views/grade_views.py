@@ -6,7 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from accounts.permissions import IsAdminOrManager
 from school.models import Grade
 from school.selectors.grade_selectors import grade_list, grade_get
-from school.services.grade_services import grade_create, grade_update, grade_delete
+from school.services.grade_services import grade_create, grade_update, grade_deactivate, grade_activate
 
 
 # =============================================================================
@@ -23,16 +23,23 @@ class GradeInputSerializer(serializers.Serializer):
 
 class GradeOutputSerializer(serializers.ModelSerializer):
     """Output serializer for grade responses."""
+    deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
+
     class Meta:
         model = Grade
-        fields = ['id', 'name', 'numeric_level', 'min_age', 'max_age']
-        read_only_fields = ['id']
+        fields = [
+            'id', 'name', 'numeric_level', 'min_age', 'max_age',
+            'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'deactivated_by_name']
 
 
 class GradeFilterSerializer(serializers.Serializer):
     """Filter serializer for grade list endpoint."""
     name = serializers.CharField(required=False, help_text="Filter by name")
     numeric_level = serializers.IntegerField(required=False, help_text="Filter by level")
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
 
 # =============================================================================
@@ -50,6 +57,7 @@ class GradeListApi(APIView):
         parameters=[
             OpenApiParameter(name='name', type=str, description='Filter by name'),
             OpenApiParameter(name='numeric_level', type=int, description='Filter by level'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
         ],
         responses={200: GradeOutputSerializer(many=True)},
         examples=[
@@ -69,7 +77,11 @@ class GradeListApi(APIView):
     def get(self, request):
         filter_serializer = GradeFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
-        grades = grade_list(filters=filter_serializer.validated_data)
+        grades = grade_list(
+            actor=request.user,
+            filters=filter_serializer.validated_data,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         return Response(GradeOutputSerializer(grades, many=True).data)
 
 
@@ -116,7 +128,7 @@ class GradeCreateApi(APIView):
 
 
 class GradeDetailApi(APIView):
-    """Retrieve, update, or delete a specific grade."""
+    """Retrieve, update, or deactivate a specific grade."""
     permission_classes = [IsAdminOrManager]
 
     @extend_schema(
@@ -143,7 +155,7 @@ class GradeDetailApi(APIView):
         }
     )
     def get(self, request, grade_id):
-        grade = grade_get(grade_id=grade_id)
+        grade = grade_get(actor=request.user, grade_id=grade_id)
         return Response(GradeOutputSerializer(grade).data)
 
     @extend_schema(
@@ -172,20 +184,44 @@ class GradeDetailApi(APIView):
         }
     )
     def patch(self, request, grade_id):
-        grade = grade_get(grade_id=grade_id)
+        grade = grade_get(actor=request.user, grade_id=grade_id)
         serializer = GradeInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_grade = grade_update(grade=grade, actor=request.user, data=serializer.validated_data)
         return Response(GradeOutputSerializer(updated_grade).data)
 
+
+class GradeDeactivateApi(APIView):
+    """Deactivate a grade."""
+    permission_classes = [IsAdminOrManager]
+
     @extend_schema(
         tags=['Grade Management'],
-        summary='Delete grade',
-        description='Delete a grade permanently.',
+        summary='Deactivate grade',
+        description='Deactivate a grade (soft delete).',
         parameters=[OpenApiParameter(name='grade_id', type=int, location=OpenApiParameter.PATH, description='Grade ID')],
-        responses={204: OpenApiResponse(description='Deleted successfully')}
+        request=None,
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
-    def delete(self, request, grade_id):
-        grade = grade_get(grade_id=grade_id)
-        grade_delete(grade=grade, actor=request.user)
+    def post(self, request, grade_id):
+        grade = grade_get(actor=request.user, grade_id=grade_id)
+        grade_deactivate(grade=grade, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GradeActivateApi(APIView):
+    """Activate a grade."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Grade Management'],
+        summary='Activate grade',
+        description='Activate a previously deactivated grade.',
+        parameters=[OpenApiParameter(name='grade_id', type=int, location=OpenApiParameter.PATH, description='Grade ID')],
+        request=None,
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
+    def post(self, request, grade_id):
+        grade = grade_get(actor=request.user, grade_id=grade_id, include_inactive=True)
+        grade_activate(grade=grade, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

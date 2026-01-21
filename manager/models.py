@@ -1,9 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from accounts.models import SoftDeleteModel
 
 
-
-class StaffEvaluation(models.Model):
+class StaffEvaluation(SoftDeleteModel):
     """
     Staff evaluation records.
     Schema: Staff_Evaluations table

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from workstream.models import WorkStream
 
 
@@ -8,23 +9,27 @@ class WorkstreamListQuerySerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False)
 
 class WorkstreamCreateInputSerializer(serializers.Serializer):
-    name = serializers.CharField(max_length=255)
+    workstream_name = serializers.CharField(max_length=255)
     description = serializers.CharField(required=False, allow_blank=True)
-    manager_id = serializers.IntegerField()
-    max_user = serializers.IntegerField(min_value=1)
+    manager_id = serializers.IntegerField(required=False, allow_null=True)
+    capacity = serializers.IntegerField(min_value=1, default=100)
 
 
 class WorkstreamOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(required=False)
-    description = serializers.CharField(required=False, allow_blank=True)
+    workstream_name = serializers.CharField(required=False)
+    description = serializers.SerializerMethodField()
     manager_id = serializers.IntegerField(required=False)
-    max_user = serializers.IntegerField(required=False, min_value=1)
+    capacity = serializers.IntegerField(required=False, min_value=1)
     is_active = serializers.BooleanField(required=False)
+
+    @extend_schema_field(serializers.CharField())
+    def get_description(self, obj):
+        return obj.description or ""
     
 class WorkstreamUpdateInputSerializer(serializers.Serializer):
-    name = serializers.CharField(required=False)
+    workstream_name = serializers.CharField(required=False)
     description = serializers.CharField(required=False, allow_blank=True)
     manager_id = serializers.IntegerField(required=False)
-    max_user = serializers.IntegerField(required=False, min_value=1)
+    capacity = serializers.IntegerField(required=False, min_value=1)
     is_active = serializers.BooleanField(required=False)

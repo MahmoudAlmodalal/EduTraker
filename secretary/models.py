@@ -1,6 +1,8 @@
 from django.db import models
+from accounts.models import SoftDeleteModel
 
-class Secretary(models.Model):
+
+class Secretary(SoftDeleteModel):
     """
     Secretary/Registrar profile linked to User.
     Schema: Secretaries table

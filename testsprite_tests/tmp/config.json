@@ -3,17 +3,16 @@
   "type": "backend",
   "scope": "codebase",
   "localEndpoint": "http://localhost:8000",
-  "backendAuthType": "basic token",
-  "backendUsername": "admin@test.com",
-  "backendPassword": "test1234",
+  "backendAuthType": "Bearer token",
+  "backendCredential": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzY4ODE1NTU2LCJpYXQiOjE3Njg4MTE5NTYsImp0aSI6ImExM2Y2NWUyZDYyNzRkMDNhOWI5OGRkNmU0MTIxYzEzIiwidXNlcl9pZCI6IjEwIn0.MuOcID6HJOcTfa9463V8_5XiCqUIA-8j6dqobRYOR8M",
   "executionArgs": {
     "projectName": "EduTraker",
     "projectPath": "/home/mahmoud/Desktop/front/EduTraker",
     "testIds": [],
-    "additionalInstruction": "1. JWT Tokens: Login responses return 'tokens': {'access', 'refresh'}. Use response.json()['tokens']['access'].\n2. Registration Responses: Both portal and workstream registration responses return a 'user' object (e.g., response.json()['user']['full_name']). Do not look for user fields at the root level.\n3. Workstream Creation: REQUIRES 'name', 'manager_id', and 'max_user'. 'manager_id' must be a user with 'manager_workstream' role.\n4. School Creation: REQUIRES 'school_name', 'work_stream_id'. 'manager_id' is optional but must have 'manager_school' role if provided.\n5. User Creation: REQUIRES 'email', 'full_name', 'password', 'role'. Choices: student, teacher, secretary, manager_school, manager_workstream, guardian, admin, guest.\n6. Auth: Use 'admin@test.com' / 'test1234' for all portal administrative tasks.\n7. Creation Prerequisites: To create a Workstream or School, ALWAYS create a user with the required manager role first via /api/users/create/ and use that ID.\n",
+    "additionalInstruction": "STRICT RBAC & SCHEMA REQUIREMENTS:\n1. Authentication: \n   - Login at /api/portal/auth/login/ or /api/workstream/{id}/auth/login/.\n   - IMPORTANT: The response is NESTED: {'user': {...}, 'tokens': {'access': '...', 'refresh': '...'}}. \n   - You MUST extract the token using data['tokens']['access'].\n2. Registration:\n   - Fields: 'email', 'full_name', 'password', 'password_confirm'. No other name fields.\n3. User Creation:\n   - Use 'full_name'.\n4. Bug Fixes to Verify:\n   - PATCH /api/users/{id}/ must return 204 No Content.\n   - POST /deactivate/ and /activate/ must return 204 No Content (NO BODY).\n   - 404 responses for missing users/workstreams must contain \"not found\" in the detail.\n   - Workstream registration with a non-integer ID (like a UUID string) should now return a JSON 404 with \"not found\" because of the loosened URL pattern.\n5. NO EXTERNAL JWT LIB: Do not 'import jwt'. Only use 'requests' and basic python.\n",
     "envs": {
       "API_KEY": "sk-user-gyEMyf5uw5QFywhKZgd6-dCA2_yNT4x0NhqzNZvvYA_hZ-kVrFphw46g9IGRiDYTnNK6yWFd_Ygvex0akCiFbYbzfUdkUhZdgXbUiMkzRiSw12J3-rsGNPc1mawMdadGsiA"
     }
   },
-  "proxy": "http://272ea9c4-79ab-4875-8f1a-3a010f59c267:B8yQd7Fn0MJWcH8R3mP6eRvlmtVQHmOJ@tun.testsprite.com:8080"
+  "proxy": "http://d9d76182-d37c-4270-a0c2-ddacb8e42937:Q52P77KhJTVE0Ebtyo6qCTHQJqaUCLim@tun.testsprite.com:8080"
 }

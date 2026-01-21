@@ -1,0 +1,38 @@
+{
+    "project_name": "EduTraker",
+    "project_description": "EduTraker is an Educational Management System built with Django and Django REST Framework. It supports multiple user roles, role-based access control (RBAC), and multi-tenancy via Workstreams and Schools.",
+    "tech_stack": {
+        "framework": "Django 5.2.8",
+        "api_framework": "Django REST Framework 3.16.1",
+        "database": "MySQL",
+        "authentication": "JWT (djangorestframework-simplejwt)",
+        "documentation": "drf-spectacular (OpenAPI 3.0)"
+    },
+    "user_roles": [
+        "admin",
+        "manager_workstream",
+        "manager_school",
+        "teacher",
+        "secretary",
+        "student",
+        "guardian",
+        "guest"
+    ],
+    "core_apps": {
+        "accounts": "Handles authentication, registration (portal and workstream), and user profile management. Implements strict RBAC services.",
+        "workstream": "Manages Workstreams, which are top-level containers for schools.",
+        "school": "Manages Schools within workstreams.",
+        "student": "Handles student profiles, enrollments, and related academic data.",
+        "teacher": "Manages teacher assignments and specific teacher-related data.",
+        "manager": "Provides management tools like staff evaluations.",
+        "reports": "Generates statistics and dashboard data for different roles.",
+        "user_messages": "Internal messaging system between users.",
+        "notifications": "System notifications for users.",
+        "secretary": "Administrative tasks and record keeping."
+    },
+    "authentication_flow": {
+        "portal_login": "/api/portal/auth/login/ - Used by Admins and Managers.",
+        "workstream_login": "/api/workstream/<int:workstream_id>/auth/login/ - Used by school-level roles.",
+        "token_refresh": "/api/auth/token/refresh/ - Standard JWT rotation."
+    }
+}

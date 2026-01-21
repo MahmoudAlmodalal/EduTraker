@@ -18,13 +18,6 @@ def course_create(
 ) -> Course:
     """
     Create a new Course for a school and grade.
-
-    Authorization:
-        - User must have permission to manage the school
-
-    Raises:
-        PermissionDenied: If creator lacks permission
-        ValidationError: If validation fails (grade, unique code)
     """
     # Validate school exists
     try:
@@ -97,11 +90,28 @@ def course_update(
 
 
 @transaction.atomic
-def course_delete(*, course: Course, actor: CustomUser) -> None:
+def course_deactivate(*, course: Course, actor: CustomUser) -> None:
     """
-    Delete a Course.
+    Deactivate a Course (soft delete).
     """
     if not _has_school_access(actor, course.school):
-        raise PermissionDenied("You don't have permission to delete courses for this school.")
+        raise PermissionDenied("You don't have permission to deactivate courses for this school.")
 
-    course.delete()
+    if not course.is_active:
+        raise ValidationError("Course already deactivated.")
+
+    course.deactivate(user=actor)
+
+
+@transaction.atomic
+def course_activate(*, course: Course, actor: CustomUser) -> None:
+    """
+    Activate a Course.
+    """
+    if not _has_school_access(actor, course.school):
+        raise PermissionDenied("You don't have permission to activate courses for this school.")
+
+    if course.is_active:
+        raise ValidationError("Course is already active.")
+
+    course.activate()

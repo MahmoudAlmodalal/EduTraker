@@ -7,7 +7,6 @@ from accounts.selectors.user_selectors import user_list, user_get
 from accounts.services.user_services import (
     user_create, 
     user_update, 
-    user_delete, 
     user_deactivate,
     user_activate
 )
@@ -30,6 +29,7 @@ class UserListApi(APIView):
     class FilterSerializer(serializers.Serializer):
         role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False, help_text="Filter by role")
         search = serializers.CharField(required=False, help_text="Search by name or email")
+        include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
     class UserOutputSerializer(serializers.ModelSerializer):
         work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
@@ -67,12 +67,142 @@ class UserListApi(APIView):
         filter_serializer.is_valid(raise_exception=True)
         
         users = user_list(
-            filters=filter_serializer.validated_data,
-            user=request.user
+            user=request.user,
+            filters=filter_serializer.validated_data
         )
         
         data = self.UserOutputSerializer(users, many=True).data
         return Response(data)
+
+
+# Roles that have separate profile tables - these should NOT be created via this endpoint
+ROLES_WITH_PROFILES = [Role.TEACHER, Role.STUDENT, Role.SECRETARY, Role.GUARDIAN]
+
+
+class UserCreateApi(APIView):
+    """Create a new user without a profile.
+    
+    For roles that have associated profiles (teacher, student, secretary, guardian),
+    use the dedicated creation endpoints in their respective apps.
+    """
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    class UserCreateInputSerializer(serializers.Serializer):
+        email = serializers.EmailField(help_text="User email address")
+        full_name = serializers.CharField(max_length=150, help_text="Full name")
+        password = serializers.CharField(write_only=True, help_text="Password")
+        role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, help_text="User role")
+        work_stream = serializers.IntegerField(
+            source='work_stream_id', required=False, allow_null=True, 
+            help_text="Workstream ID"
+        )
+        school = serializers.IntegerField(
+            source='school_id', required=False, allow_null=True, 
+            help_text="School ID"
+        )
+
+    @extend_schema(
+        tags=['User Management'],
+        summary='Create a new user',
+        description='''Create a new user account.
+        
+**Important:** Roles with profiles (teacher, student, secretary, guardian) cannot be created 
+through this endpoint. Use their dedicated endpoints instead:
+- Teachers: `/api/teacher/`
+- Students: `/api/student/`
+- Secretaries: `/api/secretary/`
+- Guardians: `/api/guardian/`
+
+This endpoint is for creating: admin, manager_workstream, manager_school, guest roles.''',
+        request=UserCreateInputSerializer,
+        examples=[
+            OpenApiExample(
+                'Create Manager User',
+                value={
+                    'email': 'manager@example.com',
+                    'full_name': 'Workstream Manager',
+                    'password': 'SecurePass123!',
+                    'role': 'manager_workstream',
+                    'work_stream': 1,
+                },
+                request_only=True,
+            ),
+        ],
+        responses={
+            201: OpenApiResponse(
+                response=UserListApi.UserOutputSerializer,
+                description='User created successfully',
+                examples=[
+                    OpenApiExample(
+                        'Created User',
+                        value={
+                            'id': 1,
+                            'email': 'manager@example.com',
+                            'full_name': 'Workstream Manager',
+                            'role': 'manager_workstream',
+                            'work_stream': 1,
+                            'work_stream_name': 'Main Workstream',
+                            'school': None,
+                            'school_name': None,
+                            'is_active': True,
+                            'date_joined': '2026-01-17T00:00:00Z'
+                        }
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                description='Validation error or role with profile',
+                examples=[
+                    OpenApiExample(
+                        'Role With Profile Error',
+                        value={
+                            'role': 'Users with role "teacher" have a profile. '
+                                    'Please use the dedicated /api/teacher/ endpoint instead.'
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(description='Not allowed to create user with this role'),
+        }
+    )
+    def post(self, request):
+        serializer = self.UserCreateInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        data = serializer.validated_data
+        role = data.get('role')
+        
+        # Block roles that have profiles
+        if role in ROLES_WITH_PROFILES:
+            endpoint_map = {
+                Role.TEACHER: '/api/teacher/',
+                Role.STUDENT: '/api/student/',
+                Role.SECRETARY: '/api/secretary/',
+                Role.GUARDIAN: '/api/guardian/',
+            }
+            endpoint = endpoint_map.get(role, 'their dedicated endpoint')
+            return Response(
+                {
+                    'role': f'Users with role "{role}" have a profile. '
+                            f'Please use the dedicated {endpoint} endpoint instead.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = user_create(
+            creator=request.user,
+            email=data['email'],
+            full_name=data['full_name'],
+            password=data['password'],
+            role=role,
+            work_stream_id=data.get('work_stream_id'),
+            school_id=data.get('school_id'),
+        )
+        
+        return Response(
+            UserListApi.UserOutputSerializer(user).data,
+            status=status.HTTP_201_CREATED
+        )
 
 
 
@@ -107,7 +237,10 @@ class UserUpdateApi(APIView):
         }
     )
     def get(self, request, user_id):
-        user = user_get(user_id=user_id,actor=request.user)
+        try:
+            user = user_get(user_id=user_id, actor=request.user)
+        except Exception:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(UserListApi.UserOutputSerializer(user).data)
 
     @extend_schema(
@@ -171,21 +304,7 @@ class UserUpdateApi(APIView):
             data.pop("school", None)
 
         user = user_update(user=user, data=data)
-
-        return Response(
-            UserListApi.UserOutputSerializer(user).data,
-            status=status.HTTP_200_OK
-        )
-
-    @extend_schema(
-        tags=['User Management'],
-        summary='Delete a user',
-        description='Delete is disabled. Use deactivate endpoint instead.',
-        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
-        responses={403: OpenApiResponse(description='Use deactivate instead of delete')}
-    )
-    def delete(self, request, user_id):
-        raise PermissionDenied("Use deactivate instead of delete.")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserDeactivateApi(APIView):
@@ -215,7 +334,7 @@ class UserDeactivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_deactivate(user=user)
-        return Response({"detail": "User deactivated successfully."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class UserActivateApi(APIView):
     """Activate a user."""
@@ -244,4 +363,4 @@ class UserActivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_activate(user=user)
-        return Response({"detail": "User activated successfully."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
