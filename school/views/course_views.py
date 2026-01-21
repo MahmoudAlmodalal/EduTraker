@@ -7,7 +7,7 @@ from accounts.permissions import IsAdminOrManager
 from school.models import Course
 from school.selectors.school_selectors import school_get
 from school.selectors.course_selectors import course_list, course_get
-from school.services.course_services import course_create, course_update, course_delete
+from school.services.course_services import course_create, course_update, course_deactivate, course_activate
 
 
 # =============================================================================
@@ -24,11 +24,16 @@ class CourseInputSerializer(serializers.Serializer):
 class CourseOutputSerializer(serializers.ModelSerializer):
     """Output serializer for course responses."""
     grade_name = serializers.CharField(source='grade.name', read_only=True)
+    deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = Course
-        fields = ['id', 'course_code', 'school', 'grade', 'grade_name', 'name']
-        read_only_fields = ['id', 'school']
+        fields = [
+            'id', 'course_code', 'school', 'grade', 'grade_name', 'name',
+            'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'school', 'created_at', 'updated_at', 'deactivated_by_name']
 
 
 class CourseFilterSerializer(serializers.Serializer):
@@ -36,6 +41,7 @@ class CourseFilterSerializer(serializers.Serializer):
     name = serializers.CharField(required=False, help_text="Filter by name")
     grade_id = serializers.IntegerField(required=False, help_text="Filter by grade")
     course_code = serializers.CharField(required=False, help_text="Filter by code")
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
 
 # =============================================================================
@@ -55,6 +61,7 @@ class CourseListApi(APIView):
             OpenApiParameter(name='name', type=str, description='Filter by name'),
             OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
             OpenApiParameter(name='course_code', type=str, description='Filter by code'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
         ],
         responses={200: CourseOutputSerializer(many=True)},
         examples=[
@@ -76,7 +83,12 @@ class CourseListApi(APIView):
         school_get(school_id=school_id, actor=request.user)
         filter_serializer = CourseFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
-        courses = course_list(school_id=school_id, filters=filter_serializer.validated_data)
+        courses = course_list(
+            school_id=school_id,
+            actor=request.user,
+            filters=filter_serializer.validated_data,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         return Response(CourseOutputSerializer(courses, many=True).data)
 
 
@@ -124,7 +136,7 @@ class CourseCreateApi(APIView):
 
 
 class CourseDetailApi(APIView):
-    """Retrieve, update, or delete a specific course."""
+    """Retrieve, update, or deactivate a specific course."""
     permission_classes = [IsAdminOrManager]
 
     @extend_schema(
@@ -194,17 +206,44 @@ class CourseDetailApi(APIView):
         updated_course = course_update(course=course, actor=request.user, data=serializer.validated_data)
         return Response(CourseOutputSerializer(updated_course).data)
 
+
+class CourseDeactivateApi(APIView):
+    """Deactivate a course."""
+    permission_classes = [IsAdminOrManager]
+
     @extend_schema(
         tags=['Course Management'],
-        summary='Delete course',
-        description='Delete a course permanently.',
+        summary='Deactivate course',
+        description='Deactivate a course (soft delete).',
         parameters=[
             OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
             OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
         ],
-        responses={204: OpenApiResponse(description='Deleted successfully')}
+        request=None,
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
-    def delete(self, request, school_id, course_id):
+    def post(self, request, school_id, course_id):
         course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
-        course_delete(course=course, actor=request.user)
+        course_deactivate(course=course, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseActivateApi(APIView):
+    """Activate a course."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Course Management'],
+        summary='Activate course',
+        description='Activate a previously deactivated course.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
+        ],
+        request=None,
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
+    def post(self, request, school_id, course_id):
+        course = course_get(course_id=course_id, school_id=school_id, actor=request.user, include_inactive=True)
+        course_activate(course=course, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)

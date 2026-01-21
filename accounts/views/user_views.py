@@ -7,7 +7,6 @@ from accounts.selectors.user_selectors import user_list, user_get
 from accounts.services.user_services import (
     user_create, 
     user_update, 
-    user_delete, 
     user_deactivate,
     user_activate
 )
@@ -30,6 +29,7 @@ class UserListApi(APIView):
     class FilterSerializer(serializers.Serializer):
         role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False, help_text="Filter by role")
         search = serializers.CharField(required=False, help_text="Search by name or email")
+        include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
 
     class UserOutputSerializer(serializers.ModelSerializer):
         work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
@@ -67,8 +67,8 @@ class UserListApi(APIView):
         filter_serializer.is_valid(raise_exception=True)
         
         users = user_list(
-            filters=filter_serializer.validated_data,
-            user=request.user
+            user=request.user,
+            filters=filter_serializer.validated_data
         )
         
         data = self.UserOutputSerializer(users, many=True).data
@@ -237,7 +237,10 @@ class UserUpdateApi(APIView):
         }
     )
     def get(self, request, user_id):
-        user = user_get(user_id=user_id,actor=request.user)
+        try:
+            user = user_get(user_id=user_id, actor=request.user)
+        except Exception:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response(UserListApi.UserOutputSerializer(user).data)
 
     @extend_schema(
@@ -301,21 +304,7 @@ class UserUpdateApi(APIView):
             data.pop("school", None)
 
         user = user_update(user=user, data=data)
-
-        return Response(
-            UserListApi.UserOutputSerializer(user).data,
-            status=status.HTTP_200_OK
-        )
-
-    @extend_schema(
-        tags=['User Management'],
-        summary='Delete a user',
-        description='Delete is disabled. Use deactivate endpoint instead.',
-        parameters=[OpenApiParameter(name='user_id', type=int, location=OpenApiParameter.PATH, description='User ID')],
-        responses={403: OpenApiResponse(description='Use deactivate instead of delete')}
-    )
-    def delete(self, request, user_id):
-        raise PermissionDenied("Use deactivate instead of delete.")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserDeactivateApi(APIView):
@@ -345,7 +334,7 @@ class UserDeactivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_deactivate(user=user)
-        return Response({"detail": "User deactivated successfully."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class UserActivateApi(APIView):
     """Activate a user."""
@@ -374,4 +363,4 @@ class UserActivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_activate(user=user)
-        return Response({"detail": "User activated successfully."}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -52,10 +52,10 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
     _check_school_permission(actor, school_id)
     
     # Total students
-    total_students = Student.objects.filter(school=school).count()
+    total_students = Student.objects.filter(user__school=school).count()
     active_students = Student.objects.filter(
-        school=school,
-        current_status='active'
+        user__school=school,
+        enrollment_status='active'
     ).count()
     
     # Total teachers
@@ -67,8 +67,8 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
     
     # Count by grade
     by_grade = Student.objects.filter(
-        school=school,
-        current_status='active'
+        user__school=school,
+        enrollment_status='active'
     ).values(
         'grade__id',
         'grade__name',
@@ -85,7 +85,7 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
     ).annotate(
         student_count=Count(
             'enrollments__student',
-            filter=Q(enrollments__student__current_status='active')
+            filter=Q(enrollments__student__enrollment_status='active')
         )
     )
     
@@ -105,7 +105,7 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
         'school_id': school_id,
         'school_name': school.school_name,
         'workstream_id': school.work_stream_id,
-        'workstream_name': school.work_stream.name,
+        'workstream_name': school.work_stream.workstream_name,
         'manager_name': school.manager.full_name if school.manager else None,
         'total_students': total_students,
         'active_students': active_students,
@@ -147,15 +147,15 @@ def get_students_by_grade(*, school_id: int, actor: CustomUser) -> Dict:
     
     # Get all students grouped by grade with status breakdown
     grade_stats = Student.objects.filter(
-        school=school
+        user__school=school
     ).values(
         'grade__id',
         'grade__name',
         'grade__numeric_level'
     ).annotate(
         total_count=Count('user_id'),
-        active_count=Count('user_id', filter=Q(current_status='active')),
-        inactive_count=Count('user_id', filter=~Q(current_status='active'))
+        active_count=Count('user_id', filter=Q(enrollment_status='active')),
+        inactive_count=Count('user_id', filter=~Q(enrollment_status='active'))
     ).order_by('grade__numeric_level')
     
     by_grade = [
@@ -217,7 +217,7 @@ def get_students_by_classroom(*, school_id: int, actor: CustomUser) -> Dict:
         total_students=Count('enrollments__student'),
         active_students=Count(
             'enrollments__student',
-            filter=Q(enrollments__student__current_status='active')
+            filter=Q(enrollments__student__enrollment_status='active')
         )
     ).order_by('grade__numeric_level', 'classroom_name')
     
@@ -278,7 +278,7 @@ def get_teachers_in_school(*, school_id: int, actor: CustomUser) -> Dict:
         classroom_count=Count('course_allocations__class_room', distinct=True),
         student_count=Count(
             'course_allocations__class_room__enrollments__student',
-            filter=Q(course_allocations__class_room__enrollments__student__current_status='active'),
+            filter=Q(course_allocations__class_room__enrollments__student__enrollment_status='active'),
             distinct=True
         )
     )
@@ -340,7 +340,7 @@ def get_courses_in_school(*, school_id: int, actor: CustomUser) -> Dict:
         classroom_count=Count('allocations__class_room', distinct=True),
         student_count=Count(
             'allocations__class_room__enrollments__student',
-            filter=Q(allocations__class_room__enrollments__student__current_status='active'),
+            filter=Q(allocations__class_room__enrollments__student__enrollment_status='active'),
             distinct=True
         )
     ).order_by('grade__numeric_level', 'name')
@@ -404,12 +404,12 @@ def get_classroom_details(*, classroom_id: int, actor: CustomUser) -> Dict:
     status_counts = StudentEnrollment.objects.filter(
         class_room=classroom
     ).values(
-        'student__current_status'
+        'student__enrollment_status'
     ).annotate(
         count=Count('student')
     )
     
-    by_status = {item['student__current_status']: item['count'] for item in status_counts}
+    by_status = {item['student__enrollment_status']: item['count'] for item in status_counts}
     
     # Build students list
     students = []
@@ -417,7 +417,7 @@ def get_classroom_details(*, classroom_id: int, actor: CustomUser) -> Dict:
     active_students = 0
     
     for enrollment in enrollments:
-        student_status = enrollment.student.current_status
+        student_status = enrollment.student.enrollment_status
         students.append({
             'student_id': enrollment.student.user_id,
             'student_name': enrollment.student.user.full_name,

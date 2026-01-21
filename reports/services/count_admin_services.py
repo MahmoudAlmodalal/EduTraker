@@ -37,7 +37,7 @@ def get_global_statistics(*, actor: CustomUser) -> Dict:
     
     return {
         'total_students': Student.objects.count(),
-        'total_active_students': Student.objects.filter(current_status='active').count(),
+        'total_active_students': Student.objects.filter(enrollment_status='active').count(),
         'total_teachers': Teacher.objects.count(),
         'total_workstreams': WorkStream.objects.count(),
         'total_active_workstreams': WorkStream.objects.filter(is_active=True).count(),
@@ -70,8 +70,8 @@ def get_students_by_workstream(*, actor: CustomUser) -> Dict:
     
     workstreams = WorkStream.objects.annotate(
         student_count=Count(
-            'schools__students',
-            filter=Q(schools__students__current_status='active')
+            'schools__users__student_profile',
+            filter=Q(schools__users__student_profile__enrollment_status='active')
         ),
         school_count=Count('schools', distinct=True)
     )
@@ -79,7 +79,7 @@ def get_students_by_workstream(*, actor: CustomUser) -> Dict:
     by_workstream = [
         {
             'workstream_id': ws.id,
-            'workstream_name': ws.name,
+            'workstream_name': ws.workstream_name,
             'is_active': ws.is_active,
             'student_count': ws.student_count,
             'school_count': ws.school_count
@@ -125,7 +125,7 @@ def get_teachers_by_workstream(*, actor: CustomUser) -> Dict:
     by_workstream = [
         {
             'workstream_id': ws.id,
-            'workstream_name': ws.name,
+            'workstream_name': ws.workstream_name,
             'teacher_count': ws.teacher_count
         }
         for ws in workstreams
@@ -167,8 +167,8 @@ def get_schools_overview(*, actor: CustomUser) -> Dict:
         'work_stream', 'manager'
     ).annotate(
         student_count=Count(
-            'students',
-            filter=Q(students__current_status='active')
+            'users__student_profile',
+            filter=Q(users__student_profile__enrollment_status='active')
         ),
         teacher_count=Count(
             'users__teacher_profile',

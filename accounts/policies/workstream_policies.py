@@ -33,7 +33,7 @@ def allowed_update_fields_for_workstream(
     Empty list means no permission.
     """
     if actor.role == Role.ADMIN:
-        return ["name", "description", "max_user", "is_active", "manager"]
+        return ["workstream_name", "description", "capacity", "is_active", "manager"]
 
     if actor.role == Role.MANAGER_WORKSTREAM:
         if actor.work_stream_id == workstream.id:

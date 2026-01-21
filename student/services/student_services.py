@@ -78,9 +78,10 @@ def student_create(
         school_id=school_id,
     )
 
-    # Create the student profile (school is on user, not student)
+    # Create the student profile
     student = Student(
         user=user,
+        grade_id=grade_id,
         date_of_birth=date_of_birth,
         admission_date=admission_date,
         current_status=current_status,
@@ -158,24 +159,9 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
 
 
 @transaction.atomic
-def student_delete(*, student: Student, actor: CustomUser) -> None:
-    """
-    Delete a student.
-
-    Note: Always raises PermissionDenied instructing to use deactivate instead.
-    """
-    raise PermissionDenied("Use deactivate endpoint instead of delete.")
-
-
-@transaction.atomic
 def student_deactivate(*, student: Student, actor: CustomUser) -> Student:
     """
     Deactivate a student account.
-
-    Authorization:
-        ADMIN, MANAGER_SCHOOL, SECRETARY can deactivate students in their scope.
-
-    Sets user.is_active = False and student.current_status = 'inactive'.
     """
     if not can_access_student(actor=actor, student=student):
         raise PermissionDenied("You don't have permission to deactivate this student.")
@@ -183,10 +169,34 @@ def student_deactivate(*, student: Student, actor: CustomUser) -> Student:
     if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         raise PermissionDenied("You don't have permission to deactivate students.")
 
-    student.user.is_active = False
-    student.user.save()
+    # Deactivate associated user
+    student.user.deactivate(user=actor)
 
+    # Deactivate student profile
+    student.deactivate(user=actor)
     student.current_status = "inactive"
+    student.save()
+
+    return student
+
+
+@transaction.atomic
+def student_activate(*, student: Student, actor: CustomUser) -> Student:
+    """
+    Activate a student account.
+    """
+    if not can_access_student(actor=actor, student=student):
+        raise PermissionDenied("You don't have permission to activate this student.")
+
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("You don't have permission to activate students.")
+
+    # Activate associated user
+    student.user.activate()
+
+    # Activate student profile
+    student.activate()
+    student.current_status = "active"
     student.save()
 
     return student

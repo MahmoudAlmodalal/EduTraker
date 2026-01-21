@@ -77,7 +77,7 @@ class WorkstreamInfoView(APIView):
     def get(self, request, workstream_id: int):
         workstream = get_object_or_404(WorkStream, id=workstream_id, is_active=True)
         return Response(
-            {"id": workstream.id, "name": workstream.name},
+            {"id": workstream.id, "name": workstream.workstream_name},
             status=status.HTTP_200_OK,
         )
 
@@ -196,18 +196,18 @@ class WorkstreamListCreateAPIView(APIView):
         in_ser = WorkstreamCreateInputSerializer(data=request.data)
         in_ser.is_valid(raise_exception=True)
 
-        manager = get_object_or_404(
-            CustomUser,
-            id=in_ser.validated_data["manager_id"],
-        )
+        manager = None
+        manager_id = in_ser.validated_data.get("manager_id")
+        if manager_id:
+            manager = get_object_or_404(CustomUser, id=manager_id)
 
         try:
             workstream = workstream_create(
                 creator=request.user,
-                name=in_ser.validated_data["name"],
+                workstream_name=in_ser.validated_data["workstream_name"],
                 description=in_ser.validated_data.get("description"),
                 manager=manager,
-                max_user=in_ser.validated_data["max_user"],
+                capacity=in_ser.validated_data.get("capacity", 100),
             )
         except ValidationError as e:
             return Response(
@@ -222,6 +222,7 @@ class WorkstreamListCreateAPIView(APIView):
 
 class WorkstreamUpdateAPIView(APIView):
     permission_classes = [IsSuperAdmin]
+    serializer_class = WorkstreamUpdateInputSerializer
 
     @extend_schema(
         tags=["Workstream"],
@@ -300,6 +301,10 @@ class WorkstreamUpdateAPIView(APIView):
             WorkstreamOutputSerializer(workstream).data,
             status=status.HTTP_200_OK,
         )
+
+    def patch(self, request, workstream_id: int):
+        """Handle PATCH requests by delegating to the same logic as PUT."""
+        return self.put(request, workstream_id)
 
 class WorkstreamDeactivateAPIView(APIView):
     permission_classes = [IsSuperAdmin]

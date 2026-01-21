@@ -88,11 +88,28 @@ def grade_update(
 
 
 @transaction.atomic
-def grade_delete(*, grade: Grade, actor: CustomUser) -> None:
+def grade_deactivate(*, grade: Grade, actor: CustomUser) -> None:
     """
-    Delete a Grade.
+    Deactivate a Grade (soft delete).
     """
     if actor.role != Role.ADMIN:
-        raise PermissionDenied("Only admins can delete grades.")
+        raise PermissionDenied("Only admins can deactivate grades.")
 
-    grade.delete()
+    if not grade.is_active:
+        raise ValidationError("Grade already deactivated.")
+
+    grade.deactivate(user=actor)
+
+
+@transaction.atomic
+def grade_activate(*, grade: Grade, actor: CustomUser) -> None:
+    """
+    Activate a Grade.
+    """
+    if actor.role != Role.ADMIN:
+        raise PermissionDenied("Only admins can activate grades.")
+
+    if grade.is_active:
+        raise ValidationError("Grade is already active.")
+
+    grade.activate()

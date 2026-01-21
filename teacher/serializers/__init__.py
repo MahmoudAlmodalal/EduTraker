@@ -1,1 +1,2 @@
-# Teacher Serializers Package
+from .assignment_serializers import *
+from .learning_material_serializers import *

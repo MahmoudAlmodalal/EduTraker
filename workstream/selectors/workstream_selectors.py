@@ -12,7 +12,7 @@ def workstream_list(*, filters: dict, user: CustomUser) -> QuerySet:
         qs = qs.filter(id=user.work_stream_id)
 
     if search := filters.get("search"):
-        qs = qs.filter(name__icontains=search)
+        qs = qs.filter(workstream_name__icontains=search)
 
     if (is_active := filters.get("is_active")) is not None:
         qs = qs.filter(is_active=is_active)

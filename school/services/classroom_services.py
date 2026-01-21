@@ -20,13 +20,6 @@ def classroom_create(
 ) -> ClassRoom:
     """
     Create a new ClassRoom.
-
-    Authorization:
-        - ADMIN or managers with access to the school
-
-    Raises:
-        PermissionDenied: If creator lacks permission
-        ValidationError: If validation fails
     """
     # Validate school exists
     try:
@@ -135,11 +128,28 @@ def classroom_update(
 
 
 @transaction.atomic
-def classroom_delete(*, classroom: ClassRoom, actor: CustomUser) -> None:
+def classroom_deactivate(*, classroom: ClassRoom, actor: CustomUser) -> None:
     """
-    Delete a ClassRoom.
+    Deactivate a ClassRoom (soft delete).
     """
     if not _has_school_access(actor, classroom.school):
-        raise PermissionDenied("You don't have permission to delete classrooms for this school.")
+        raise PermissionDenied("You don't have permission to deactivate classrooms for this school.")
 
-    classroom.delete()
+    if not classroom.is_active:
+        raise ValidationError("Classroom already deactivated.")
+
+    classroom.deactivate(user=actor)
+
+
+@transaction.atomic
+def classroom_activate(*, classroom: ClassRoom, actor: CustomUser) -> None:
+    """
+    Activate a ClassRoom.
+    """
+    if not _has_school_access(actor, classroom.school):
+        raise PermissionDenied("You don't have permission to activate classrooms for this school.")
+
+    if classroom.is_active:
+        raise ValidationError("Classroom is already active.")
+
+    classroom.activate()

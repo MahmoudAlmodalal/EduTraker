@@ -6,6 +6,8 @@ from workstream.views.workstream_views import (
     WorkstreamDeactivateAPIView,
 )
 
+app_name = 'workstream'
+
 urlpatterns = [
     # Public endpoint for login page
     path('workstreams/<int:workstream_id>/info/', WorkstreamInfoView.as_view(), name='workstream-info'),

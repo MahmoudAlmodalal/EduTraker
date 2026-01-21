@@ -88,6 +88,7 @@ class AssignmentOutputSerializer(serializers.ModelSerializer):
         source='get_exam_type_display',
         read_only=True
     )
+    deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
 
     class Meta:
         model = Assignment
@@ -102,8 +103,10 @@ class AssignmentOutputSerializer(serializers.ModelSerializer):
             'exam_type',
             'exam_type_display',
             'full_mark',
+            'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_by', 'created_by_name', 'exam_type_display']
+        read_only_fields = ['id', 'created_by', 'created_by_name', 'exam_type_display', 'deactivated_by_name', 'created_at', 'updated_at']
 
 
 class AssignmentFilterSerializer(serializers.Serializer):
@@ -125,3 +128,4 @@ class AssignmentFilterSerializer(serializers.Serializer):
         required=False,
         help_text="Filter by title (partial match)"
     )
+    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")

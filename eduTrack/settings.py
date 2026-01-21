@@ -84,6 +84,9 @@ SPECTACULAR_SETTINGS = {
         'persistAuthorization': True,
         'displayOperationId': True,
     },
+    'ENUM_NAME_OVERRIDES': {
+        'AttendanceStatusEnum': 'teacher.models.Attendance.STATUS_CHOICES',
+    },
 }
 
 
@@ -146,16 +149,26 @@ WSGI_APPLICATION = 'eduTrack.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'edutraker_db',  # Name of the database you created in MySQL
-        'USER': 'root',          # Your MySQL username
-        'PASSWORD': 'EduTraker@2025!', # Your MySQL password
-        'HOST': 'localhost',     # Or the IP address if hosted remotely
-        'PORT': '3306',          # Default MySQL port
+import sys
+
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'edutraker_db',  # Name of the database you created in MySQL
+            'USER': 'root',          # Your MySQL username
+            'PASSWORD': 'EduTraker@2025!', # Your MySQL password
+            'HOST': 'localhost',     # Or the IP address if hosted remotely
+            'PORT': '3306',          # Default MySQL port
+        }
+    }
 
 
 # Password validation

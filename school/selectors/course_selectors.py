@@ -3,13 +3,16 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
 from school.models import Course
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Role
 from accounts.policies.user_policies import _has_school_access
 
 
-def course_list(*, school_id: int, filters: dict) -> QuerySet[Course]:
+def course_list(*, school_id: int, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Course]:
     """Return a QuerySet of Courses for a specific school and grade."""
-    qs = Course.objects.select_related('grade').filter(school_id=school_id)
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = Course.all_objects.select_related('grade').filter(school_id=school_id)
+    else:
+        qs = Course.objects.select_related('grade').filter(school_id=school_id)
 
     if name := filters.get("name"):
         qs = qs.filter(name__icontains=name)
@@ -23,9 +26,14 @@ def course_list(*, school_id: int, filters: dict) -> QuerySet[Course]:
     return qs
 
 
-def course_get(*, course_id: int, school_id: int, actor: CustomUser) -> Course:
+def course_get(*, course_id: int, school_id: int, actor: CustomUser, include_inactive: bool = False) -> Course:
     """Retrieve a single Course by ID with permission check."""
-    course = get_object_or_404(Course, id=course_id, school_id=school_id)
+    if include_inactive and actor.role == Role.ADMIN:
+        base_qs = Course.all_objects
+    else:
+        base_qs = Course.objects
+
+    course = get_object_or_404(base_qs, id=course_id, school_id=school_id)
 
     if not _has_school_access(actor, course.school):
         raise PermissionDenied("You don't have permission to access courses for this school.")

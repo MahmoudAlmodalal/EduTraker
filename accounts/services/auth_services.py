@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError, PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import CustomUser, Role
+from student.services.student_services import student_create
 from workstream.models import WorkStream
 from accounts.selectors.auth_selectors import authenticate_user
 from accounts.selectors.user_selectors import user_get_by_email
@@ -102,25 +103,29 @@ def workstream_register_user(
 ) -> CustomUser:
     """
     Register a new user in a specific workstream with STUDENT role by default.
+    The Student profile with school/grade info can be added later by a manager.
     """
     # Check if email already exists
     if user_get_by_email(email=email):
         raise ValidationError("A user with this email already exists.")
     
-    # Validate workstream exists
+    # Validate workstream exists and is active
     try:
-        workstream = WorkStream.objects.get(id=workstream_id)
+        workstream = WorkStream.objects.get(id=workstream_id, is_active=True)
     except WorkStream.DoesNotExist:
-        raise ValidationError("Invalid workstream.")
+        raise ValidationError("Workstream not found.")
+    
+    # Check workstream capacity
     current_users_count = CustomUser.objects.filter(
         work_stream=workstream,
         is_active=True
     ).count()
 
-    if current_users_count >= workstream.max_user:
+    if current_users_count >= workstream.capacity:
         raise ValidationError(
             "This workstream has reached the maximum number of users."
         )
+    
     # Create user with STUDENT role and assign to workstream
     user = CustomUser(
         email=email,

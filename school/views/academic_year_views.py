@@ -9,6 +9,7 @@ from school.services.academic_year_services import (
     create_academic_year,
     update_academic_year,
     deactivate_academic_year,
+    activate_academic_year,
 )
 from school.serializers.academic_year_serializers import (
     AcademicYearCreateInputSerializer,
@@ -34,9 +35,9 @@ class AcademicYearListAPIView(APIView):
                 description='Filter by school ID'
             ),
             OpenApiParameter(
-                name='is_active',
+                name='include_inactive',
                 type=bool,
-                description='Filter by active status'
+                description='Include deactivated records'
             ),
         ],
         responses={
@@ -65,13 +66,10 @@ class AcademicYearListAPIView(APIView):
         query_ser = AcademicYearListQuerySerializer(data=request.query_params)
         query_ser.is_valid(raise_exception=True)
 
-        school_id = query_ser.validated_data.get("school_id")
-        is_active = query_ser.validated_data.get("is_active")
-
         academic_years = list_academic_years(
             actor=request.user,
-            school_id=school_id,
-            is_active=is_active,
+            school_id=query_ser.validated_data.get("school_id"),
+            include_inactive=query_ser.validated_data.get("include_inactive", False),
         )
 
         return Response(AcademicYearOutputSerializer(academic_years, many=True).data)
@@ -264,4 +262,33 @@ class AcademicYearDeactivateAPIView(APIView):
     def post(self, request, academic_year_id: int):
         ay = get_academic_year(actor=request.user, academic_year_id=academic_year_id)
         deactivate_academic_year(actor=request.user, academic_year=ay)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AcademicYearActivateAPIView(APIView):
+    """Activate an academic year."""
+    permission_classes = [IsWorkStreamManager]
+
+    @extend_schema(
+        tags=['Academic Year Management'],
+        summary='Activate academic year',
+        description='Activate a previously deactivated academic year.',
+        parameters=[
+            OpenApiParameter(
+                name='academic_year_id',
+                type=int,
+                location=OpenApiParameter.PATH,
+                description='Academic Year ID'
+            ),
+        ],
+        request=None,
+        responses={
+            204: OpenApiResponse(description='Academic year activated successfully'),
+            403: OpenApiResponse(description='Permission denied'),
+            404: OpenApiResponse(description='Academic year not found')
+        }
+    )
+    def post(self, request, academic_year_id: int):
+        ay = get_academic_year(actor=request.user, academic_year_id=academic_year_id, include_inactive=True)
+        activate_academic_year(actor=request.user, academic_year=ay)
         return Response(status=status.HTTP_204_NO_CONTENT)

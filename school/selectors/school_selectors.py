@@ -7,8 +7,13 @@ from rest_framework.exceptions import NotFound
 from accounts.policies.user_policies import _has_school_access
 
 
-def get_school(*, actor: CustomUser, school_id: int) -> School:
-    school = School.objects.filter(id=school_id, is_active=True).first()
+def school_get(*, actor: CustomUser, school_id: int, include_inactive: bool = False) -> School:
+    """Retrieve a single School by ID with permission check."""
+    if include_inactive and actor.role == Role.ADMIN:
+        school = School.all_objects.filter(id=school_id).first()
+    else:
+        school = School.objects.filter(id=school_id).first()
+
     if not school:
         raise NotFound("School not found")
 
@@ -18,8 +23,12 @@ def get_school(*, actor: CustomUser, school_id: int) -> School:
     return school
 
 
-def list_schools_for_actor(*, actor: CustomUser, work_stream_id: Optional[int] = None):
-    qs = School.objects.filter(is_active=True)
+def school_list(*, actor: CustomUser, work_stream_id: Optional[int] = None, include_inactive: bool = False):
+    """List schools accessible to the actor with filtering and RBAC."""
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = School.all_objects.all()
+    else:
+        qs = School.objects.all()
 
     if actor.role == Role.ADMIN:
         if work_stream_id:
@@ -31,6 +40,8 @@ def list_schools_for_actor(*, actor: CustomUser, work_stream_id: Optional[int] =
         if work_stream_id:
             qs = qs.filter(work_stream_id=work_stream_id)
         return qs
+        
     if actor.role == Role.MANAGER_SCHOOL:
         return qs.filter(id=actor.school_id)
+        
     return qs.none()
