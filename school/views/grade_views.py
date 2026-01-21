@@ -200,6 +200,7 @@ class GradeDeactivateApi(APIView):
         summary='Deactivate grade',
         description='Deactivate a grade (soft delete).',
         parameters=[OpenApiParameter(name='grade_id', type=int, location=OpenApiParameter.PATH, description='Grade ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, grade_id):
@@ -217,6 +218,7 @@ class GradeActivateApi(APIView):
         summary='Activate grade',
         description='Activate a previously deactivated grade.',
         parameters=[OpenApiParameter(name='grade_id', type=int, location=OpenApiParameter.PATH, description='Grade ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, grade_id):

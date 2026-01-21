@@ -122,7 +122,11 @@ class AttendanceDetailApi(APIView):
     """Attendance Detail."""
     permission_classes = [IsStaffUser]
 
-    @extend_schema(tags=['Teacher - Attendance'], summary='Get attendance record')
+    @extend_schema(
+        tags=['Teacher - Attendance'], 
+        summary='Get attendance record',
+        responses={200: AttendanceOutputSerializer}
+    )
     def get(self, request, attendance_id):
         record = attendance_get(attendance_id=attendance_id, actor=request.user)
         return Response(AttendanceOutputSerializer(record).data)
@@ -132,7 +136,12 @@ class AttendanceDeactivateApi(APIView):
     """Deactivate."""
     permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
 
-    @extend_schema(tags=['Teacher - Attendance'], summary='Deactivate attendance record')
+    @extend_schema(
+        tags=['Teacher - Attendance'], 
+        summary='Deactivate attendance record',
+        request=None,
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
+    )
     def post(self, request, attendance_id):
         record = attendance_get(attendance_id=attendance_id, actor=request.user)
         attendance_deactivate(attendance=record, actor=request.user)
@@ -143,7 +152,12 @@ class AttendanceActivateApi(APIView):
     """Activate."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
-    @extend_schema(tags=['Teacher - Attendance'], summary='Activate attendance record')
+    @extend_schema(
+        tags=['Teacher - Attendance'], 
+        summary='Activate attendance record',
+        request=None,
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
     def post(self, request, attendance_id):
         record = attendance_get(attendance_id=attendance_id, actor=request.user, include_inactive=True)
         attendance_activate(attendance=record, actor=request.user)

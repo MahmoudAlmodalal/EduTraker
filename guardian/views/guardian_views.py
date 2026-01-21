@@ -156,7 +156,12 @@ class GuardianDeactivateApi(APIView):
     """Deactivate."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
-    @extend_schema(tags=['Guardian Management'], summary='Deactivate guardian')
+    @extend_schema(
+        tags=['Guardian Management'], 
+        summary='Deactivate guardian',
+        request=None,
+        responses={204: OpenApiResponse(description='Deactivated successfully')}
+    )
     def post(self, request, guardian_id):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
         guardian_deactivate(guardian=guardian, actor=request.user)
@@ -167,7 +172,12 @@ class GuardianActivateApi(APIView):
     """Activate."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
-    @extend_schema(tags=['Guardian Management'], summary='Activate guardian')
+    @extend_schema(
+        tags=['Guardian Management'], 
+        summary='Activate guardian',
+        request=None,
+        responses={204: OpenApiResponse(description='Activated successfully')}
+    )
     def post(self, request, guardian_id):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user, include_inactive=True)
         guardian_activate(guardian=guardian, actor=request.user)

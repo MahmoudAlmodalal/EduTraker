@@ -122,14 +122,16 @@ class CourseAllocation(SoftDeleteModel):
 class Assignment(SoftDeleteModel):
     """
     Assignment or exam created by a teacher.
-    Schema: Assignments table
+    Schema: Assignments table (aligned with SRS)
     """
     EXAM_TYPE_CHOICES = [
-        ("assignment", "Assignment"),
+        ("homework", "Homework"),
         ("quiz", "Quiz"),
         ("midterm", "Midterm Exam"),
         ("final", "Final Exam"),
         ("project", "Project"),
+        ("participation", "Class Participation"),
+        ("assignment", "Assignment"),
     ]
     
     assignment_code = models.CharField(
@@ -151,13 +153,23 @@ class Assignment(SoftDeleteModel):
         related_name="assignments",
         help_text="Teacher who created this assignment"
     )
-    title = models.CharField(max_length=150, help_text="Assignment title")
+    title = models.CharField(max_length=200, help_text="Assignment title")
     description = models.TextField(null=True, blank=True, help_text="Assignment description")
-    due_date = models.DateTimeField(null=True, blank=True, help_text="Due date and time")
+    
+    # Assignment details
+    assignment_type = models.CharField(
+        max_length=50,
+        choices=EXAM_TYPE_CHOICES,
+        default="assignment",
+        help_text="Type of assignment/exam"
+    )
+    # Keep exam_type for backwards compatibility
     exam_type = models.CharField(
         max_length=50,
         choices=EXAM_TYPE_CHOICES,
-        help_text="Type of assignment/exam"
+        null=True,
+        blank=True,
+        help_text="Type of assignment/exam (deprecated, use assignment_type)"
     )
     full_mark = models.DecimalField(
         max_digits=5,
@@ -165,6 +177,30 @@ class Assignment(SoftDeleteModel):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Full marks for this assignment"
     )
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("1.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Weight for grading calculation"
+    )
+    
+    # Dates
+    assigned_date = models.DateField(null=True, blank=True, help_text="Date assignment was assigned")
+    due_date = models.DateTimeField(null=True, blank=True, help_text="Due date and time")
+    
+    # Resources
+    instructions_url = models.URLField(
+        blank=True,
+        default="",
+        help_text="URL to instructions"
+    )
+    attachments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of attachment file URLs"
+    )
+    
     is_published = models.BooleanField(default=False, help_text="Whether the assignment is published")
     
     class Meta:
@@ -175,6 +211,7 @@ class Assignment(SoftDeleteModel):
         indexes = [
             models.Index(fields=["due_date"], name="idx_assignments_due_date"),
             models.Index(fields=["is_published"], name="idx_assignments_published"),
+            models.Index(fields=["assigned_date"], name="idx_assignments_assigned"),
         ]
     
     def __str__(self):
@@ -234,10 +271,60 @@ class LearningMaterial(SoftDeleteModel):
         return f"{self.material_code} - {self.title}"
 
 
+class LessonPlan(SoftDeleteModel):
+    """
+    Weekly or daily lesson plans created by teachers.
+    Schema: Lesson_plans table (aligned with SRS FR-CM-001)
+    """
+    course = models.ForeignKey(
+        'school.Course',
+        on_delete=models.CASCADE,
+        related_name="lesson_plans",
+        help_text="Course this lesson plan is for"
+    )
+    classroom = models.ForeignKey(
+        'school.ClassRoom',
+        on_delete=models.CASCADE,
+        related_name="lesson_plans",
+        help_text="Classroom this lesson plan is for"
+    )
+    academic_year = models.ForeignKey(
+        'school.AcademicYear',
+        on_delete=models.CASCADE,
+        related_name="lesson_plans",
+        help_text="Academic year for this lesson plan"
+    )
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name="lesson_plans",
+        help_text="Teacher who created this lesson plan"
+    )
+    title = models.CharField(max_length=200, help_text="Lesson title")
+    content = models.TextField(help_text="Detailed lesson content/procedure")
+    objectives = models.TextField(null=True, blank=True, help_text="Learning objectives")
+    resources_needed = models.TextField(null=True, blank=True, help_text="Resources/materials needed")
+    date_planned = models.DateField(help_text="Date when this lesson is planned to be taught")
+    is_published = models.BooleanField(default=False, help_text="Whether the lesson plan is visible to others")
+
+    class Meta:
+        db_table = "lesson_plans"
+        verbose_name = "Lesson Plan"
+        verbose_name_plural = "Lesson Plans"
+        ordering = ["-date_planned", "title"]
+        indexes = [
+            models.Index(fields=["teacher", "date_planned"], name="idx_lesson_plans_teacher_date"),
+            models.Index(fields=["course", "academic_year"], name="idx_lesson_plans_course_year"),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.date_planned})"
+
+
 class Mark(SoftDeleteModel):
     """
-    Marks/scores for students on assignments.
-    Schema: Marks table
+    Marks/scores for students on assignments (Grade in SRS).
+    Schema: Marks table (aligned with SRS Grade model)
     """
     student = models.ForeignKey(
         'student.Student',
@@ -251,13 +338,36 @@ class Mark(SoftDeleteModel):
         related_name="marks",
         help_text="Assignment this mark is for"
     )
+    # Grade information
     score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0.00"))],
         help_text="Score/mark received"
     )
-    feedback = models.TextField(null=True, blank=True, help_text="Feedback on the submission")
+    max_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text="Maximum possible score (defaults to assignment.full_mark)"
+    )
+    percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Calculated percentage score"
+    )
+    letter_grade = models.CharField(
+        max_length=2,
+        blank=True,
+        default="",
+        help_text="Letter grade (A, B, C, etc.)"
+    )
+    # Metadata
+    feedback = models.TextField(null=True, blank=True, help_text="Teacher comments/feedback")
     graded_by = models.ForeignKey(
         Teacher,
         on_delete=models.SET_NULL,
@@ -267,6 +377,10 @@ class Mark(SoftDeleteModel):
         help_text="Teacher who graded this"
     )
     graded_at = models.DateTimeField(null=True, blank=True, help_text="When this was graded")
+    is_final = models.BooleanField(
+        default=False,
+        help_text="Whether this grade is finalized/locked"
+    )
     
     class Meta:
         db_table = "marks"

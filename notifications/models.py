@@ -4,9 +4,20 @@ from accounts.models import SoftDeleteModel
 
 class Notification(SoftDeleteModel):
     """
-    System notifications with different scopes.
-    Schema: Notifications table
+    System notifications for users.
+    Schema: Notifications table (aligned with SRS)
     """
+    NOTIFICATION_TYPE_CHOICES = [
+        ("grade_posted", "Grade Posted"),
+        ("assignment_due", "Assignment Due Soon"),
+        ("attendance_marked", "Attendance Marked"),
+        ("announcement", "Announcement"),
+        ("message_received", "Message Received"),
+        ("account_change", "Account Change"),
+        ("system", "System Notification"),
+    ]
+    
+    # Legacy scope fields for backwards compatibility
     SCOPE_TYPE_CHOICES = [
         ("Workstream", "Workstream"),
         ("School", "School"),
@@ -16,22 +27,72 @@ class Notification(SoftDeleteModel):
     sender = models.ForeignKey(
         'accounts.CustomUser',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="sent_notifications",
         help_text="User who created this notification"
     )
+    recipient = models.ForeignKey(
+        'accounts.CustomUser',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifications",
+        help_text="User receiving this notification"
+    )
+    
+    # Notification content
+    title = models.CharField(max_length=200, help_text="Notification title")
+    message = models.TextField(help_text="Notification body/content")
+    notification_type = models.CharField(
+        max_length=50,
+        choices=NOTIFICATION_TYPE_CHOICES,
+        default="system",
+        help_text="Type of notification"
+    )
+    
+    # Links and actions
+    action_url = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="URL for action"
+    )
+    related_object_type = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Type of related object"
+    )
+    related_object_id = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="ID of related object"
+    )
+    
+    # Status
+    is_read = models.BooleanField(default=False, help_text="Whether the notification has been read")
+    read_at = models.DateTimeField(null=True, blank=True, help_text="When the notification was read")
+    
+    # Delivery tracking
+    email_sent = models.BooleanField(default=False, help_text="Whether email notification was sent")
+    push_sent = models.BooleanField(default=False, help_text="Whether push notification was sent")
+    
+    # Legacy scope fields (for backwards compatibility)
     scope_type = models.CharField(
         max_length=20,
         choices=SCOPE_TYPE_CHOICES,
+        null=True,
+        blank=True,
         db_index=True,
-        help_text="Scope type for this notification"
+        help_text="Scope type for this notification (legacy)"
     )
     scope_id = models.IntegerField(
+        null=True,
+        blank=True,
         db_index=True,
-        help_text="ID of the scope entity (workstream, school, or user)"
+        help_text="ID of the scope entity (legacy)"
     )
-    title = models.CharField(max_length=150, help_text="Notification title")
-    body = models.TextField(help_text="Notification body/content")
-    body = models.TextField(help_text="Notification body/content")
     
     class Meta:
         db_table = "notifications"
@@ -39,9 +100,10 @@ class Notification(SoftDeleteModel):
         verbose_name_plural = "Notifications"
         ordering = ["-created_at"]
         indexes = [
+            models.Index(fields=["recipient", "is_read", "created_at"], name="idx_notifications_recipient"),
             models.Index(fields=["scope_type", "scope_id"], name="idx_notifications_scope"),
             models.Index(fields=["created_at"], name="idx_notifications_created"),
         ]
     
     def __str__(self):
-        return f"{self.title} ({self.scope_type}: {self.scope_id})"
+        return f"{self.title} -> {self.recipient.email}"

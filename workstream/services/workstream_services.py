@@ -14,10 +14,10 @@ from accounts.policies.workstream_policies import (
 def workstream_create(
     *,
     creator: CustomUser,
-    name: str,
+    workstream_name: str,
     description: str | None,
     manager: CustomUser | None = None,
-    max_user: int = 100,
+    capacity: int = 100,
 ) -> WorkStream:
 
     if not can_create_workstream(actor=creator):
@@ -32,14 +32,14 @@ def workstream_create(
         if manager.work_stream is not None:
             raise ValidationError("Manager is already assigned to workstream")
 
-    if WorkStream.objects.filter(name__iexact=name).exists():
+    if WorkStream.objects.filter(workstream_name__iexact=workstream_name).exists():
         raise ValidationError("Workstream with this name already exists.")
 
     workstream = WorkStream(
-        name=name,
+        workstream_name=workstream_name,
         description=description,
         manager=manager,
-        max_user=max_user,
+        capacity=capacity,
     )
 
     workstream.full_clean()
@@ -78,12 +78,12 @@ def workstream_update(
         if manager.work_stream is not None and manager.work_stream.id != workstream.id:
             raise ValidationError("Manager is already assigned to workstream.")
 
-    # Validate name uniqueness if name is being updated
-    if "name" in data:
-        new_name = data["name"]
+    # Validate name uniqueness if workstream_name is being updated
+    if "workstream_name" in data:
+        new_name = data["workstream_name"]
         if not new_name or not new_name.strip():
             raise ValidationError("Workstream name cannot be empty.")
-        if WorkStream.objects.filter(name__iexact=new_name).exclude(id=workstream.id).exists():
+        if WorkStream.objects.filter(workstream_name__iexact=new_name).exclude(id=workstream.id).exists():
             raise ValidationError("Workstream with this name already exists.")
 
     # Track if manager is being changed

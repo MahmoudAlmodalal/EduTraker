@@ -1,6 +1,7 @@
 # school/urls.py
 
 from django.urls import path
+app_name = 'school'
 from school.views.school_views import (
     SchoolCreateAPIView,
     SchoolListAPIView,

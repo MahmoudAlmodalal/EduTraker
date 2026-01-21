@@ -132,12 +132,22 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
         related_name="users",
         help_text="School this user belongs to"
     )
+    # Audit fields
+    created_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_users",
+        help_text="User who created this account"
+    )
     # Django auth specific fields
     is_staff = models.BooleanField(
         default=False,
         help_text="Designates whether the user can log into this admin site."
     )
     date_joined = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(null=True, blank=True, help_text="Last login timestamp")
     
     objects = UserManager()
     
@@ -165,13 +175,21 @@ class SystemConfiguration(SoftDeleteModel):
     System-wide or school-specific configuration settings.
     Schema: System_Configurations table
     """
+    work_stream = models.ForeignKey(
+        "workstream.WorkStream",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="configurations",
+        help_text="Workstream-specific config (null for global/school-specific)"
+    )
     school = models.ForeignKey(
         "school.School",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="configurations",
-        help_text="School-specific config (null for global)"
+        help_text="School-specific config (null for global/workstream-specific)"
     )
     config_key = models.CharField(max_length=100, help_text="Configuration key")
     config_value = models.TextField(help_text="Configuration value")
@@ -184,12 +202,23 @@ class SystemConfiguration(SoftDeleteModel):
         verbose_name_plural = "System Configurations"
         constraints = [
             models.UniqueConstraint(
+                fields=["work_stream", "config_key"],
+                condition=models.Q(school__isnull=True),
+                name="unique_workstream_config_key"
+            ),
+            models.UniqueConstraint(
                 fields=["school", "config_key"],
                 name="unique_school_config_key"
+            ),
+             models.UniqueConstraint(
+                fields=["config_key"],
+                condition=models.Q(school__isnull=True, work_stream__isnull=True),
+                name="unique_global_config_key"
             )
         ]
         indexes = [
-            models.Index(fields=["school", "config_key"], name="idx_sys_config_lookup"),
+            models.Index(fields=["school", "config_key"], name="idx_sys_config_school"),
+            models.Index(fields=["work_stream", "config_key"], name="idx_sys_config_workstream"),
         ]
     
     def __str__(self):

@@ -26,6 +26,16 @@ from teacher.views.mark_views import (
     MarkDetailApi,
     MarkDeactivateApi,
     MarkActivateApi,
+    BulkMarkImportApi,
+    KnowledgeGapListApi,
+)
+from teacher.views.learning_material_views import (
+    LearningMaterialListCreateView,
+    LearningMaterialDetailView,
+)
+from teacher.views.lesson_plan_views import (
+    LessonPlanListCreateAPIView,
+    LessonPlanRetrieveUpdateDestroyAPIView,
 )
 
 app_name = 'teacher'
@@ -57,4 +67,14 @@ urlpatterns = [
     path('marks/<int:mark_id>/', MarkDetailApi.as_view(), name='mark-detail'),
     path('marks/<int:mark_id>/deactivate/', MarkDeactivateApi.as_view(), name='mark-deactivate'),
     path('marks/<int:mark_id>/activate/', MarkActivateApi.as_view(), name='mark-activate'),
+
+    # Learning Materials
+    path('learning-materials/', LearningMaterialListCreateView.as_view(), name='learning-material-list-create'),
+    path('learning-materials/<int:pk>/', LearningMaterialDetailView.as_view(), name='learning-material-detail'),
+
+    # Lesson Plans
+    path('lesson-plans/', LessonPlanListCreateAPIView.as_view(), name='lesson-plan-list-create'),
+    path('lesson-plans/<int:pk>/', LessonPlanRetrieveUpdateDestroyAPIView.as_view(), name='lesson-plan-detail'),
+    path('marks/bulk-import/', BulkMarkImportApi.as_view(), name='mark-bulk-import'),
+    path('analytics/knowledge-gaps/', KnowledgeGapListApi.as_view(), name='knowledge-gaps'),
 ]

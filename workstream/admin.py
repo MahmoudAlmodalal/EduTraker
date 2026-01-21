@@ -4,7 +4,7 @@ from .models import WorkStream
 
 @admin.register(WorkStream)
 class WorkStreamAdmin(admin.ModelAdmin):
-    list_display = ["id", "name", "manager", "max_user", "is_active"]
+    list_display = ["id", "workstream_name", "manager", "capacity", "is_active"]
     list_filter = ["is_active", "manager"]
-    search_fields = ["name", "description", "manager__email"]
-    ordering = ["name"]
+    search_fields = ["workstream_name", "description", "manager__email"]
+    ordering = ["workstream_name"]

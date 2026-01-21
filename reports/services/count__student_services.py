@@ -104,7 +104,7 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
         'school_id': student.user.school_id,
         'school_name': student.user.school.school_name if student.user.school else None,
         'current_grade': current_grade,
-        'current_status': student.current_status,
+        'current_status': student.enrollment_status,
         'admission_date': str(student.admission_date),
         'current_classroom': current_classroom
     }
@@ -415,7 +415,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
     
     total_classmates = classmates.count()
     active_classmates = classmates.filter(
-        student__current_status='active'
+        student__enrollment_status='active'
     ).count()
     
     return {

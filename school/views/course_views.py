@@ -219,6 +219,7 @@ class CourseDeactivateApi(APIView):
             OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
             OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
         ],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, school_id, course_id):
@@ -239,6 +240,7 @@ class CourseActivateApi(APIView):
             OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
             OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
         ],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, school_id, course_id):

@@ -48,8 +48,8 @@ def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
         work_stream_id=workstream_id
     ).select_related('manager').annotate(
         student_count=Count(
-            'students',
-            filter=Q(students__current_status='active')
+            'users__student_profile',
+            filter=Q(users__student_profile__enrollment_status='active')
         ),
         teacher_count=Count(
             'users__teacher_profile',
@@ -125,10 +125,10 @@ def get_schools_in_workstream(*, workstream_id: int, actor: CustomUser) -> Dict:
     schools = School.objects.filter(
         work_stream_id=workstream_id
     ).select_related('manager').annotate(
-        student_count=Count('students'),
+        student_count=Count('users__student_profile'),
         active_student_count=Count(
-            'students',
-            filter=Q(students__current_status='active')
+            'users__student_profile',
+            filter=Q(users__student_profile__enrollment_status='active')
         )
     )
     
@@ -268,7 +268,7 @@ def get_classrooms_in_workstream(*, workstream_id: int, actor: CustomUser) -> Di
             classroom_count=Count('id'),
             student_count=Count(
                 'enrollments__student',
-                filter=Q(enrollments__student__current_status='active')
+                filter=Q(enrollments__status='active')
             )
         ).order_by('grade__numeric_level')
         

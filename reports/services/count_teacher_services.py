@@ -62,7 +62,7 @@ def get_teacher_summary(*, teacher_id: int, actor: CustomUser) -> Dict:
     ).annotate(
         student_count=Count(
             'class_room__enrollments__student',
-            filter=Q(class_room__enrollments__student__current_status='active')
+            filter=Q(class_room__enrollments__student__enrollment_status='active')
         )
     )
     
@@ -88,7 +88,7 @@ def get_teacher_summary(*, teacher_id: int, actor: CustomUser) -> Dict:
     ).select_related('grade').annotate(
         student_count=Count(
             'enrollments__student',
-            filter=Q(enrollments__student__current_status='active')
+            filter=Q(enrollments__student__enrollment_status='active')
         )
     )
     
@@ -105,7 +105,7 @@ def get_teacher_summary(*, teacher_id: int, actor: CustomUser) -> Dict:
     # Calculate total unique students
     total_students = Student.objects.filter(
         enrollments__class_room_id__in=classroom_ids,
-        current_status='active'
+        enrollment_status='active'
     ).distinct().count()
     
     # Count unique courses and classrooms
@@ -178,7 +178,7 @@ def get_students_by_course(*, teacher_id: int, actor: CustomUser) -> Dict:
         # Get students in this classroom
         enrollments = StudentEnrollment.objects.filter(
             class_room=alloc.class_room,
-            student__current_status='active'
+            student__enrollment_status='active'
         ).select_related('student__user')
         
         students = [
@@ -258,7 +258,7 @@ def get_students_by_classroom(*, teacher_id: int, actor: CustomUser) -> Dict:
     for classroom_id, data in classrooms_dict.items():
         enrollments = StudentEnrollment.objects.filter(
             class_room_id=classroom_id,
-            student__current_status='active'
+            student__enrollment_status='active'
         ).select_related('student__user')
         
         students = [
@@ -307,7 +307,7 @@ def get_course_details(*, course_id: int, teacher_id: int, actor: CustomUser) ->
     ).select_related('class_room').annotate(
         student_count=Count(
             'class_room__enrollments__student',
-            filter=Q(class_room__enrollments__student__current_status='active')
+            filter=Q(class_room__enrollments__student__enrollment_status='active')
         )
     )
     

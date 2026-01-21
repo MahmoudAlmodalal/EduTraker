@@ -21,6 +21,39 @@ class School(SoftDeleteModel):
         blank=True,
         related_name="managed_schools",
     )
+    location = models.CharField(
+        max_length=300,
+        null=True,
+        blank=True,
+        help_text="School location/address"
+    )
+    capacity = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Maximum number of students"
+    )
+    contact_email = models.EmailField(
+        null=True,
+        blank=True,
+        help_text="School contact email"
+    )
+    contact_phone = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        help_text="School contact phone"
+    )
+    academic_year_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Academic year start date"
+    )
+    academic_year_end = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Academic year end date"
+    )
 
     class Meta:
         db_table = "schools"
@@ -48,7 +81,6 @@ class AcademicYear(SoftDeleteModel):
         help_text="School this academic year belongs to",
     )
     start_date = models.DateField(help_text="Academic year start date")
-    end_date = models.DateField(help_text="Academic year end date")
     end_date = models.DateField(help_text="Academic year end date")
 
     class Meta:

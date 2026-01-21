@@ -246,6 +246,7 @@ class TeacherDeactivateApi(APIView):
         summary='Deactivate teacher',
         description='Deactivate a teacher profile (soft delete).',
         parameters=[OpenApiParameter(name='teacher_id', type=int, location=OpenApiParameter.PATH, description='Teacher ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, teacher_id):
@@ -263,6 +264,7 @@ class TeacherActivateApi(APIView):
         summary='Activate teacher',
         description='Activate a previously deactivated teacher profile.',
         parameters=[OpenApiParameter(name='teacher_id', type=int, location=OpenApiParameter.PATH, description='Teacher ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, teacher_id):

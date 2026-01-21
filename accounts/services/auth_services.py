@@ -121,7 +121,7 @@ def workstream_register_user(
         is_active=True
     ).count()
 
-    if current_users_count >= workstream.max_user:
+    if current_users_count >= workstream.capacity:
         raise ValidationError(
             "This workstream has reached the maximum number of users."
         )

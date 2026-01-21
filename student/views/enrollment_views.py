@@ -237,6 +237,7 @@ class EnrollmentDeactivateApi(APIView):
         summary='Deactivate enrollment',
         description='Deactivate an enrollment (soft delete).',
         parameters=[OpenApiParameter(name='enrollment_id', type=int, location=OpenApiParameter.PATH, description='Enrollment ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, enrollment_id):
@@ -254,6 +255,7 @@ class EnrollmentActivateApi(APIView):
         summary='Activate enrollment',
         description='Activate a previously deactivated enrollment.',
         parameters=[OpenApiParameter(name='enrollment_id', type=int, location=OpenApiParameter.PATH, description='Enrollment ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, enrollment_id):

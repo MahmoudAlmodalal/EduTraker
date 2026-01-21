@@ -78,9 +78,10 @@ def student_create(
         school_id=school_id,
     )
 
-    # Create the student profile (school is on user, not student)
+    # Create the student profile
     student = Student(
         user=user,
+        grade_id=grade_id,
         date_of_birth=date_of_birth,
         admission_date=admission_date,
         current_status=current_status,

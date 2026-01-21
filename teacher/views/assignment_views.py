@@ -156,6 +156,7 @@ class AssignmentDeactivateApi(APIView):
         summary='Deactivate assignment',
         description='Deactivate an assignment (soft delete).',
         parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, assignment_id):
@@ -173,6 +174,7 @@ class AssignmentActivateApi(APIView):
         summary='Activate assignment',
         description='Activate a previously deactivated assignment.',
         parameters=[OpenApiParameter(name='assignment_id', type=int, location=OpenApiParameter.PATH, description='Assignment ID')],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, assignment_id):

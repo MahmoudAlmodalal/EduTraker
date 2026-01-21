@@ -241,6 +241,7 @@ class ClassRoomDeactivateApi(APIView):
             OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
             OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID'),
         ],
+        request=None,
         responses={204: OpenApiResponse(description='Deactivated successfully')}
     )
     def post(self, request, school_id, academic_year_id, classroom_id):
@@ -262,6 +263,7 @@ class ClassRoomActivateApi(APIView):
             OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
             OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID'),
         ],
+        request=None,
         responses={204: OpenApiResponse(description='Activated successfully')}
     )
     def post(self, request, school_id, academic_year_id, classroom_id):

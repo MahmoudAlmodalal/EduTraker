@@ -9,6 +9,7 @@ from reports.views.stats_views import (
     ComprehensiveStatisticsView,
     DashboardStatisticsView
 )
+from reports.views.export_views import ReportExportView
 
 urlpatterns = [
     # Dashboard statistics (role-based)
@@ -34,4 +35,7 @@ urlpatterns = [
     
     # Classroom statistics
     path('statistics/classroom/<int:classroom_id>/', ClassroomStudentCountView.as_view(), name='classroom-student-count'),
+    
+    # Export
+    path('export/', ReportExportView.as_view(), name='report-export'),
 ]
