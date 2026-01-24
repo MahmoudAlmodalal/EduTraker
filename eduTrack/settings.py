@@ -166,11 +166,11 @@ else:
     DATABASES = {
         'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
+        'NAME': test,
+        'USER': 3YDpriSpMwZ3Zdg.root,
+        'PASSWORD': lgjXy7L4VgGIEvF4,
+        'HOST': gateway01.eu-central-1.prod.aws.tidbcloud.com,
+        'PORT': 4000,
         'OPTIONS': {
             'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'} # لضمان عمل الاتصال على Render
         }
