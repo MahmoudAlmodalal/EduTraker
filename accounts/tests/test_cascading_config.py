@@ -1,5 +1,6 @@
 from rest_framework.test import APITestCase
-from accounts.models import SystemConfiguration, CustomUser, Role, WorkStream
+from accounts.models import SystemConfiguration, CustomUser, Role
+from workstream.models import WorkStream
 from school.models import School
 from accounts.selectors.configuration_selectors import config_get_value
 

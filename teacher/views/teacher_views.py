@@ -4,6 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManagerOrSecretary
+from accounts.pagination import PaginatedAPIMixin
 from teacher.models import Teacher
 from teacher.selectors.teacher_selectors import teacher_list, teacher_get
 from teacher.services.teacher_services import (
@@ -67,7 +68,7 @@ class TeacherOutputSerializer(serializers.ModelSerializer):
 # Teacher Views
 # =============================================================================
 
-class TeacherListApi(APIView):
+class TeacherListApi(PaginatedAPIMixin, APIView):
     """List all teachers accessible to the current user."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
@@ -80,6 +81,7 @@ class TeacherListApi(APIView):
             OpenApiParameter(name='specialization', type=str, description='Filter by specialization'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: TeacherOutputSerializer(many=True)},
         examples=[
@@ -108,6 +110,9 @@ class TeacherListApi(APIView):
             user=request.user,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(teachers)
+        if page is not None:
+            return self.get_paginated_response(TeacherOutputSerializer(page, many=True).data)
         return Response(TeacherOutputSerializer(teachers, many=True).data)
 
 

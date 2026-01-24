@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from accounts.permissions import IsSuperAdmin
 from accounts.models import CustomUser
+from accounts.pagination import PaginatedAPIMixin
 
 from workstream.models import WorkStream
 from workstream.selectors.workstream_selectors import (
@@ -82,7 +83,7 @@ class WorkstreamInfoView(APIView):
         )
 
 
-class WorkstreamListCreateAPIView(APIView):
+class WorkstreamListCreateAPIView(PaginatedAPIMixin, APIView):
     permission_classes = [IsSuperAdmin]
 
     @extend_schema(
@@ -102,6 +103,13 @@ class WorkstreamListCreateAPIView(APIView):
                 type=bool,
                 location=OpenApiParameter.QUERY,
                 description="Filter by active status.",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Page number.",
                 required=False,
             ),
         ],
@@ -138,7 +146,12 @@ class WorkstreamListCreateAPIView(APIView):
             filters=query_ser.validated_data,
             user=request.user,
         )
-        print(f"DEBUG: View found {workstreams.count()} workstreams: {list(workstreams.values_list('id', flat=True))}")
+
+        page = self.paginate_queryset(workstreams)
+        if page is not None:
+            return self.get_paginated_response(
+                WorkstreamOutputSerializer(page, many=True).data
+            )
 
         return Response(
             WorkstreamOutputSerializer(workstreams, many=True).data,
@@ -219,6 +232,7 @@ class WorkstreamListCreateAPIView(APIView):
             WorkstreamOutputSerializer(workstream).data,
             status=status.HTTP_201_CREATED,
         )
+
 
 class WorkstreamUpdateAPIView(APIView):
     permission_classes = [IsSuperAdmin]
@@ -305,6 +319,7 @@ class WorkstreamUpdateAPIView(APIView):
     def patch(self, request, workstream_id: int):
         """Handle PATCH requests by delegating to the same logic as PUT."""
         return self.put(request, workstream_id)
+
 
 class WorkstreamDeactivateAPIView(APIView):
     permission_classes = [IsSuperAdmin]

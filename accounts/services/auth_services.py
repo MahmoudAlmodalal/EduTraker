@@ -165,3 +165,69 @@ def workstream_login(
         'user': user,
         'tokens': tokens,
     }
+
+
+def logout_user(*, refresh_token: str) -> bool:
+    """
+    Logout user by blacklisting their refresh token.
+    """
+    try:
+        token = RefreshToken(refresh_token)
+        token.blacklist()
+        return True
+    except Exception:
+        raise ValidationError("Invalid or expired refresh token.")
+
+
+def request_password_reset(*, email: str) -> Dict:
+    """
+    Request a password reset for a user.
+    Returns a reset token that can be used to reset the password.
+    In production, this would send an email with the reset link.
+    """
+    user = user_get_by_email(email=email)
+    
+    if not user:
+        # Don't reveal whether the email exists
+        return {'message': 'If this email exists, a password reset link has been sent.'}
+    
+    if not user.is_active:
+        return {'message': 'If this email exists, a password reset link has been sent.'}
+    
+    # Generate a password reset token
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    
+    # In production, you would send an email here
+    # For now, we return the token for testing purposes
+    return {
+        'message': 'If this email exists, a password reset link has been sent.',
+        'uid': uid,
+        'token': token,
+    }
+
+
+def reset_password(*, uid: str, token: str, new_password: str) -> bool:
+    """
+    Reset user's password using the reset token.
+    """
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    
+    try:
+        user_id = urlsafe_base64_decode(uid).decode()
+        user = CustomUser.objects.get(pk=user_id)
+    except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+        raise ValidationError("Invalid reset link.")
+    
+    if not default_token_generator.check_token(user, token):
+        raise ValidationError("Invalid or expired reset token.")
+    
+    user.set_password(new_password)
+    user.save()
+    
+    return True

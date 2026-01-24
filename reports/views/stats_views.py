@@ -14,7 +14,8 @@ from reports.serializers import (
     DashboardStatisticsSerializer
 )
 
-from accounts.permissions import IsStaffUser, IsAdminOrManager
+from accounts.permissions import IsStaffUser, IsAdminOrManager, IsStudent
+from rest_framework.permissions import IsAuthenticated
 from reports.services.count_services import (
     get_student_count_by_teacher,
     get_student_count_by_workstream,
@@ -341,7 +342,7 @@ class ComprehensiveStatisticsView(APIView):
     """
     GET: Get comprehensive statistics based on user role
     """
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsAuthenticated]
     
     @extend_schema(
         tags=['Reports & Statistics'],
@@ -380,7 +381,7 @@ class DashboardStatisticsView(APIView):
     GET: Get dashboard statistics for the current user
     This provides quick stats relevant to the user's role
     """
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsAuthenticated]
     
     @extend_schema(
         tags=['Reports & Statistics'],
@@ -475,6 +476,30 @@ class DashboardStatisticsView(APIView):
                     ).count()
                 }
             
+            elif user.role == Role.STUDENT:
+                from reports.services.count__student_services import get_student_dashboard_statistics
+                stats = get_student_dashboard_statistics(student_id=user.id, actor=user)
+            
+            elif user.role == Role.GUARDIAN:
+                from guardian.models import GuardianStudentLink
+                from django.db.models import Count, Avg
+                
+                links = GuardianStudentLink.objects.filter(guardian_id=user.id).select_related('student', 'student__user')
+                student_ids = links.values_list('student_id', flat=True)
+                
+                stats = {
+                    'total_children': links.count(),
+                    'children': [
+                        {
+                            'id': link.student_id,
+                            'name': link.student.user.full_name,
+                            'grade': link.student.grade.grade_name if link.student.grade else "N/A",
+                            'gpa': str(link.student.current_gpa) if link.student.current_gpa else "0.0",
+                        } for link in links
+                    ],
+                    'total_absences': sum(link.student.total_absences for link in links),
+                }
+
             return Response({
                 'role': user.role,
                 'statistics': stats

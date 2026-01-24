@@ -107,16 +107,12 @@ class ReportsApiTests(APITestCase):
         self.client.force_authenticate(user=self.teacher_user)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Depending on logic, might be 0 if logic relies on Course Assignment not established here,
-        # but it shouldn't crash.
         self.assertEqual(response.data['role'], 'teacher')
 
     def test_teacher_student_count(self):
         url = reverse("teacher-student-count", args=[self.teacher_user.id])
-        self.client.force_authenticate(user=self.admin) # Admin can view others
+        self.client.force_authenticate(user=self.admin)
         response = self.client.get(url)
-        # Assuming the service might return 404 if no complex mapping found or 0 count.
-        # But we expect 200 OK.
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
     def test_school_student_count(self):
@@ -125,8 +121,35 @@ class ReportsApiTests(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['school_id'], self.school.id)
-        # Should see at least 1 student if `by_grade` logic works on Student.grade
         self.assertTrue(response.data['total_students'] >= 0)
+
+    def test_workstream_student_count(self):
+        url = reverse("workstream-student-count", args=[self.workstream.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['workstream_id'], self.workstream.id)
+
+    def test_school_manager_student_count(self):
+        url = reverse("school-manager-student-count", args=[self.manager.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['manager_id'], self.manager.id)
+
+    def test_course_student_count(self):
+        url = reverse("course-student-count", args=[self.course.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['course_id'], self.course.id)
+
+    def test_classroom_student_count(self):
+        url = reverse("classroom-student-count", args=[self.classroom.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['classroom_id'], self.classroom.id)
 
     def test_comprehensive_statistics(self):
         url = reverse("comprehensive-statistics")
@@ -134,3 +157,16 @@ class ReportsApiTests(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue('statistics' in response.data)
+
+    def test_stats_unauthorized(self):
+        # Student cannot access school stats
+        url = reverse("school-student-count", args=[self.school.id])
+        self.client.force_authenticate(user=self.s1_user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_stats_not_found(self):
+        url = reverse("school-student-count", args=[9999])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

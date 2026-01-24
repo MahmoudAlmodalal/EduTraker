@@ -81,7 +81,7 @@ def secretary_update(*, secretary: Secretary, actor: CustomUser, data: dict) -> 
     elif actor.role == Role.MANAGER_SCHOOL:
         if secretary.user.school_id != actor.school_id:
             raise PermissionDenied("Permission denied.")
-    elif actor.id != secretary.user_id:
+    elif str(actor.id) != str(secretary.user_id):
          raise PermissionDenied("Permission denied.")
 
     # Define allowed fields based on role
@@ -137,7 +137,11 @@ def secretary_deactivate(*, secretary: Secretary, actor: CustomUser) -> Secretar
         if secretary.user.school_id != actor.school_id:
             raise PermissionDenied("Permission denied.")
 
+    # Deactivate both user and secretary profile
     secretary.user.is_active = False
     secretary.user.save()
+    
+    secretary.is_active = False
+    secretary.save()
 
     return secretary

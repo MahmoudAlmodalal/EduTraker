@@ -28,7 +28,7 @@ def course_list(*, school_id: int, actor: CustomUser, filters: dict, include_ina
 
 def course_get(*, course_id: int, school_id: int, actor: CustomUser, include_inactive: bool = False) -> Course:
     """Retrieve a single Course by ID with permission check."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         base_qs = Course.all_objects
     else:
         base_qs = Course.objects

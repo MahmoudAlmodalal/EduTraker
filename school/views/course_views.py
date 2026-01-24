@@ -4,6 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManager
+from accounts.pagination import PaginatedAPIMixin
 from school.models import Course
 from school.selectors.school_selectors import school_get
 from school.selectors.course_selectors import course_list, course_get
@@ -48,7 +49,7 @@ class CourseFilterSerializer(serializers.Serializer):
 # Course Views
 # =============================================================================
 
-class CourseListApi(APIView):
+class CourseListApi(PaginatedAPIMixin, APIView):
     """List courses for a specific school."""
     permission_classes = [IsAdminOrManager]
 
@@ -62,6 +63,7 @@ class CourseListApi(APIView):
             OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
             OpenApiParameter(name='course_code', type=str, description='Filter by code'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: CourseOutputSerializer(many=True)},
         examples=[
@@ -89,6 +91,9 @@ class CourseListApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(courses)
+        if page is not None:
+            return self.get_paginated_response(CourseOutputSerializer(page, many=True).data)
         return Response(CourseOutputSerializer(courses, many=True).data)
 
 

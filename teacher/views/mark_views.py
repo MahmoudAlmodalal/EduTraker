@@ -1,9 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
+from decimal import Decimal
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent
+from accounts.pagination import PaginatedAPIMixin
 from teacher.models import Mark, Assignment
 from teacher.selectors.mark_selectors import mark_list, mark_get
 from teacher.services.mark_services import (
@@ -56,9 +58,9 @@ class MarkOutputSerializer(serializers.ModelSerializer):
 # Mark Views
 # =============================================================================
 
-class MarkListApi(APIView):
+class MarkListApi(PaginatedAPIMixin, APIView):
     """List marks."""
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsStaffUser | IsStudent]
 
     @extend_schema(
         tags=['Teacher - Marks'],
@@ -67,6 +69,7 @@ class MarkListApi(APIView):
             OpenApiParameter(name='student_id', type=int),
             OpenApiParameter(name='assignment_id', type=int),
             OpenApiParameter(name='include_inactive', type=bool),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: MarkOutputSerializer(many=True)}
     )
@@ -78,6 +81,9 @@ class MarkListApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(records)
+        if page is not None:
+            return self.get_paginated_response(MarkOutputSerializer(page, many=True).data)
         return Response(MarkOutputSerializer(records, many=True).data)
 
 
@@ -111,7 +117,7 @@ class MarkRecordApi(APIView):
 
 class MarkDetailApi(APIView):
     """Mark Detail."""
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsStaffUser | IsStudent]
 
     @extend_schema(
         tags=['Teacher - Marks'], 

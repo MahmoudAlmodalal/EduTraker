@@ -1,6 +1,7 @@
 from typing import Optional, Any
 from django.db.models import Q
-from accounts.models import SystemConfiguration, WorkStream
+from accounts.models import SystemConfiguration
+from workstream.models import WorkStream
 from school.models import School
 
 def config_get_value(

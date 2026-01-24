@@ -23,6 +23,14 @@ def assignment_list(*, actor: CustomUser, filters: dict, include_inactive: bool 
     elif actor.role == Role.TEACHER:
         # Teachers see their own assignments
         qs = qs.filter(created_by__user_id=actor.id)
+    elif actor.role == Role.STUDENT:
+        # Students see assignments for classrooms they are enrolled in
+        from student.models import StudentEnrollment
+        enrolled_classroom_ids = StudentEnrollment.objects.filter(
+            student__user_id=actor.id,
+            status__in=['active', 'enrolled']
+        ).values_list('class_room_id', flat=True)
+        qs = qs.filter(created_by__user__school__classrooms__id__in=enrolled_classroom_ids).distinct()
     else:
         qs = qs.none()
 

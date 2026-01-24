@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from accounts.serializers import MessageSerializer
 
 from accounts.permissions import IsAdminOrManager
+from accounts.pagination import PaginatedAPIMixin
 from secretary.models import Secretary
 from secretary.selectors import secretary_list, secretary_get
 from secretary.services import (
@@ -54,7 +55,7 @@ class SecretaryFilterSerializer(serializers.Serializer):
 # Secretary Views
 # =============================================================================
 
-class SecretaryListApi(APIView):
+class SecretaryListApi(PaginatedAPIMixin, APIView):
     """List all secretaries accessible to the current user."""
     permission_classes = [IsAdminOrManager]
 
@@ -66,6 +67,7 @@ class SecretaryListApi(APIView):
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
             OpenApiParameter(name='department', type=str, description='Filter by department'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: SecretaryOutputSerializer(many=True)},
         examples=[
@@ -89,6 +91,9 @@ class SecretaryListApi(APIView):
         filter_serializer = SecretaryFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
         secretaries = secretary_list(filters=filter_serializer.validated_data, user=request.user)
+        page = self.paginate_queryset(secretaries)
+        if page is not None:
+            return self.get_paginated_response(SecretaryOutputSerializer(page, many=True).data)
         return Response(SecretaryOutputSerializer(secretaries, many=True).data)
 
 
@@ -140,9 +145,11 @@ class SecretaryCreateApi(APIView):
         return Response(SecretaryOutputSerializer(secretary).data, status=status.HTTP_201_CREATED)
 
 
+from accounts.permissions import IsAdminOrManager, IsAdminOrManagerOrSecretary
+
 class SecretaryDetailApi(APIView):
     """Retrieve, update, or deactivate a specific secretary."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=['Secretary'],

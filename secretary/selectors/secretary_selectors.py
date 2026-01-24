@@ -17,6 +17,8 @@ def secretary_list(*, filters: dict, user: CustomUser) -> QuerySet[Secretary]:
         qs = qs.filter(user__school__work_stream_id=user.work_stream_id)
     elif user.role == Role.MANAGER_SCHOOL:
         qs = qs.filter(user__school_id=user.school_id)
+    elif user.role == Role.SECRETARY:
+        qs = qs.filter(user_id=user.id)
     else:
         qs = qs.none()
 
@@ -28,7 +30,11 @@ def secretary_list(*, filters: dict, user: CustomUser) -> QuerySet[Secretary]:
         qs = qs.filter(department__icontains=department)
 
     if search := filters.get("search"):
-        qs = qs.filter(user__full_name__icontains=search)
+        from django.db.models import Q
+        qs = qs.filter(
+            Q(user__full_name__icontains=search) | 
+            Q(user__email__icontains=search)
+        )
 
     return qs
 

@@ -3,20 +3,13 @@ Guardian management API views.
 """
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, serializers
-from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
+from rest_framework import serializers, status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser
-from accounts.models import Role
-
-from guardian.models import GuardianStudentLink
-from guardian.selectors.guardian_selectors import (
-    guardian_list,
-    guardian_get,
-    guardian_student_list,
-    guardian_student_link_get,
-)
+from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher, IsGuardian
+from accounts.pagination import PaginatedAPIMixin
+from guardian.models import Guardian, GuardianStudentLink
+from guardian.selectors.guardian_selectors import guardian_list, guardian_get, guardian_student_list
 from guardian.services.guardian_services import (
     guardian_create,
     guardian_update,
@@ -41,17 +34,18 @@ from guardian.serializers import (
 # Guardian Views
 # =============================================================================
 
-class GuardianListApi(APIView):
-    """List guardians (staff only)."""
-    permission_classes = [IsStaffUser]
+class GuardianListApi(PaginatedAPIMixin, APIView):
+    """List guardians."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=["Guardian Management"],
         summary="List guardians",
         parameters=[
-            OpenApiParameter(name="school_id", type=int, description="Filter by school"),
-            OpenApiParameter(name="search", type=str, description="Search by name"),
-            OpenApiParameter(name="include_inactive", type=bool, description="Include deactivated records (ADMIN only)"),
+            OpenApiParameter(name='school_id', type=int, description='Filter by school'),
+            OpenApiParameter(name='search', type=str, description='Search by name or email'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: GuardianOutputSerializer(many=True)},
     )
@@ -64,6 +58,9 @@ class GuardianListApi(APIView):
             user=request.user,
             include_inactive=filter_serializer.validated_data.get("include_inactive", False),
         )
+        page = self.paginate_queryset(guardians)
+        if page is not None:
+            return self.get_paginated_response(GuardianOutputSerializer(page, many=True).data)
         return Response(GuardianOutputSerializer(guardians, many=True).data)
 
 
@@ -100,12 +97,8 @@ class GuardianCreateApi(APIView):
 
 
 class GuardianDetailApi(APIView):
-    """
-    Retrieve / update guardian.
-    - Staff can access within scope.
-    - Guardian can access self.
-    """
-    permission_classes = [IsAuthenticated]
+    """Detail API."""
+    permission_classes = [IsAdminOrManagerOrSecretary | IsTeacher | IsStaffUser | IsGuardian]
 
     @extend_schema(
         tags=["Guardian Management"],
@@ -163,20 +156,23 @@ class GuardianActivateApi(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class GuardianStudentLinkApi(APIView):
-    """
-    List and create links for a guardian (staff scope).
-    Guardians can read their own links via selector check if you later expose it.
-    """
-    permission_classes = [IsAuthenticated]
+class GuardianStudentLinkApi(PaginatedAPIMixin, APIView):
+    """Link student to guardian."""
+    permission_classes = [IsAdminOrManagerOrSecretary | IsGuardian]
 
     @extend_schema(
-        tags=["Guardian Management"],
-        summary="List linked students",
-        responses={200: GuardianStudentLinkOutputSerializer(many=True)},
+        tags=['Guardian Management'],
+        summary='List linked students',
+        parameters=[
+            OpenApiParameter(name='page', type=int, description='Page number'),
+        ],
+        responses={200: GuardianStudentLinkOutputSerializer(many=True)}
     )
     def get(self, request, guardian_id: int):
         links = guardian_student_list(guardian_id=guardian_id, actor=request.user)
+        page = self.paginate_queryset(links)
+        if page is not None:
+            return self.get_paginated_response(GuardianStudentLinkOutputSerializer(page, many=True).data)
         return Response(GuardianStudentLinkOutputSerializer(links, many=True).data)
 
     @extend_schema(

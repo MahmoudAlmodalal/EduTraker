@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStudent
+from accounts.pagination import PaginatedAPIMixin
 from teacher.serializers.assignment_serializers import (
     AssignmentInputSerializer,
     AssignmentUpdateSerializer,
@@ -23,9 +24,9 @@ from teacher.services.assignment_services import (
 # Assignment Views
 # =============================================================================
 
-class AssignmentListCreateApi(APIView):
+class AssignmentListCreateApi(PaginatedAPIMixin, APIView):
     """List and create assignments."""
-    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
+    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary | IsStudent]
 
     @extend_schema(
         operation_id='teacher_assignments_list',
@@ -38,6 +39,7 @@ class AssignmentListCreateApi(APIView):
             OpenApiParameter(name='due_date_to', type=str, description='Filter by due date to'),
             OpenApiParameter(name='title', type=str, description='Filter by title'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: AssignmentOutputSerializer(many=True)},
         examples=[
@@ -68,6 +70,10 @@ class AssignmentListCreateApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        
+        page = self.paginate_queryset(assignments)
+        if page is not None:
+            return self.get_paginated_response(AssignmentOutputSerializer(page, many=True).data)
         
         return Response(AssignmentOutputSerializer(assignments, many=True).data)
 
@@ -117,7 +123,7 @@ class AssignmentListCreateApi(APIView):
 
 class AssignmentDetailApi(APIView):
     """Retrieve, update, or deactivate a specific assignment."""
-    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary]
+    permission_classes = [IsTeacher | IsAdminOrManagerOrSecretary | IsStudent]
 
     @extend_schema(
         operation_id='teacher_assignment_retrieve',

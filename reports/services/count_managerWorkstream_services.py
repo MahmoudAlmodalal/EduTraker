@@ -84,7 +84,7 @@ def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
     
     return {
         'workstream_id': workstream_id,
-        'workstream_name': workstream.name,
+        'workstream_name': workstream.workstream_name,
         'is_active': workstream.is_active,
         'total_students': total_students,
         'total_teachers': total_teachers,
@@ -145,7 +145,7 @@ def get_schools_in_workstream(*, workstream_id: int, actor: CustomUser) -> Dict:
     
     return {
         'workstream_id': workstream_id,
-        'workstream_name': workstream.name,
+        'workstream_name': workstream.workstream_name,
         'total_schools': len(schools_data),
         'schools': schools_data
     }
@@ -214,7 +214,7 @@ def get_teachers_in_workstream(*, workstream_id: int, actor: CustomUser) -> Dict
     
     return {
         'workstream_id': workstream_id,
-        'workstream_name': workstream.name,
+        'workstream_name': workstream.workstream_name,
         'total_teachers': total_teachers,
         'by_school': by_school
     }
@@ -294,7 +294,7 @@ def get_classrooms_in_workstream(*, workstream_id: int, actor: CustomUser) -> Di
     
     return {
         'workstream_id': workstream_id,
-        'workstream_name': workstream.name,
+        'workstream_name': workstream.workstream_name,
         'total_classrooms': total_classrooms,
         'by_school': by_school
     }

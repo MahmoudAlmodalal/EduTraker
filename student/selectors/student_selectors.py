@@ -18,13 +18,17 @@ def can_access_student(*, actor: CustomUser, student: Student) -> bool:
     if actor.role == Role.ADMIN:
         return True
 
+    # Use user.school_id to avoid ActiveManager filtering out inactive schools
+    student_school_id = getattr(student.user, 'school_id', None)
+
     if actor.role == Role.MANAGER_WORKSTREAM:
-        # Use user.school instead of student.school
-        return student.user.school and student.user.school.work_stream_id == actor.work_stream_id
+        # Check work_stream_id of the school directly
+        from school.models import School
+        school = School.all_objects.filter(id=student_school_id).first()
+        return school and school.work_stream_id == actor.work_stream_id
 
     if actor.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
-        # Use user.school_id instead of student.school_id
-        return student.user.school_id == actor.school_id
+        return student_school_id == actor.school_id
 
     if actor.role == Role.GUARDIAN:
         return GuardianStudentLink.objects.filter(
@@ -79,7 +83,7 @@ def student_list(*, filters: dict, user: CustomUser, include_inactive: bool = Fa
 
 def student_get(*, student_id: int, actor: CustomUser, include_inactive: bool = False) -> Student:
     """Retrieve a single Student by ID with permission check using get_object_or_404."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         base_qs = Student.all_objects
     else:
         base_qs = Student.objects

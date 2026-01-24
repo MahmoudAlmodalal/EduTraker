@@ -475,3 +475,84 @@ def get_school_dashboard_statistics(*, school_id: int, actor: CustomUser) -> Dic
         'courses': get_courses_in_school(school_id=school_id, actor=actor)
     }
 
+
+def get_school_manager_summary(*, manager_id: int, actor: CustomUser) -> Dict:
+    """
+    Get statistics for all schools managed by a specific school manager.
+    """
+    try:
+        manager = CustomUser.objects.get(id=manager_id, role=Role.MANAGER_SCHOOL)
+    except CustomUser.DoesNotExist:
+        raise ValueError("School manager not found.")
+
+    # Permission check: Admin or the manager themselves or workstream manager of their workstream
+    if actor.role == Role.ADMIN:
+        pass
+    elif actor.role == Role.MANAGER_WORKSTREAM:
+        if actor.work_stream_id != manager.work_stream_id:
+            raise PermissionDenied("Access denied. Manager not in your workstream.")
+    elif actor.role == Role.MANAGER_SCHOOL:
+        if actor.id != manager_id:
+            raise PermissionDenied("Access denied. You can only view your own statistics.")
+    else:
+        raise PermissionDenied("Access denied.")
+
+    schools = School.objects.filter(manager=manager).select_related('work_stream')
+    
+    schools_data = []
+    total_students = 0
+    
+    for school in schools:
+        student_count = Student.objects.filter(user__school=school, enrollment_status='active').count()
+        schools_data.append({
+            'school_id': school.id,
+            'school_name': school.school_name,
+            'count': student_count
+        })
+        total_students += student_count
+
+    return {
+        'manager_id': manager_id,
+        'manager_name': manager.full_name,
+        'total_schools': len(schools_data),
+        'total_students': total_students,
+        'schools': schools_data
+    }
+
+
+def get_course_summary(*, course_id: int, actor: CustomUser) -> Dict:
+    """
+    Get student count and breakdown by classroom for a specific course globally.
+    """
+    try:
+        course = Course.objects.select_related('school', 'grade').get(id=course_id)
+    except Course.DoesNotExist:
+        raise ValueError("Course not found.")
+
+    _check_school_permission(actor, course.school_id)
+
+    # Get all allocations for this course
+    allocations = CourseAllocation.objects.filter(course=course).select_related('class_room')
+    
+    by_classroom = []
+    total_students = 0
+    
+    for alloc in allocations:
+        student_count = StudentEnrollment.objects.filter(
+            class_room=alloc.class_room,
+            student__enrollment_status='active'
+        ).count()
+        
+        by_classroom.append({
+            'classroom_id': alloc.class_room.id,
+            'classroom_name': alloc.class_room.classroom_name,
+            'count': student_count
+        })
+        total_students += student_count
+
+    return {
+        'course_id': course_id,
+        'course_name': course.name,
+        'total_students': total_students,
+        'by_classroom': by_classroom
+    }
