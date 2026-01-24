@@ -1,25 +1,25 @@
 FROM python:3.10-slim
 
-# Set environment variables
+# Prevent Python from writing .pyc files and buffer logs
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Set work directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for MySQL client
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
+    default-libmysqlclient-dev \
+    pkg-config \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install gunicorn
 
-# Copy project
+# Copy project files
 COPY . .
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "eduTrack.wsgi:application"]
+# Run migrations and start server using Gunicorn
+CMD ["sh", "-c", "python manage.py migrate && gunicorn --bind 0.0.0.0:8000 eduTrack.wsgi:application"]
