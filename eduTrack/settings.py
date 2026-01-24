@@ -160,16 +160,21 @@ if 'test' in sys.argv:
         }
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'edutraker_db',  # Name of the database you created in MySQL
-            'USER': 'root',          # Your MySQL username
-            'PASSWORD': 'EduTraker@2025!', # Your MySQL password
-            'HOST': 'localhost',     # Or the IP address if hosted remotely
-            'PORT': '3306',          # Default MySQL port
+    import os
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
+        'OPTIONS': {
+            'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'} # لضمان عمل الاتصال على Render
         }
     }
+}
 
 
 # Password validation
