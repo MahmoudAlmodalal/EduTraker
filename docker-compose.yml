@@ -5,28 +5,57 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_DATABASE: your_db_name
-      MYSQL_USER: your_db_user
-      MYSQL_PASSWORD: your_db_password
-      MYSQL_ROOT_PASSWORD: your_root_password
+      MYSQL_DATABASE: edutraker_db
+      MYSQL_USER: root
+      MYSQL_PASSWORD: EduTraker@2025!
+      MYSQL_ROOT_PASSWORD: EduTraker@2025!
     volumes:
       - mysql_data:/var/lib/mysql
-    # Only expose the port if you need to access the DB from outside the Docker network
-    ports:
-      - "3306:3306"
 
-  web:
-    build: .
-    # ... other configuration ...
+  backend:
+    build: ./EduTraker
+    restart: always
     environment:
-      # Update the connection string to use the MySQL protocol and port 3306
-      - DATABASE_URL=mysql://your_db_user:your_db_password@db:3306/your_db_name
+      - DB_HOST=db
+      - DB_NAME=edutraker_db
+      - DB_USER=root
+      - DB_PASSWORD=EduTraker@2025!
     depends_on:
       - db
+    expose:
+      - "8000"
+
+  frontend:
+    build: ./EduTrakerFront
+    restart: always
+    expose:
+      - "80"
+    depends_on:
+      - backend
 
   nginx:
-    image: nginx:latest
-    # ... nginx configuration ...
+    image: nginx:stable-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+    depends_on:
+      - backend
+      - frontend
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - ./EduTrakerFront/dist:/var/www/html
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12d & wait $${!}; done;'"
 
 volumes:
   mysql_data:
+  certbot_etc:
+  certbot_var:
