@@ -16,7 +16,7 @@ def list_academic_years(
     """
     List academic years based on actor's permissions.
     """
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         qs = AcademicYear.all_objects.select_related("school")
     else:
         qs = AcademicYear.objects.select_related("school")
@@ -42,7 +42,7 @@ def get_academic_year(*, actor: CustomUser, academic_year_id: int, include_inact
     """
     Get a specific academic year by ID with permission check.
     """
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         base_qs = AcademicYear.all_objects
     else:
         base_qs = AcademicYear.objects

@@ -1,0 +1,428 @@
+Found 184 test(s).
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Operations to perform:
+  Synchronize unmigrated apps: drf_spectacular, messages, reports, rest_framework, rest_framework_simplejwt, staticfiles
+  Apply all migrations: accounts, admin, auth, contenttypes, guardian, manager, notifications, school, secretary, sessions, student, teacher, token_blacklist, user_messages, workstream
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying accounts.0001_initial... OK
+  Applying workstream.0001_initial... OK
+  Applying workstream.0002_workstream_created_at_workstream_updated_at_and_more... OK
+  Applying workstream.0003_workstream_deactivated_at_workstream_deactivated_by_and_more... OK
+  Applying workstream.0004_alter_workstream_created_at_and_more... OK
+  Applying workstream.0005_alter_workstream_options_and_more... OK
+  Applying school.0001_initial... OK
+  Applying student.0001_initial... OK
+  Applying teacher.0001_initial... OK
+  Applying school.0002_initial... OK
+  Applying school.0003_alter_school_options_school_is_active_and_more... OK
+  Applying school.0004_academicyear_created_at_academicyear_is_active_and_more... OK
+  Applying school.0005_academicyear_deactivated_at_and_more... OK
+  Applying school.0006_school_academic_year_end_school_academic_year_start_and_more... OK
+  Applying accounts.0002_initial... OK
+  Applying accounts.0003_rename_system_conf_school__7a2560_idx_idx_sys_config_lookup_and_more... OK
+  Applying accounts.0004_customuser_deactivated_at_customuser_deactivated_by_and_more... OK
+  Applying accounts.0005_alter_customuser_created_at_and_more... OK
+  Applying accounts.0006_customuser_created_by_alter_customuser_created_at_and_more... OK
+  Applying accounts.0007_rename_idx_sys_config_lookup_idx_sys_config_school_and_more... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying guardian.0001_initial... OK
+  Applying guardian.0002_initial... OK
+  Applying guardian.0003_guardian_created_at_guardian_updated_at_and_more... OK
+  Applying guardian.0004_guardian_deactivated_at_guardian_deactivated_by_and_more... OK
+  Applying guardian.0005_guardianstudentlink_can_pickup_and_more... OK
+  Applying manager.0001_initial... OK
+  Applying manager.0002_staffevaluation_created_at_and_more... OK
+  Applying manager.0003_alter_staffevaluation_created_at_and_more... OK
+  Applying notifications.0001_initial... OK
+  Applying notifications.0002_rename_notificatio_scope_t_511b8a_idx_idx_notifications_scope_and_more... OK
+  Applying notifications.0003_notification_deactivated_at_and_more... OK
+  Applying notifications.0004_rename_body_notification_message_and_more... OK
+  Applying secretary.0001_initial... OK
+  Applying secretary.0002_secretary_created_at_secretary_deactivated_at_and_more... OK
+  Applying secretary.0003_alter_secretary_created_at_and_more... OK
+  Applying sessions.0001_initial... OK
+  Applying student.0002_remove_studentenrollment_unique_student_classroom_and_more... OK
+  Applying student.0003_student_deactivated_at_student_deactivated_by_and_more... OK
+  Applying student.0004_remove_student_idx_students_status_and_more... OK
+  Applying student.0005_student_grade_alter_student_grade_level... OK
+  Applying teacher.0002_remove_courseallocation_unique_course_classroom_teacher_and_more... OK
+  Applying teacher.0003_assignment_deactivated_at_assignment_deactivated_by_and_more... OK
+  Applying teacher.0004_assignment_assigned_date_assignment_assignment_type_and_more... OK
+  Applying teacher.0005_lessonplan... OK
+  Applying token_blacklist.0001_initial... OK
+  Applying token_blacklist.0002_outstandingtoken_jti_hex... OK
+  Applying token_blacklist.0003_auto_20171017_2007... OK
+  Applying token_blacklist.0004_auto_20171017_2013... OK
+  Applying token_blacklist.0005_remove_outstandingtoken_jti... OK
+  Applying token_blacklist.0006_auto_20171017_2113... OK
+  Applying token_blacklist.0007_auto_20171017_2214... OK
+  Applying token_blacklist.0008_migrate_to_bigautofield... OK
+  Applying token_blacklist.0010_fix_migrate_to_bigautofield... OK
+  Applying token_blacklist.0011_linearizes_history... OK
+  Applying token_blacklist.0012_alter_outstandingtoken_user... OK
+  Applying token_blacklist.0013_alter_blacklistedtoken_options_and_more... OK
+  Applying user_messages.0001_initial... OK
+  Applying user_messages.0002_rename_messages_receive_c45f39_idx_idx_messages_receiver_read_and_more... OK
+  Applying user_messages.0003_message_deactivated_at_message_deactivated_by_and_more... OK
+  Applying user_messages.0004_messagereceipt_and_more... OK
+System check identified no issues (0 silenced).
+test_blacklisted_token_cannot_be_used (accounts.tests.test_auth_api.LogoutApiTests)
+Blacklisted token should not work for authentication. ... ok
+test_logout_requires_authentication (accounts.tests.test_auth_api.LogoutApiTests)
+Logout should require authentication. ... ok
+test_logout_with_invalid_token (accounts.tests.test_auth_api.LogoutApiTests)
+Logout should fail with invalid refresh token. ... ok
+test_logout_with_valid_token (accounts.tests.test_auth_api.LogoutApiTests)
+Logout should succeed with valid refresh token. ... ok
+test_logout_without_token (accounts.tests.test_auth_api.LogoutApiTests)
+Logout should fail without providing refresh token. ... ok
+test_reset_password_mismatch (accounts.tests.test_auth_api.PasswordResetConfirmApiTests)
+Should fail when passwords don't match. ... ok
+test_reset_password_too_short (accounts.tests.test_auth_api.PasswordResetConfirmApiTests)
+Should fail with password less than 8 characters. ... ok
+test_reset_password_with_invalid_token (accounts.tests.test_auth_api.PasswordResetConfirmApiTests)
+Should fail with invalid token. ... ok
+test_reset_password_with_invalid_uid (accounts.tests.test_auth_api.PasswordResetConfirmApiTests)
+Should fail with invalid uid. ... ok
+test_reset_password_with_valid_token (accounts.tests.test_auth_api.PasswordResetConfirmApiTests)
+Should successfully reset password with valid token. ... ok
+test_request_reset_for_existing_email (accounts.tests.test_auth_api.PasswordResetRequestApiTests)
+Should return success message for existing email. ... ok
+test_request_reset_for_inactive_user (accounts.tests.test_auth_api.PasswordResetRequestApiTests)
+Should return success message for inactive user (security). ... ok
+test_request_reset_for_nonexistent_email (accounts.tests.test_auth_api.PasswordResetRequestApiTests)
+Should return same success message for non-existent email (security). ... ok
+test_request_reset_returns_token_for_testing (accounts.tests.test_auth_api.PasswordResetRequestApiTests)
+Reset request should return uid and token for testing purposes. ... ok
+test_refresh_with_expired_token (accounts.tests.test_auth_api.TokenRefreshApiTests)
+Should fail with expired refresh token. ... ok
+test_refresh_with_invalid_token (accounts.tests.test_auth_api.TokenRefreshApiTests)
+Should fail with invalid refresh token. ... ok
+test_refresh_with_valid_token (accounts.tests.test_auth_api.TokenRefreshApiTests)
+Should return new access token with valid refresh token. ... ok
+test_refresh_without_token (accounts.tests.test_auth_api.TokenRefreshApiTests)
+Should fail without providing refresh token. ... ok
+test_cascading_priority (accounts.tests.test_cascading_config.CascadingConfigTests) ... ok
+test_ws_manager_cannot_modify_other_workstream (accounts.tests.test_data_isolation.CrossWorkstreamIsolationTests)
+Workstream manager should NOT be able to modify another workstream. ... ok
+test_manager_can_access_own_school_students (accounts.tests.test_data_isolation.DataIsolationTests)
+Manager should be able to view students in their own school. ... ok
+test_manager_cannot_access_other_school_students (accounts.tests.test_data_isolation.DataIsolationTests)
+Manager should NOT be able to view students from another school. ... ok
+test_student_can_only_see_own_profile (accounts.tests.test_data_isolation.DataIsolationTests)
+Students should only be able to view their own data. ... ok
+test_create_workstream_with_empty_name (accounts.tests.test_edge_cases.BoundaryConditionTests)
+Test boundary: empty workstream name should fail. ... ok
+test_create_workstream_with_max_capacity (accounts.tests.test_edge_cases.BoundaryConditionTests)
+Test boundary: very large capacity value. ... ok
+test_create_workstream_with_negative_capacity (accounts.tests.test_edge_cases.BoundaryConditionTests)
+Test boundary: negative capacity should fail. ... ok
+test_create_workstream_with_zero_capacity (accounts.tests.test_edge_cases.BoundaryConditionTests)
+Test boundary: capacity of zero. ... ok
+test_create_user_with_duplicate_email (accounts.tests.test_edge_cases.DuplicateDataTests)
+Test: duplicate email should be rejected. ... ok
+test_create_user_without_email (accounts.tests.test_edge_cases.EmptyDataTests)
+Test: missing email should fail. ... ok
+test_create_user_without_name (accounts.tests.test_edge_cases.EmptyDataTests)
+Test: missing full_name should fail. ... ok
+test_soft_deleted_workstream_data_preserved (accounts.tests.test_edge_cases.SoftDeleteTests)
+Test: soft deleted items preserve data (FR-UM-006.2). ... ok
+test_soft_deleted_workstream_not_in_active_list (accounts.tests.test_edge_cases.SoftDeleteTests)
+Test: soft deleted items should not appear in active lists. ... ok
+test_attendance_recording_workflow (accounts.tests.test_integration_flows.AttendanceRecordingFlowTests)
+Test recording attendance for a class. ... ok
+test_complete_grade_entry_workflow (accounts.tests.test_integration_flows.GradeEntryFlowTests)
+Test the complete grade entry flow. ... /home/mahmoud/anaconda3/lib/python3.9/site-packages/django/db/models/fields/__init__.py:1535: RuntimeWarning: DateTimeField Assignment.due_date received a naive datetime (2026-02-01 00:00:00) while time zone support is active.
+  warnings.warn(
+ok
+test_complete_messaging_workflow (accounts.tests.test_integration_flows.MessagingFlowTests)
+Test sending and receiving messages. ... ok
+test_complete_student_registration_workflow (accounts.tests.test_integration_flows.StudentRegistrationFlowTests)
+Test the complete student registration flow as per SRS. ... ok
+test_admin_can_access_user_management (accounts.tests.test_rbac.RBACPermissionTests)
+Admin should have access to user list. ... ok
+test_admin_can_access_workstream_management (accounts.tests.test_rbac.RBACPermissionTests)
+Admin should have full access to workstream management. ... ok
+test_admin_can_create_workstream (accounts.tests.test_rbac.RBACPermissionTests)
+Admin should be able to create new workstreams. ... ok
+test_guardian_cannot_manage_grades (accounts.tests.test_rbac.RBACPermissionTests)
+Guardians should NOT be able to enter grades. ... ok
+test_student_cannot_access_workstream_management (accounts.tests.test_rbac.RBACPermissionTests)
+Students should NOT be able to access workstream management. ... ok
+test_student_cannot_create_users (accounts.tests.test_rbac.RBACPermissionTests)
+Students should NOT be able to create user accounts. ... ok
+test_teacher_can_access_assignment_creation (accounts.tests.test_rbac.RBACPermissionTests)
+Teachers should be able to create assignments. ... ok
+test_teacher_cannot_create_users (accounts.tests.test_rbac.RBACPermissionTests)
+Teachers should NOT be able to create user accounts. ... ok
+test_unauthenticated_cannot_access_protected_endpoints (accounts.tests.test_rbac.RBACPermissionTests)
+Unauthenticated users should receive 401 on protected endpoints. ... ok
+test_empty_password_rejected (accounts.tests.test_security.AuthenticationSecurityTests)
+Test: empty password should be rejected. ... ok
+test_invalid_credentials_return_error (accounts.tests.test_security.AuthenticationSecurityTests)
+Test: invalid login credentials should return error. ... ok
+test_token_required_for_protected_endpoints (accounts.tests.test_security.AuthenticationSecurityTests)
+Test: protected endpoints require valid token. ... ok
+test_valid_login_returns_tokens (accounts.tests.test_security.AuthenticationSecurityTests)
+Test: valid login should return JWT tokens. ... ok
+test_html_in_input_stored_as_is (accounts.tests.test_security.InputValidationSecurityTests)
+Document: HTML in input is stored without sanitization (for review). ... ok
+test_sql_injection_prevention (accounts.tests.test_security.InputValidationSecurityTests)
+Test: SQL injection attempts should be safely handled by ORM. ... ok
+test_password_not_returned_in_response (accounts.tests.test_security.PasswordSecurityTests)
+Test: password should never be returned in API responses. ... ok
+test_password_stored_hashed (accounts.tests.test_security.PasswordSecurityTests)
+Test: passwords should be stored hashed, not plaintext. ... ok
+test_multiple_failed_logins_handled (accounts.tests.test_security.RateLimitingTests)
+Test: multiple failed login attempts should be handled gracefully. ... ok
+test_admin_create_global_config (accounts.tests.test_system_config.SystemConfigApiTests) ... ok
+test_school_manager_create_config (accounts.tests.test_system_config.SystemConfigApiTests) ... ok
+test_visibility (accounts.tests.test_system_config.SystemConfigApiTests) ... /home/mahmoud/anaconda3/lib/python3.9/site-packages/rest_framework/pagination.py:207: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'accounts.models.SystemConfiguration'> QuerySet.
+  paginator = self.django_paginator_class(queryset, page_size)
+ok
+test_ws_manager_cannot_create_school_config (accounts.tests.test_system_config.SystemConfigApiTests) ... ok
+test_ws_manager_create_config (accounts.tests.test_system_config.SystemConfigApiTests) ... ok
+test_activate_nonexistent_user_returns_404 (accounts.tests.test_user_api.UserActivateDeactivateApiTests)
+Activating non-existent user should return 404. ... ok
+test_admin_can_activate_user (accounts.tests.test_user_api.UserActivateDeactivateApiTests)
+Admin should be able to activate a deactivated user. ... ok
+test_admin_can_deactivate_user (accounts.tests.test_user_api.UserActivateDeactivateApiTests)
+Admin should be able to deactivate a user. ... ok
+test_deactivate_nonexistent_user_returns_404 (accounts.tests.test_user_api.UserActivateDeactivateApiTests)
+Deactivating non-existent user should return 404. ... ok
+test_student_cannot_deactivate_users (accounts.tests.test_user_api.UserActivateDeactivateApiTests)
+Students should not be able to deactivate users. ... ok
+test_admin_can_create_user (accounts.tests.test_user_api.UserCreateApiTests)
+Admin should be able to create a new user. ... ok
+test_create_user_with_school_assignment (accounts.tests.test_user_api.UserCreateApiTests)
+Should create user assigned to a school. ... ok
+test_duplicate_email_rejected (accounts.tests.test_user_api.UserCreateApiTests)
+Should reject duplicate email addresses. ... ok
+test_teacher_cannot_create_user (accounts.tests.test_user_api.UserCreateApiTests)
+Teachers should not be able to create users. ... ok
+test_ws_manager_can_create_user_in_workstream (accounts.tests.test_user_api.UserCreateApiTests)
+Workstream manager should be able to create users. ... ok
+test_admin_can_list_users (accounts.tests.test_user_api.UserListApiTests)
+Admin should be able to list all active users. ... ok
+test_filter_users_by_role (accounts.tests.test_user_api.UserListApiTests)
+Should filter users by role. ... ok
+test_include_inactive_users (accounts.tests.test_user_api.UserListApiTests)
+Document: include_inactive filter is accepted but not yet implemented. ... ok
+test_search_users_by_email (accounts.tests.test_user_api.UserListApiTests)
+Document: Search currently only works on full_name, not email. ... ok
+test_search_users_by_name (accounts.tests.test_user_api.UserListApiTests)
+Should search users by name. ... ok
+test_student_cannot_list_users (accounts.tests.test_user_api.UserListApiTests)
+Students should not be able to list users. ... ok
+test_admin_can_get_user_details (accounts.tests.test_user_api.UserUpdateApiTests)
+Admin should be able to get user details. ... ok
+test_admin_can_update_user (accounts.tests.test_user_api.UserUpdateApiTests)
+Admin should be able to update user details. ... ok
+test_get_nonexistent_user_returns_404 (accounts.tests.test_user_api.UserUpdateApiTests)
+Getting non-existent user should return 404. ... ok
+test_update_user_email (accounts.tests.test_user_api.UserUpdateApiTests)
+Should be able to update user email. ... ok
+test_at_capacity_registration_fails (accounts.tests.test_workstream_auth.WorkstreamCapacityTests)
+Registration should fail when at exact capacity. ... ok
+test_capacity_check_counts_active_users_only (accounts.tests.test_workstream_auth.WorkstreamCapacityTests)
+Capacity check should only count active users. ... ok
+test_admin_can_login_to_any_workstream (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Admin should be able to login to any workstream. ... ok
+test_login_inactive_user (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Should fail when inactive user tries to login. ... ok
+test_login_returns_user_info (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Login response should include user information. ... ok
+test_login_to_nonexistent_workstream (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Should fail when logging into non-existent workstream. ... ok
+test_login_user_in_correct_workstream (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Should successfully login user in their workstream. ... ok
+test_login_user_in_wrong_workstream (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Should fail when user tries to login to wrong workstream. ... ok
+test_login_with_invalid_credentials (accounts.tests.test_workstream_auth.WorkstreamLoginTests)
+Should fail with invalid credentials. ... ok
+test_register_duplicate_email_rejected (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should reject registration with existing email. ... ok
+test_register_exceeds_capacity (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should fail when workstream capacity is exceeded. ... ok
+test_register_in_inactive_workstream (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should fail when registering in inactive workstream. ... ok
+test_register_in_nonexistent_workstream (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should fail when registering in non-existent workstream. ... ok
+test_register_password_mismatch_rejected (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should reject registration when passwords don't match. ... ok
+test_register_user_in_workstream (accounts.tests.test_workstream_auth.WorkstreamRegistrationTests)
+Should successfully register a new user in a workstream. ... ok
+test_link_student_model (guardian.tests.test_api.GuardianApiTests)
+Test GuardianStudentLink model creation. ... ok
+test_list_guardians_as_admin (guardian.tests.test_api.GuardianApiTests)
+Test listing guardians as admin. ... ok
+test_view_linked_students (guardian.tests.test_api.GuardianApiTests)
+Test viewing students linked to a guardian via the API. ... ok
+test_create_staff_evaluation_as_manager (manager.tests.test_api.StaffEvaluationApiTests) ... ok
+test_create_staff_evaluation_permission_denied (manager.tests.test_api.StaffEvaluationApiTests) ... ok
+test_delete_staff_evaluation (manager.tests.test_api.StaffEvaluationApiTests) ... ok
+test_get_staff_evaluation_detail (manager.tests.test_api.StaffEvaluationApiTests) ... ok
+test_list_staff_evaluations (manager.tests.test_api.StaffEvaluationApiTests) ... FAIL
+test_update_staff_evaluation (manager.tests.test_api.StaffEvaluationApiTests) ... ok
+test_mark_read_model (notifications.tests.test_api.NotificationModelTests)
+Test marking notification as read via model. ... ok
+test_notification_creation (notifications.tests.test_api.NotificationModelTests)
+Test notification is created correctly. ... ok
+test_comprehensive_statistics (reports.tests.test_api.ReportsApiTests) ... ok
+test_dashboard_statistics_admin (reports.tests.test_api.ReportsApiTests) ... ok
+test_dashboard_statistics_teacher (reports.tests.test_api.ReportsApiTests) ... ok
+test_school_student_count (reports.tests.test_api.ReportsApiTests) ... ok
+test_teacher_student_count (reports.tests.test_api.ReportsApiTests) ... ok
+test_admin_export_excel (reports.tests.test_export.ReportExportApiTests) ... ok
+test_student_export_denied (reports.tests.test_export.ReportExportApiTests) ... ok
+test_teacher_export_excel_denied (reports.tests.test_export.ReportExportApiTests) ... ok
+test_activate_school (school.tests.test_api.SchoolApiTests) ... ok
+test_create_school (school.tests.test_api.SchoolApiTests) ... ok
+test_list_schools (school.tests.test_api.SchoolApiTests) ... ok
+test_list_schools_filter_by_workstream (school.tests.test_api.SchoolApiTests) ... ok
+test_permission_denied_unauthenticated (school.tests.test_api.SchoolApiTests) ... ok
+test_retrieve_school (school.tests.test_api.SchoolApiTests) ... ok
+test_soft_delete_school (school.tests.test_api.SchoolApiTests) ... ok
+test_update_school (school.tests.test_api.SchoolApiTests) ... ok
+test_activate_grade (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_create_academic_year (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_create_classroom (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_create_course (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_create_grade (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_deactivate_academic_year (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_deactivate_classroom (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_deactivate_course (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_deactivate_grade (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_list_academic_years (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_list_classrooms (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_list_courses (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_list_grades (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_retrieve_academic_year (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_retrieve_classroom (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_retrieve_course (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_retrieve_grade (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_update_academic_year (school.tests.test_extended_api.SchoolExtendedApiTests) ... FAIL
+test_update_classroom (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_update_course (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_update_grade (school.tests.test_extended_api.SchoolExtendedApiTests) ... ok
+test_create_secretary_invalid_data (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_create_secretary_success (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_deactivate_secretary (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_delete_secretary_method_not_allowed (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_get_secretary_detail (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_list_secretaries (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_update_secretary (secretary.tests.test_api.SecretaryApiTests) ... ok
+test_get_student_detail (student.tests.test_api.StudentApiTests)
+Test getting student details via the API. ... ok
+test_list_students (student.tests.test_api.StudentApiTests)
+Test listing students. ... ok
+test_student_enrollment_list (student.tests.test_api.StudentApiTests)
+Test listing student enrollments. ... ok
+test_create_assignment (teacher.tests.test_api.TeacherApiTests)
+Test creating an assignment via the API. ... ok
+test_enter_grade (teacher.tests.test_api.TeacherApiTests)
+Test entering a grade/mark for a student. ... ok
+test_record_attendance (teacher.tests.test_api.TeacherApiTests)
+Test recording student attendance. ... ok
+test_student_cannot_create_material (teacher.tests.test_learning_materials.LearningMaterialApiTests) ... ok
+test_student_read_material (teacher.tests.test_learning_materials.LearningMaterialApiTests) ... ok
+test_teacher_cannot_delete_others_material (teacher.tests.test_learning_materials.LearningMaterialApiTests) ... ok
+test_teacher_create_material (teacher.tests.test_learning_materials.LearningMaterialApiTests) ... ok
+test_teacher_delete_own_material (teacher.tests.test_learning_materials.LearningMaterialApiTests) ... ok
+test_list_messages (user_messages.tests.test_api.UserMessageApiTests)
+Ensure user can list their messages (sent and received). ... ok
+test_mark_as_read (user_messages.tests.test_api.UserMessageApiTests)
+Ensure recipient can mark message as read. ... ok
+test_send_message (user_messages.tests.test_api.UserMessageApiTests)
+Ensure we can send a message to recipients. ... ok
+test_create_workstream_as_admin (workstream.tests.test_api.WorkstreamApiTests)
+Test creating a workstream as admin. ... ok
+test_create_workstream_duplicate_name (workstream.tests.test_api.WorkstreamApiTests)
+Test that creating a workstream with duplicate name fails. ... ok
+test_create_workstream_non_admin (workstream.tests.test_api.WorkstreamApiTests)
+Test that non-admin users cannot create workstreams. ... ok
+test_create_workstream_with_assigned_manager (workstream.tests.test_api.WorkstreamApiTests)
+Test that assigning a manager already in another workstream fails. ... ok
+test_create_workstream_with_invalid_manager_role (workstream.tests.test_api.WorkstreamApiTests)
+Test that assigning a non-manager role user fails. ... ok
+test_create_workstream_with_manager (workstream.tests.test_api.WorkstreamApiTests)
+Test creating a workstream with a manager assignment. ... ok
+test_deactivate_workstream (workstream.tests.test_api.WorkstreamApiTests)
+Test soft delete/deactivate workstream. ... ok
+test_deactivate_workstream_non_admin (workstream.tests.test_api.WorkstreamApiTests)
+Test that non-admin users cannot deactivate workstreams. ... ok
+test_deactivate_workstream_not_found (workstream.tests.test_api.WorkstreamApiTests)
+Test deactivating a non-existent workstream returns 404. ... ok
+test_list_workstreams_authenticated (workstream.tests.test_api.WorkstreamApiTests)
+Test listing workstreams as authenticated admin. ... ok
+test_list_workstreams_filter_by_active_status (workstream.tests.test_api.WorkstreamApiTests)
+Test filtering workstreams by active status. ... ok
+test_list_workstreams_filter_by_search (workstream.tests.test_api.WorkstreamApiTests)
+Test filtering workstreams by search term. ... FAIL
+test_list_workstreams_non_admin (workstream.tests.test_api.WorkstreamApiTests)
+Test that non-admin users cannot list workstreams. ... ok
+test_list_workstreams_unauthorized (workstream.tests.test_api.WorkstreamApiTests)
+Test that unauthenticated users cannot list workstreams. ... ok
+test_update_workstream (workstream.tests.test_api.WorkstreamApiTests)
+Test updating a workstream using PUT method. ... ok
+test_update_workstream_assign_manager (workstream.tests.test_api.WorkstreamApiTests)
+Test assigning a manager during workstream update. ... ok
+test_update_workstream_not_found (workstream.tests.test_api.WorkstreamApiTests)
+Test updating a non-existent workstream returns 404. ... ok
+test_update_workstream_patch_method (workstream.tests.test_api.WorkstreamApiTests)
+Test updating a workstream using PATCH method. ... ok
+test_workstream_info_inactive_workstream (workstream.tests.test_api.WorkstreamApiTests)
+Test that inactive workstream info returns 404. ... ok
+test_workstream_info_not_found (workstream.tests.test_api.WorkstreamApiTests)
+Test 404 response for non-existent workstream info. ... ok
+test_workstream_info_public_access (workstream.tests.test_api.WorkstreamApiTests)
+Test that workstream info is accessible without authentication. ... ok
+
+======================================================================
+FAIL: test_list_staff_evaluations (manager.tests.test_api.StaffEvaluationApiTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/mahmoud/Desktop/front/EduTraker/manager/tests/test_api.py", line 80, in test_list_staff_evaluations
+    self.client.force_authenticate(user=self.ws_manager)
+AssertionError: 4 != 1
+
+======================================================================
+FAIL: test_update_academic_year (school.tests.test_extended_api.SchoolExtendedApiTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/mahmoud/Desktop/front/EduTraker/school/tests/test_extended_api.py", line 103, in test_update_academic_year
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+AssertionError: 200 != 204
+
+======================================================================
+FAIL: test_list_workstreams_filter_by_search (workstream.tests.test_api.WorkstreamApiTests)
+Test filtering workstreams by search term.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/mahmoud/Desktop/front/EduTraker/workstream/tests/test_api.py", line 132, in test_list_workstreams_filter_by_search
+AssertionError: 'UniqueSearchTerm' not found in []
+
+----------------------------------------------------------------------
+Ran 184 tests in 108.989s
+
+FAILED (failures=3)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...

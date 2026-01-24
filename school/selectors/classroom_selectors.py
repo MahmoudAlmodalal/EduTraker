@@ -35,7 +35,7 @@ def classroom_get(
     *, classroom_id: int, school_id: int, academic_year_id: int, actor: CustomUser, include_inactive: bool = False
 ) -> ClassRoom:
     """Retrieve a single ClassRoom by ID with permission check."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         base_qs = ClassRoom.all_objects
     else:
         base_qs = ClassRoom.objects

@@ -19,7 +19,7 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
         qs = qs.filter(school=user.school)
 
     elif user.role in [Role.TEACHER, Role.SECRETARY]:
-        qs = qs.filter(role__in=[Role.GUARDIAN, Role.STUDENT])
+        qs = qs.filter(role__in=[Role.GUARDIAN, Role.STUDENT], school=user.school)
 
     if role := filters.get("role"):
         qs = qs.filter(role=role)

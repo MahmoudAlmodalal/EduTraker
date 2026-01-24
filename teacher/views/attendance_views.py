@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent
+from accounts.pagination import PaginatedAPIMixin
 from teacher.models import Attendance
 from teacher.selectors.attendance_selectors import attendance_list, attendance_get
 from teacher.services.attendance_services import (
@@ -61,9 +62,9 @@ class AttendanceOutputSerializer(serializers.ModelSerializer):
 # Attendance Views
 # =============================================================================
 
-class AttendanceListApi(APIView):
+class AttendanceListApi(PaginatedAPIMixin, APIView):
     """List attendance records."""
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsStaffUser | IsStudent]
 
     @extend_schema(
         tags=['Teacher - Attendance'],
@@ -75,6 +76,7 @@ class AttendanceListApi(APIView):
             OpenApiParameter(name='date_to', type=str),
             OpenApiParameter(name='status', type=str),
             OpenApiParameter(name='include_inactive', type=bool),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: AttendanceOutputSerializer(many=True)}
     )
@@ -86,6 +88,9 @@ class AttendanceListApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(records)
+        if page is not None:
+            return self.get_paginated_response(AttendanceOutputSerializer(page, many=True).data)
         return Response(AttendanceOutputSerializer(records, many=True).data)
 
 
@@ -120,7 +125,7 @@ class AttendanceRecordApi(APIView):
 
 class AttendanceDetailApi(APIView):
     """Attendance Detail."""
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsStaffUser | IsStudent]
 
     @extend_schema(
         tags=['Teacher - Attendance'], 

@@ -9,7 +9,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from accounts.serializers import MessageSerializer
 
 from accounts.models import CustomUser, Role
-from accounts.permissions import IsStaffUser, IsAdminOrManagerOrSecretary
+from accounts.permissions import IsStaffUser, IsAdminOrManagerOrSecretary, IsStudent
+from accounts.pagination import PaginatedAPIMixin
 from student.models import Student
 from student.selectors.student_selectors import (
     student_list,
@@ -105,7 +106,7 @@ class StudentOutputSerializer(serializers.ModelSerializer):
 # Student Views
 # =============================================================================
 
-class StudentListApi(APIView):
+class StudentListApi(PaginatedAPIMixin, APIView):
     """List all students accessible to the current user."""
     permission_classes = [IsStaffUser]
 
@@ -119,6 +120,7 @@ class StudentListApi(APIView):
             OpenApiParameter(name='current_status', type=str, description='Filter by status'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: StudentOutputSerializer(many=True)},
         examples=[
@@ -151,6 +153,9 @@ class StudentListApi(APIView):
             user=request.user,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(students)
+        if page is not None:
+            return self.get_paginated_response(StudentOutputSerializer(page, many=True).data)
         return Response(StudentOutputSerializer(students, many=True).data)
 
 
@@ -214,7 +219,7 @@ class StudentCreateApi(APIView):
 
 class StudentDetailApi(APIView):
     """Retrieve, update, or deactivate a specific student."""
-    permission_classes = [IsStaffUser]
+    permission_classes = [IsStaffUser | IsStudent]
 
     @extend_schema(
         tags=['Student Management'],

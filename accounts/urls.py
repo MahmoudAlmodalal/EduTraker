@@ -1,6 +1,12 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views.portal_views import PortalRegisterView, PortalLoginView
+from .views.portal_views import (
+    PortalRegisterView, 
+    PortalLoginView,
+    LogoutView,
+    RequestPasswordResetView,
+    ResetPasswordView,
+)
 from .views.workstream_portal_views import WorkstreamRegisterView, WorkstreamLoginView
 from .views.user_views import (
     UserListApi,
@@ -19,6 +25,9 @@ urlpatterns = [
     path('workstream/<int:workstream_id>/auth/register/', WorkstreamRegisterView.as_view(), name='workstream-register'),
     path('workstream/<int:workstream_id>/auth/login/', WorkstreamLoginView.as_view(), name='workstream-login'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('auth/logout/', LogoutView.as_view(), name='logout'),
+    path('auth/password-reset/', RequestPasswordResetView.as_view(), name='password-reset-request'),
+    path('auth/password-reset/confirm/', ResetPasswordView.as_view(), name='password-reset-confirm'),
     # User Management endpoints
     path('users/', UserListApi.as_view(), name='user-list'),
     path('users/create/', UserCreateApi.as_view(), name='user-create'),

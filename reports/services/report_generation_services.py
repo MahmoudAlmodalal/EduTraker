@@ -23,11 +23,24 @@ class ReportGenerationService:
         
         gpa_map = {item['student']: item['avg_gpa'] for item in students_with_marks}
         
-        for student in queryset.select_related('user'):
+        for student in queryset.select_related('user', 'grade'):
+            # Get grade representation
+            grade_display = ""
+            if student.grade:
+                grade_display = student.grade.name
+            elif student.grade_level:
+                grade_display = f"Grade {student.grade_level}"
+            else:
+                grade_display = "N/A"
+            
+            # Get GPA, handle None case
+            avg_percentage = gpa_map.get(student.user_id, 0.0)
+            gpa_value = float(avg_percentage) / 25.0 if avg_percentage else 0.0
+            
             data.append({
                 "student": student.user.full_name,
-                "grade": student.grade_level,
-                "gpa": float(gpa_map.get(student.user_id, 0.0)) / 25.0  # Simple conversion to 4.0 scale if %
+                "grade": grade_display,
+                "gpa": round(gpa_value, 2)
             })
         return data
 

@@ -4,6 +4,7 @@ from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsWorkStreamManager
+from accounts.pagination import PaginatedAPIMixin
 from school.selectors.academic_year_selectors import get_academic_year, list_academic_years
 from school.services.academic_year_services import (
     create_academic_year,
@@ -19,7 +20,7 @@ from school.serializers.academic_year_serializers import (
 )
 
 
-class AcademicYearListAPIView(APIView):
+class AcademicYearListAPIView(PaginatedAPIMixin, APIView):
     """List academic years for a school."""
     permission_classes = [IsWorkStreamManager]
 
@@ -38,6 +39,11 @@ class AcademicYearListAPIView(APIView):
                 name='include_inactive',
                 type=bool,
                 description='Include deactivated records'
+            ),
+            OpenApiParameter(
+                name='page',
+                type=int,
+                description='Page number'
             ),
         ],
         responses={
@@ -71,6 +77,10 @@ class AcademicYearListAPIView(APIView):
             school_id=query_ser.validated_data.get("school_id"),
             include_inactive=query_ser.validated_data.get("include_inactive", False),
         )
+
+        page = self.paginate_queryset(academic_years)
+        if page is not None:
+            return self.get_paginated_response(AcademicYearOutputSerializer(page, many=True).data)
 
         return Response(AcademicYearOutputSerializer(academic_years, many=True).data)
 

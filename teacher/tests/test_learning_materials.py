@@ -69,8 +69,9 @@ class LearningMaterialApiTests(APITestCase):
         self.client.force_authenticate(user=self.student_user)
         response = self.client.get(self.url_list)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Verify our material is present in the list
-        titles = [item['title'] for item in response.data]
+        # Handle both paginated (dict with 'results') and non-paginated (list) responses
+        data = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+        titles = [item['title'] for item in data]
         self.assertIn('Read Me', titles)
 
     def test_teacher_delete_own_material(self):

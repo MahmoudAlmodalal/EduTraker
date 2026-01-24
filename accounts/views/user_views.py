@@ -19,10 +19,11 @@ from accounts.permissions import (IsAdminOrManager,
     IsStaffUser,
     IsAdminOrManagerOrSecretary,
 )
+from accounts.pagination import PaginatedAPIMixin
 from django.core.exceptions import PermissionDenied
 
 
-class UserListApi(APIView):
+class UserListApi(PaginatedAPIMixin, APIView):
     """List all users accessible to current user."""
     permission_classes = [IsAdminOrManager]
 
@@ -50,6 +51,7 @@ class UserListApi(APIView):
         parameters=[
             OpenApiParameter(name='role', type=str, description='Filter by role'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={
             200: UserOutputSerializer(many=True),
@@ -70,6 +72,11 @@ class UserListApi(APIView):
             user=request.user,
             filters=filter_serializer.validated_data
         )
+        
+        page = self.paginate_queryset(users)
+        if page is not None:
+            data = self.UserOutputSerializer(page, many=True).data
+            return self.get_paginated_response(data)
         
         data = self.UserOutputSerializer(users, many=True).data
         return Response(data)

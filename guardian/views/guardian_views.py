@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher
+from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher, IsGuardian
+from accounts.pagination import PaginatedAPIMixin
 from guardian.models import Guardian, GuardianStudentLink
 from guardian.selectors.guardian_selectors import guardian_list, guardian_get, guardian_student_list
 from guardian.services.guardian_services import (
@@ -79,7 +80,7 @@ class GuardianStudentLinkOutputSerializer(serializers.ModelSerializer):
 # Guardian Views
 # =============================================================================
 
-class GuardianListApi(APIView):
+class GuardianListApi(PaginatedAPIMixin, APIView):
     """List guardians."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
@@ -90,6 +91,7 @@ class GuardianListApi(APIView):
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: GuardianOutputSerializer(many=True)}
     )
@@ -101,6 +103,9 @@ class GuardianListApi(APIView):
             user=request.user,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(guardians)
+        if page is not None:
+            return self.get_paginated_response(GuardianOutputSerializer(page, many=True).data)
         return Response(GuardianOutputSerializer(guardians, many=True).data)
 
 
@@ -127,7 +132,7 @@ class GuardianCreateApi(APIView):
 
 class GuardianDetailApi(APIView):
     """Detail API."""
-    permission_classes = [IsAdminOrManagerOrSecretary | IsTeacher | IsStaffUser]
+    permission_classes = [IsAdminOrManagerOrSecretary | IsTeacher | IsStaffUser | IsGuardian]
 
     @extend_schema(
         tags=['Guardian Management'],
@@ -184,17 +189,23 @@ class GuardianActivateApi(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class GuardianStudentLinkApi(APIView):
+class GuardianStudentLinkApi(PaginatedAPIMixin, APIView):
     """Link student to guardian."""
-    permission_classes = [IsAdminOrManagerOrSecretary]
+    permission_classes = [IsAdminOrManagerOrSecretary | IsGuardian]
 
     @extend_schema(
         tags=['Guardian Management'],
         summary='List linked students',
+        parameters=[
+            OpenApiParameter(name='page', type=int, description='Page number'),
+        ],
         responses={200: GuardianStudentLinkOutputSerializer(many=True)}
     )
     def get(self, request, guardian_id):
         links = guardian_student_list(guardian_id=guardian_id, actor=request.user)
+        page = self.paginate_queryset(links)
+        if page is not None:
+            return self.get_paginated_response(GuardianStudentLinkOutputSerializer(page, many=True).data)
         return Response(GuardianStudentLinkOutputSerializer(links, many=True).data)
 
     @extend_schema(

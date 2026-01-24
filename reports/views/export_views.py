@@ -64,20 +64,27 @@ class ReportExportView(APIView):
         school_id = request.user.school_id if hasattr(request.user, 'school_id') else None
 
         if report_type == "student_performance":
-             data = ReportGenerationService.get_student_performance_data(school_id=school_id)
-             headers = ["student", "grade", "gpa"]
+            data = ReportGenerationService.get_student_performance_data(school_id=school_id)
+            headers = ["student", "grade", "gpa"]
         elif report_type == "attendance":
-             data = ReportGenerationService.get_attendance_report(school_id=school_id)
-             headers = ["student", "date", "status", "course"]
+            data = ReportGenerationService.get_attendance_report(school_id=school_id)
+            headers = ["student", "date", "status", "course"]
         elif report_type == "student_list":
-             data = ReportGenerationService.get_student_list(school_id=school_id)
-             headers = ["name", "email", "id", "status"]
+            data = ReportGenerationService.get_student_list(school_id=school_id)
+            headers = ["name", "email", "id", "status"]
         else:
             # Check if data provided (generic export)
             data = request.data.get("data", [])
             if not data:
                 return Response({"detail": "No data to export or invalid report type."}, status=status.HTTP_400_BAD_REQUEST)
-            headers = list(data[0].keys()) if data else []
+            
+            # Safely extract headers from first dict in list
+            headers = []
+            if data and isinstance(data, list) and isinstance(data[0], dict):
+                headers = list(data[0].keys())
+            else:
+                # If it's not a list of dicts, it's invalid for generic export
+                return Response({"detail": "Data must be a list of dictionaries for generic export."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not data:
             # We still proceed to generate an empty file with headers

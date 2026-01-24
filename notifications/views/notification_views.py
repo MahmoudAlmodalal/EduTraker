@@ -1,17 +1,27 @@
+"""
+Notification management API views.
+"""
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
 
 from notifications.models import Notification
+from notifications.selectors.notification_selectors import (
+    notification_list,
+    notification_get,
+)
+from notifications.services.notification_services import (
+    notification_mark_read,
+)
 
 
 # =============================================================================
 # Notification Serializers
 # =============================================================================
+
+from accounts.pagination import PaginatedAPIMixin
 
 class NotificationOutputSerializer(serializers.ModelSerializer):
     """Output serializer for notifications."""
@@ -32,7 +42,7 @@ class NotificationOutputSerializer(serializers.ModelSerializer):
 
 class NotificationFilterSerializer(serializers.Serializer):
     """Filter serializer for notification list."""
-    is_read = serializers.BooleanField(required=False)
+    is_read = serializers.BooleanField(required=False, allow_null=True)
     notification_type = serializers.ChoiceField(
         choices=Notification.NOTIFICATION_TYPE_CHOICES,
         required=False
@@ -43,7 +53,7 @@ class NotificationFilterSerializer(serializers.Serializer):
 # Notification Views
 # =============================================================================
 
-class NotificationListApi(APIView):
+class NotificationListApi(PaginatedAPIMixin, APIView):
     """List notifications for the authenticated user."""
     permission_classes = [IsAuthenticated]
 
@@ -53,25 +63,23 @@ class NotificationListApi(APIView):
         parameters=[
             OpenApiParameter(name='is_read', type=bool),
             OpenApiParameter(name='notification_type', type=str),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: NotificationOutputSerializer(many=True)}
     )
     def get(self, request):
         filter_serializer = NotificationFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
-        filters = filter_serializer.validated_data
         
-        notifications = Notification.objects.filter(
-            recipient=request.user,
-            is_active=True
+        notifications = notification_list(
+            user=request.user,
+            filters=filter_serializer.validated_data
         )
         
-        if 'is_read' in filters:
-            notifications = notifications.filter(is_read=filters['is_read'])
-        if 'notification_type' in filters:
-            notifications = notifications.filter(notification_type=filters['notification_type'])
+        page = self.paginate_queryset(notifications)
+        if page is not None:
+            return self.get_paginated_response(NotificationOutputSerializer(page, many=True).data)
         
-        notifications = notifications.order_by('-created_at')
         return Response(NotificationOutputSerializer(notifications, many=True).data)
 
 
@@ -86,15 +94,10 @@ class NotificationMarkReadApi(APIView):
         responses={200: NotificationOutputSerializer}
     )
     def post(self, request, pk):
-        notification = get_object_or_404(
-            Notification,
-            pk=pk,
-            recipient=request.user,
-            is_active=True
+        notification = notification_mark_read(
+            notification_id=pk,
+            user=request.user
         )
-        notification.is_read = True
-        notification.read_at = timezone.now()
-        notification.save(update_fields=['is_read', 'read_at', 'updated_at'])
         return Response(NotificationOutputSerializer(notification).data)
 
 
@@ -108,10 +111,8 @@ class NotificationDetailApi(APIView):
         responses={200: NotificationOutputSerializer}
     )
     def get(self, request, pk):
-        notification = get_object_or_404(
-            Notification,
-            pk=pk,
-            recipient=request.user,
-            is_active=True
+        notification = notification_get(
+            notification_id=pk,
+            user=request.user
         )
         return Response(NotificationOutputSerializer(notification).data)

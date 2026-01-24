@@ -38,6 +38,8 @@ from reports.services.count_managerSchool_services import (
     get_courses_in_school,
     get_classroom_details,
     get_school_dashboard_statistics,
+    get_school_manager_summary,
+    get_course_summary,
 )
 from reports.services.count_teacher_services import (
     get_teacher_summary,
@@ -118,12 +120,13 @@ def get_comprehensive_statistics(*, actor: CustomUser) -> Dict:
 
 
 # Aliases for backward compatibility with stats_views.py
-get_student_count_by_teacher = get_teacher_summary
-get_student_count_by_workstream = get_workstream_summary
-get_student_count_by_school = get_school_summary
-get_student_count_by_school_manager = get_school_summary  # Note: School managers are usually assigned to one school
-get_student_count_by_course = get_students_by_course
-get_student_count_by_classroom = get_teacher_students_by_classroom
+# ensuring they point to functions that accept the keyword arguments used in views
+get_student_count_by_teacher = get_teacher_summary           # expects teacher_id
+get_student_count_by_workstream = get_workstream_summary    # expects workstream_id
+get_student_count_by_school = get_school_summary             # expects school_id
+get_student_count_by_school_manager = get_school_manager_summary # expects manager_id
+get_student_count_by_course = get_course_summary             # expects course_id
+get_student_count_by_classroom = get_classroom_details      # expects classroom_id
 
 
 # Re-export all functions for backward compatibility

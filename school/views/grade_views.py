@@ -4,6 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManager
+from accounts.pagination import PaginatedAPIMixin
 from school.models import Grade
 from school.selectors.grade_selectors import grade_list, grade_get
 from school.services.grade_services import grade_create, grade_update, grade_deactivate, grade_activate
@@ -46,7 +47,7 @@ class GradeFilterSerializer(serializers.Serializer):
 # Grade Views
 # =============================================================================
 
-class GradeListApi(APIView):
+class GradeListApi(PaginatedAPIMixin, APIView):
     """List all grades."""
     permission_classes = [IsAdminOrManager]
 
@@ -58,6 +59,7 @@ class GradeListApi(APIView):
             OpenApiParameter(name='name', type=str, description='Filter by name'),
             OpenApiParameter(name='numeric_level', type=int, description='Filter by level'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: GradeOutputSerializer(many=True)},
         examples=[
@@ -82,6 +84,9 @@ class GradeListApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(grades)
+        if page is not None:
+            return self.get_paginated_response(GradeOutputSerializer(page, many=True).data)
         return Response(GradeOutputSerializer(grades, many=True).data)
 
 

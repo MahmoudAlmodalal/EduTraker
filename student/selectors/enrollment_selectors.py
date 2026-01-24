@@ -9,14 +9,14 @@ from student.selectors.student_selectors import can_access_student, student_get
 
 def enrollment_get(*, enrollment_id: int, actor: CustomUser, include_inactive: bool = False) -> StudentEnrollment:
     """Retrieve a single StudentEnrollment by ID with permission check."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         base_qs = StudentEnrollment.all_objects
     else:
         base_qs = StudentEnrollment.objects
 
     enrollment = get_object_or_404(
         base_qs.select_related(
-            'student', 'student__user', 'student__school',
+            'student', 'student__user', 'student__user__school',
             'class_room', 'academic_year'
         ),
         id=enrollment_id

@@ -9,7 +9,7 @@ from accounts.policies.user_policies import _has_school_access
 
 def school_get(*, actor: CustomUser, school_id: int, include_inactive: bool = False) -> School:
     """Retrieve a single School by ID with permission check."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         school = School.all_objects.filter(id=school_id).first()
     else:
         school = School.objects.filter(id=school_id).first()

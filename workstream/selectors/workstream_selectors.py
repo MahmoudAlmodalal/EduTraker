@@ -6,14 +6,16 @@ from accounts.policies.workstream_policies import can_view_workstream
 from django.core.exceptions import PermissionDenied
 
 def workstream_list(*, filters: dict, user: CustomUser) -> QuerySet:
-    qs = WorkStream.objects.all()
+    # Bypass ActiveManager by using all_objects.filter(is_active=True)
+    # This avoids potential issues with the custom manager's get_queryset overriding standard behavior
+    qs = WorkStream.all_objects.filter(is_active=True)
 
     if user.role in {Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL}:
         qs = qs.filter(id=user.work_stream_id)
 
     if search := filters.get("search"):
         qs = qs.filter(workstream_name__icontains=search)
-
+    
     if (is_active := filters.get("is_active")) is not None:
         qs = qs.filter(is_active=is_active)
 

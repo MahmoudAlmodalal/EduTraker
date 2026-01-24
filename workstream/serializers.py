@@ -6,7 +6,7 @@ from workstream.models import WorkStream
 
 class WorkstreamListQuerySerializer(serializers.Serializer):
     search = serializers.CharField(required=False)
-    is_active = serializers.BooleanField(required=False)
+    is_active = serializers.BooleanField(required=False, allow_null=True)
 
 class WorkstreamCreateInputSerializer(serializers.Serializer):
     workstream_name = serializers.CharField(max_length=255)

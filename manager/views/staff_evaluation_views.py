@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsAdminOrManager
+from accounts.permissions import IsAdminOrManager, IsStaffUser
+from accounts.pagination import PaginatedAPIMixin
 from manager.models import StaffEvaluation
 from manager.selectors.staff_evaluation_selectors import staff_evaluation_list, staff_evaluation_get
 from manager.services.staff_evaluation_services import (
@@ -48,9 +49,9 @@ class StaffEvaluationFilterSerializer(serializers.Serializer):
 # StaffEvaluation Views
 # =============================================================================
 
-class StaffEvaluationListApi(APIView):
+class StaffEvaluationListApi(PaginatedAPIMixin, APIView):
     """List all staff evaluations accessible to the current user."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsStaffUser]
 
     @extend_schema(
         tags=['Staff Evaluation'],
@@ -61,6 +62,7 @@ class StaffEvaluationListApi(APIView):
             OpenApiParameter(name='reviewer_id', type=int, description='Filter by reviewer'),
             OpenApiParameter(name='start_date', type=str, description='Filter by start date'),
             OpenApiParameter(name='end_date', type=str, description='Filter by end date'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: StaffEvaluationOutputSerializer(many=True)},
         examples=[
@@ -84,12 +86,15 @@ class StaffEvaluationListApi(APIView):
         filter_serializer = StaffEvaluationFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
         evaluations = staff_evaluation_list(filters=filter_serializer.validated_data, user=request.user)
+        page = self.paginate_queryset(evaluations)
+        if page is not None:
+            return self.get_paginated_response(StaffEvaluationOutputSerializer(page, many=True).data)
         return Response(StaffEvaluationOutputSerializer(evaluations, many=True).data)
 
 
 class StaffEvaluationCreateApi(APIView):
     """Create a new staff evaluation."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsStaffUser]
 
     @extend_schema(
         tags=['Staff Evaluation'],
@@ -137,7 +142,7 @@ class StaffEvaluationCreateApi(APIView):
 
 class StaffEvaluationDetailApi(APIView):
     """Retrieve, update, or delete a specific staff evaluation."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsStaffUser]
 
     @extend_schema(
         tags=['Staff Evaluation'],

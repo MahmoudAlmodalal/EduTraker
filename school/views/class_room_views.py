@@ -4,6 +4,7 @@ from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
 from accounts.permissions import IsAdminOrManager
+from accounts.pagination import PaginatedAPIMixin
 from school.models import ClassRoom
 from school.selectors.school_selectors import school_get
 from school.selectors.classroom_selectors import classroom_list, classroom_get
@@ -55,7 +56,7 @@ class ClassRoomFilterSerializer(serializers.Serializer):
 # ClassRoom Views
 # =============================================================================
 
-class ClassRoomListApi(APIView):
+class ClassRoomListApi(PaginatedAPIMixin, APIView):
     """List classrooms for a specific school and academic year."""
     permission_classes = [IsAdminOrManager]
 
@@ -69,6 +70,7 @@ class ClassRoomListApi(APIView):
             OpenApiParameter(name='classroom_name', type=str, description='Filter by name'),
             OpenApiParameter(name='grade_id', type=int, description='Filter by grade'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: ClassRoomOutputSerializer(many=True)},
         examples=[
@@ -99,6 +101,9 @@ class ClassRoomListApi(APIView):
             filters=filter_serializer.validated_data,
             include_inactive=filter_serializer.validated_data.get('include_inactive', False)
         )
+        page = self.paginate_queryset(classrooms)
+        if page is not None:
+            return self.get_paginated_response(ClassRoomOutputSerializer(page, many=True).data)
         return Response(ClassRoomOutputSerializer(classrooms, many=True).data)
 
 

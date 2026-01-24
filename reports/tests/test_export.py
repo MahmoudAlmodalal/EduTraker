@@ -37,21 +37,58 @@ class ReportExportApiTests(APITestCase):
     def test_admin_export_excel(self):
         self.client.force_authenticate(user=self.admin)
         data = {'report_type': 'student_performance'}
-        response = self.client.post(self.url, data)
+        response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         self.assertTrue(response['Content-Disposition'].startswith('attachment; filename="student_performance_'))
 
-    def test_teacher_export_excel_denied(self):
+    def test_export_pdf(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {'report_type': 'student_performance', 'export_format': 'pdf'}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_export_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {'report_type': 'student_performance', 'export_format': 'csv'}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+
+    def test_export_generic(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            'report_type': 'generic',
+            'export_format': 'csv',
+            'data': [{'col1': 'val1', 'col2': 'val2'}]
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+
+    def test_teacher_export_excel_allowed(self):
         # IsStaffUser allows ADMIN, MANAGER_WORKSTREAM, MANAGER_SCHOOL, TEACHER, SECRETARY.
         self.client.force_authenticate(user=self.teacher_user)
         data = {'report_type': 'student_performance'}
-        response = self.client.post(self.url, data)
+        response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_student_export_denied(self):
-        student = CustomUser.objects.create_user(email='student@test.com', password='password123', role=Role.STUDENT, full_name='Student')
-        self.client.force_authenticate(user=student)
+        self.client.force_authenticate(user=self.student_user)
         data = {'report_type': 'student_performance'}
-        response = self.client.post(self.url, data)
+        response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_export_no_data_generic(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {'report_type': 'generic', 'data': []}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_export_invalid_type(self):
+        # Implicitly falls back to generic, and if no data, should be 400
+        self.client.force_authenticate(user=self.admin)
+        data = {'report_type': 'non_existent_report'}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

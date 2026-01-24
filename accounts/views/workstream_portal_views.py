@@ -40,7 +40,7 @@ class WorkstreamRegisterView(APIView):
         full_name = serializers.CharField()
         role = serializers.CharField()
         work_stream = serializers.IntegerField(source='work_stream.id')
-        work_stream_name = serializers.CharField(source='work_stream.name')
+        work_stream_name = serializers.CharField(source='work_stream.workstream_name')
         is_active = serializers.BooleanField()
         date_joined = serializers.DateTimeField()
         
@@ -136,7 +136,7 @@ class WorkstreamLoginView(APIView):
                 'full_name': user.full_name,
                 'role': user.role,
                 'work_stream': user.work_stream_id,
-                'work_stream_name': user.work_stream.name if user.work_stream else None,
+                'work_stream_name': user.work_stream.workstream_name if user.work_stream else None,
                 'school': user.school_id,
                 'school_name': user.school.school_name if user.school else None,
                 'is_active': user.is_active,

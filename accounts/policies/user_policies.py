@@ -65,7 +65,7 @@ def _has_school_access(user: CustomUser, school) -> bool:
         return True
     if user.role == Role.MANAGER_WORKSTREAM:
         return school.work_stream_id == user.work_stream_id
-    if user.role == Role.MANAGER_SCHOOL:
+    if user.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
         return school.id == user.school_id
     return False
 

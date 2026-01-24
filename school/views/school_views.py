@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManagerWorkstream
+from accounts.pagination import PaginatedAPIMixin
 from school.selectors.school_selectors import school_list, school_get
 from school.services.school_services import create_school, update_school, deactivate_school, activate_school
 from workstream.models import WorkStream
@@ -18,7 +19,7 @@ from school.serializers.school_serializers import (
 )
 
 
-class SchoolListAPIView(APIView):
+class SchoolListAPIView(PaginatedAPIMixin, APIView):
     """List all schools accessible to the current user."""
     permission_classes = [IsAdminOrManagerWorkstream]
 
@@ -31,6 +32,11 @@ class SchoolListAPIView(APIView):
                 name='work_stream_id',
                 type=int,
                 description='Filter by workstream ID'
+            ),
+            OpenApiParameter(
+                name='page',
+                type=int,
+                description='Page number'
             ),
         ],
         responses={
@@ -64,6 +70,10 @@ class SchoolListAPIView(APIView):
             work_stream_id=query_ser.validated_data.get("work_stream_id"),
             include_inactive=query_ser.validated_data.get("include_inactive", False)
         )
+
+        page = self.paginate_queryset(schools)
+        if page is not None:
+            return self.get_paginated_response(SchoolOutputSerializer(page, many=True).data)
 
         return Response(SchoolOutputSerializer(schools, many=True).data, status=status.HTTP_200_OK)
 
