@@ -1,3 +1,6 @@
+"""
+Guardian management API views.
+"""
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
@@ -13,67 +16,18 @@ from guardian.services.guardian_services import (
     guardian_deactivate,
     guardian_activate,
     guardian_student_link_create,
+    guardian_student_link_update,
     guardian_student_link_deactivate,
 )
 from student.selectors.student_selectors import student_get
 
-
-# =============================================================================
-# Guardian Serializers
-# =============================================================================
-
-class GuardianFilterSerializer(serializers.Serializer):
-    """Filter serializer for guardian list endpoint."""
-    school_id = serializers.IntegerField(required=False, help_text="Filter by school")
-    search = serializers.CharField(required=False, help_text="Search by name or email")
-    include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
-
-
-class GuardianInputSerializer(serializers.Serializer):
-    """Input serializer for creating/updating guardians."""
-    email = serializers.EmailField(required=False, help_text="Email address")
-    full_name = serializers.CharField(max_length=150, required=False, help_text="Full name")
-    password = serializers.CharField(write_only=True, required=False, help_text="Password")
-    school_id = serializers.IntegerField(required=False, help_text="School ID")
-    phone_number = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True, help_text="Phone number")
-
-
-class GuardianOutputSerializer(serializers.ModelSerializer):
-    """Output serializer for guardian responses."""
-    email = serializers.EmailField(source='user.email', read_only=True)
-    full_name = serializers.CharField(source='user.full_name', read_only=True)
-    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
-    school_id = serializers.IntegerField(source='user.school_id', read_only=True, allow_null=True)
-    school_name = serializers.CharField(source='user.school.school_name', read_only=True, allow_null=True)
-    
-    deactivated_at = serializers.DateTimeField(source='user.deactivated_at', read_only=True)
-    deactivated_by_name = serializers.CharField(source='user.deactivated_by.full_name', read_only=True, allow_null=True)
-
-    class Meta:
-        model = Guardian
-        fields = [
-            'user_id', 'email', 'full_name', 'is_active',
-            'school_id', 'school_name', 'phone_number',
-            'deactivated_at', 'deactivated_by_name',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['user_id', 'created_at', 'updated_at', 'deactivated_by_name']
-
-
-class GuardianStudentLinkInputSerializer(serializers.Serializer):
-    """Input serializer for linking student to guardian."""
-    student_id = serializers.IntegerField(help_text="Student ID")
-    relationship_type = serializers.ChoiceField(choices=GuardianStudentLink.RELATIONSHIP_CHOICES, help_text="Relationship type")
-
-
-class GuardianStudentLinkOutputSerializer(serializers.ModelSerializer):
-    """Output serializer for links."""
-    student_name = serializers.CharField(source='student.user.full_name', read_only=True)
-    relationship_display = serializers.CharField(source='get_relationship_type_display', read_only=True)
-
-    class Meta:
-        model = GuardianStudentLink
-        fields = ['id', 'student_id', 'student_name', 'relationship_type', 'relationship_display', 'is_active']
+from guardian.serializers import (
+    GuardianFilterSerializer,
+    GuardianInputSerializer,
+    GuardianOutputSerializer,
+    GuardianStudentLinkInputSerializer,
+    GuardianStudentLinkOutputSerializer,
+)
 
 
 # =============================================================================
@@ -85,23 +39,24 @@ class GuardianListApi(PaginatedAPIMixin, APIView):
     permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
-        tags=['Guardian Management'],
-        summary='List guardians',
+        tags=["Guardian Management"],
+        summary="List guardians",
         parameters=[
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
             OpenApiParameter(name='page', type=int, description='Page number'),
         ],
-        responses={200: GuardianOutputSerializer(many=True)}
+        responses={200: GuardianOutputSerializer(many=True)},
     )
     def get(self, request):
         filter_serializer = GuardianFilterSerializer(data=request.query_params)
         filter_serializer.is_valid(raise_exception=True)
+
         guardians = guardian_list(
-            filters=filter_serializer.validated_data, 
+            filters=filter_serializer.validated_data,
             user=request.user,
-            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+            include_inactive=filter_serializer.validated_data.get("include_inactive", False),
         )
         page = self.paginate_queryset(guardians)
         if page is not None:
@@ -110,22 +65,33 @@ class GuardianListApi(PaginatedAPIMixin, APIView):
 
 
 class GuardianCreateApi(APIView):
-    """Create guardian."""
+    """Create guardian (Admin/Manager/Secretary)."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
-        tags=['Guardian Management'],
-        summary='Create guardian',
+        tags=["Guardian Management"],
+        summary="Create guardian",
         request=GuardianInputSerializer,
-        responses={201: GuardianOutputSerializer}
+        responses={201: GuardianOutputSerializer},
     )
     def post(self, request):
         serializer = GuardianInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+
+        required = ["email", "full_name", "password", "school_id"]
+        missing = [f for f in required if f not in data]
+        if missing:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({f: "This field is required." for f in missing})
+
         guardian = guardian_create(
-            creator=request.user, email=data['email'], full_name=data['full_name'], password=data['password'],
-            school_id=data['school_id'], phone_number=data.get('phone_number')
+            creator=request.user,
+            email=data["email"],
+            full_name=data["full_name"],
+            password=data["password"],
+            school_id=data["school_id"],
+            phone_number=data.get("phone_number"),
         )
         return Response(GuardianOutputSerializer(guardian).data, status=status.HTTP_201_CREATED)
 
@@ -135,55 +101,56 @@ class GuardianDetailApi(APIView):
     permission_classes = [IsAdminOrManagerOrSecretary | IsTeacher | IsStaffUser | IsGuardian]
 
     @extend_schema(
-        tags=['Guardian Management'],
-        summary='Get guardian details',
-        responses={200: GuardianOutputSerializer}
+        tags=["Guardian Management"],
+        summary="Get guardian details",
+        responses={200: GuardianOutputSerializer},
     )
-    def get(self, request, guardian_id):
+    def get(self, request, guardian_id: int):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
         return Response(GuardianOutputSerializer(guardian).data)
 
     @extend_schema(
-        tags=['Guardian Management'],
-        summary='Update guardian',
+        tags=["Guardian Management"],
+        summary="Update guardian",
         request=GuardianInputSerializer,
-        responses={200: GuardianOutputSerializer}
+        responses={200: GuardianOutputSerializer},
     )
-    def patch(self, request, guardian_id):
+    def patch(self, request, guardian_id: int):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
         serializer = GuardianInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+
         updated = guardian_update(guardian=guardian, actor=request.user, data=serializer.validated_data)
         return Response(GuardianOutputSerializer(updated).data)
 
 
 class GuardianDeactivateApi(APIView):
-    """Deactivate."""
+    """Deactivate guardian (Admin/Manager/Secretary)."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
-        tags=['Guardian Management'], 
-        summary='Deactivate guardian',
+        tags=["Guardian Management"],
+        summary="Deactivate guardian",
         request=None,
-        responses={204: OpenApiResponse(description='Deactivated successfully')}
+        responses={204: OpenApiResponse(description="Deactivated successfully")},
     )
-    def post(self, request, guardian_id):
+    def post(self, request, guardian_id: int):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
         guardian_deactivate(guardian=guardian, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GuardianActivateApi(APIView):
-    """Activate."""
+    """Activate guardian (Admin/Managers)."""
     permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
-        tags=['Guardian Management'], 
-        summary='Activate guardian',
+        tags=["Guardian Management"],
+        summary="Activate guardian",
         request=None,
-        responses={204: OpenApiResponse(description='Activated successfully')}
+        responses={204: OpenApiResponse(description="Activated successfully")},
     )
-    def post(self, request, guardian_id):
+    def post(self, request, guardian_id: int):
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user, include_inactive=True)
         guardian_activate(guardian=guardian, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -201,7 +168,7 @@ class GuardianStudentLinkApi(PaginatedAPIMixin, APIView):
         ],
         responses={200: GuardianStudentLinkOutputSerializer(many=True)}
     )
-    def get(self, request, guardian_id):
+    def get(self, request, guardian_id: int):
         links = guardian_student_list(guardian_id=guardian_id, actor=request.user)
         page = self.paginate_queryset(links)
         if page is not None:
@@ -209,18 +176,74 @@ class GuardianStudentLinkApi(PaginatedAPIMixin, APIView):
         return Response(GuardianStudentLinkOutputSerializer(links, many=True).data)
 
     @extend_schema(
-        tags=['Guardian Management'],
-        summary='Link student to guardian',
+        tags=["Guardian Management"],
+        summary="Link student to guardian",
         request=GuardianStudentLinkInputSerializer,
-        responses={201: GuardianStudentLinkOutputSerializer}
+        responses={201: GuardianStudentLinkOutputSerializer},
     )
-    def post(self, request, guardian_id):
+    def post(self, request, guardian_id: int):
+        # Only staff can create links
+        if request.user.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("You don't have permission to create guardian links.")
+
         guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
+
         serializer = GuardianStudentLinkInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        student = student_get(student_id=serializer.validated_data['student_id'], actor=request.user)
+        data = serializer.validated_data
+
+        student = student_get(student_id=data["student_id"], actor=request.user)
+
         link = guardian_student_link_create(
-            actor=request.user, guardian=guardian, student=student,
-            relationship_type=serializer.validated_data['relationship_type']
+            actor=request.user,
+            guardian=guardian,
+            student=student,
+            relationship_type=data["relationship_type"],
+            is_primary=data.get("is_primary", False),
+            can_pickup=data.get("can_pickup", True),
         )
         return Response(GuardianStudentLinkOutputSerializer(link).data, status=status.HTTP_201_CREATED)
+
+
+class GuardianStudentLinkDetailApi(APIView):
+    """
+    Update/deactivate a specific link by link_id.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Guardian Management"],
+        summary="Update guardian-student link",
+        request=GuardianStudentLinkInputSerializer,
+        responses={200: GuardianStudentLinkOutputSerializer},
+    )
+    def patch(self, request, link_id: int):
+        # Only staff can modify links
+        if request.user.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("You don't have permission to update guardian links.")
+
+        link = guardian_student_link_get(link_id=link_id, actor=request.user)
+
+        serializer = GuardianStudentLinkInputSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        updated = guardian_student_link_update(actor=request.user, link=link, data=serializer.validated_data)
+        return Response(GuardianStudentLinkOutputSerializer(updated).data)
+
+    @extend_schema(
+        tags=["Guardian Management"],
+        summary="Deactivate guardian-student link",
+        request=None,
+        responses={204: OpenApiResponse(description="Unlinked successfully")},
+    )
+    def post(self, request, link_id: int):
+        # Only staff can deactivate links
+        if request.user.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("You don't have permission to deactivate guardian links.")
+
+        link = guardian_student_link_get(link_id=link_id, actor=request.user)
+        guardian_student_link_deactivate(link=link, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
