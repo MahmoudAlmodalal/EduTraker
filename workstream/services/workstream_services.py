@@ -32,7 +32,7 @@ def workstream_create(
         if manager.work_stream is not None:
             raise ValidationError("Manager is already assigned to workstream")
 
-    if WorkStream.objects.filter(workstream_name__iexact=workstream_name).exists():
+    if WorkStream.all_objects.filter(workstream_name__iexact=workstream_name).exists():
         raise ValidationError("Workstream with this name already exists.")
 
     workstream = WorkStream(
@@ -83,7 +83,7 @@ def workstream_update(
         new_name = data["workstream_name"]
         if not new_name or not new_name.strip():
             raise ValidationError("Workstream name cannot be empty.")
-        if WorkStream.objects.filter(workstream_name__iexact=new_name).exclude(id=workstream.id).exists():
+        if WorkStream.all_objects.filter(workstream_name__iexact=new_name).exclude(id=workstream.id).exists():
             raise ValidationError("Workstream with this name already exists.")
 
     # Track if manager is being changed
@@ -91,11 +91,19 @@ def workstream_update(
     new_manager = data.get("manager")
 
     for field in allowed_fields:
-        if field in data:
+        if field in data and field != "is_active":
             setattr(workstream, field, data[field])
 
     workstream.full_clean()
     workstream.save()
+
+    # Handle activation/deactivation if is_active is present and allowed
+    if "is_active" in data and "is_active" in allowed_fields:
+        new_status = data["is_active"]
+        if new_status and not workstream.is_active:
+            workstream.activate()
+        elif not new_status and workstream.is_active:
+            workstream.deactivate(user=actor)
 
     # Update manager's work_stream field if manager was changed
     if new_manager and new_manager != old_manager:
