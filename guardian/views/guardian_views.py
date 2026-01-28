@@ -210,7 +210,7 @@ class GuardianStudentLinkDetailApi(APIView):
     """
     Update/deactivate a specific link by link_id.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=["Guardian Management"],
