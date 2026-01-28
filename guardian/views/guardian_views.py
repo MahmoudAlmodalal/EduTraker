@@ -3,9 +3,8 @@ Guardian management API views.
 """
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, serializers
-from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
+from rest_framework import serializers, status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
 from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher, IsGuardian
 from accounts.pagination import PaginatedAPIMixin
