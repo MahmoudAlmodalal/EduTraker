@@ -10,7 +10,7 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
     """
     Get a filtered list of users based on the actor's role and permissions.
     """
-    qs = CustomUser.objects.all()
+    qs = CustomUser.all_objects.all()
 
     if user.role == Role.MANAGER_WORKSTREAM:
         qs = qs.filter(work_stream=user.work_stream)
@@ -24,6 +24,9 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
     if role := filters.get("role"):
         qs = qs.filter(role=role)
 
+    if (is_active_val := filters.get("is_active")) is not None:
+         qs = qs.filter(is_active=is_active_val)
+
     if search := filters.get("search"):
         qs = qs.filter(full_name__icontains=search)
 
@@ -34,7 +37,7 @@ def user_get(*, user_id: int, actor: CustomUser) -> CustomUser:
     """
     Get a single user by ID with permission check.
     """
-    user = get_object_or_404(CustomUser, id=user_id)
+    user = get_object_or_404(CustomUser.all_objects, id=user_id)
 
     if not can_access_user(actor=actor, target=user):
         raise DRFPermissionDenied("Access denied.")

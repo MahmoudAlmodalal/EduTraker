@@ -13,7 +13,8 @@ from .views.user_views import (
     UserCreateApi,
     UserUpdateApi,
     UserDeactivateApi,
-    UserActivateApi
+    UserActivateApi,
+    UserExportApi
 )
 from .views.configuration_views import SystemConfigurationListCreateView, SystemConfigurationDetailView
 
@@ -29,6 +30,7 @@ urlpatterns = [
     path('auth/password-reset/', RequestPasswordResetView.as_view(), name='password-reset-request'),
     path('auth/password-reset/confirm/', ResetPasswordView.as_view(), name='password-reset-confirm'),
     # User Management endpoints
+    path('users/export/', UserExportApi.as_view(), name='user-export'),
     path('users/', UserListApi.as_view(), name='user-list'),
     path('users/create/', UserCreateApi.as_view(), name='user-create'),
     path('users/<int:user_id>/', UserUpdateApi.as_view(), name='user-update'),

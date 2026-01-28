@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .models import ActivityLog
 
 class TeacherStudentCountSerializer(serializers.Serializer):
     teacher_id = serializers.IntegerField(help_text="Teacher's User ID")
@@ -37,6 +38,25 @@ class ComprehensiveStatisticsSerializer(serializers.Serializer):
     generated_at = serializers.DateTimeField(help_text="Time of generation")
     statistics = serializers.DictField(help_text="Key-value statistics")
 
+class ActivityLogSerializer(serializers.ModelSerializer):
+    created_at_human = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ActivityLog
+        fields = ['id', 'action_type', 'entity_type', 'entity_id', 'description', 'created_at', 'created_at_human']
+        
+    def get_created_at_human(self, obj):
+        from django.utils.timesince import timesince
+        from django.utils import timezone
+        now = timezone.now()
+        diff = now - obj.created_at
+        
+        if diff.days == 0 and diff.seconds < 60:
+            return "Just now"
+        return f"{timesince(obj.created_at)} ago"
+
 class DashboardStatisticsSerializer(serializers.Serializer):
     role = serializers.CharField(help_text="User role")
     statistics = serializers.DictField(help_text="Dashboard-specific statistics")
+    recent_activity = ActivityLogSerializer(many=True, required=False)
+    activity_chart = serializers.ListField(required=False, help_text="Daily login counts")

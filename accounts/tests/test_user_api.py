@@ -347,3 +347,61 @@ class UserActivateDeactivateApiTests(APITestCase):
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class UserExportApiTests(APITestCase):
+    """Test user export endpoint."""
+    
+    def setUp(self):
+        self.workstream = WorkStream.objects.create(workstream_name="Test WS", capacity=50)
+        self.school = School.objects.create(school_name="Test School", work_stream=self.workstream)
+        
+        self.admin = User.objects.create_user(
+            email='admin@test.com', password='pass123',
+            full_name='Admin User', role='admin'
+        )
+        self.teacher = User.objects.create_user(
+            email='teacher@test.com', password='pass123',
+            full_name='Teacher User', role='teacher', school=self.school
+        )
+        self.student = User.objects.create_user(
+            email='student@test.com', password='pass123',
+            full_name='Student User', role='student', school=self.school
+        )
+        
+        self.url = reverse('user-export')
+
+    def test_admin_can_export_users(self):
+        """Admin should be able to export users as CSV."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        
+        content = response.content.decode('utf-8')
+        lines = content.strip().split('\n')
+        
+        # Header + 3 users (admin, teacher, student)
+        self.assertGreaterEqual(len(lines), 4)
+        self.assertTrue(lines[0].startswith('ID,Full Name,Email'))
+        self.assertIn('teacher@test.com', content)
+
+    def test_export_users_with_filter(self):
+        """Should export only users matching filter."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.url, {'role': 'teacher'})
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        content = response.content.decode('utf-8')
+        
+        # Should contain teacher but NOT student
+        self.assertIn('teacher@test.com', content)
+        self.assertNotIn('student@test.com', content)
+
+    def test_student_cannot_export_users(self):
+        """Students should not be able to export users."""
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.url)
+        
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

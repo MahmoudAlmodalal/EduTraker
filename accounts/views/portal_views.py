@@ -190,6 +190,11 @@ class PortalLoginView(APIView):
                 password=serializer.validated_data['password'],
             )
             
+            # Send user_logged_in signal
+            from django.contrib.auth.signals import user_logged_in
+            user = result['user']
+            user_logged_in.send(sender=user.__class__, request=request, user=user)
+            
             return Response(
                 self.PortalLoginOutputSerializer(result).data,
                 status=status.HTTP_200_OK

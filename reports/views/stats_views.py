@@ -401,7 +401,9 @@ class DashboardStatisticsView(APIView):
                         'total_students': 45,
                         'course_count': 2,
                         'classroom_count': 2
-                    }
+                    },
+                    'recent_activity': [],
+                    'activity_chart': []
                 },
                 response_only=True
             )
@@ -410,21 +412,107 @@ class DashboardStatisticsView(APIView):
     def get(self, request):
         user = request.user
         stats = {}
+        recent_activity = []
+        activity_chart = []
         
         try:
+            # Common: Fetch recent activity relevant to the user
+            from .models import ActivityLog, UserLoginHistory
+            from django.db.models import Count
+            from django.db.models.functions import TruncDate
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            # 1. Fetch Recent Activity
+            # logic depends on role - for admin, see everything. 
+            # For others, maybe specific entities. For now keeping it simple:
+            if user.role == 'admin':
+                recent_activity_qs = ActivityLog.objects.all().order_by('-created_at')[:10]
+            else:
+                # For basic users, maybe just their own actions or actions on their workstream/school
+                recent_activity_qs = ActivityLog.objects.filter(actor=user).order_by('-created_at')[:10]
+
+            from .serializers import ActivityLogSerializer
+            recent_activity = ActivityLogSerializer(recent_activity_qs, many=True).data
+            
+            # 2. Fetch Activity Chart (Login Frequency)
+            # Last 7 days
+            seven_days_ago = timezone.now() - timedelta(days=6)
+            
+            login_stats = UserLoginHistory.objects.filter(
+                login_time__gte=seven_days_ago
+            ).annotate(
+                date=TruncDate('login_time')
+            ).values('date').annotate(
+                logins=Count('id')
+            ).order_by('date')
+            
+            # Format for Recharts (or similar)
+            # Ensure all days are present
+            
+            chart_data_map = {item['date']: item['logins'] for item in login_stats}
+            
+            for i in range(7):
+                day = seven_days_ago.date() + timedelta(days=i)
+                day_name = day.strftime("%a") # Mon, Tue, etc.
+                count = chart_data_map.get(day, 0)
+                activity_chart.append({
+                    'name': day_name,
+                    'logins': count,
+                    'date': str(day)
+                })
+
             if user.role == 'admin':
                 from student.models import Student
                 from teacher.models import Teacher
                 from workstream.models import WorkStream
                 from school.models import School, ClassRoom
+                from accounts.models import CustomUser
+                
+                # Get current counts
+                current_workstreams = WorkStream.objects.filter(is_active=True).count()
+                current_schools = School.objects.count()
+                current_users = CustomUser.objects.filter(is_active=True).count()
+                
+                # Calculate date 30 days ago for comparison
+                thirty_days_ago = timezone.now() - timedelta(days=30)
+                
+                # Get counts from 30 days ago (items created before 30 days ago)
+                old_workstreams = WorkStream.objects.filter(
+                    is_active=True,
+                    created_at__lt=thirty_days_ago
+                ).count() if hasattr(WorkStream, 'created_at') else current_workstreams
+                
+                old_schools = School.objects.filter(
+                    created_at__lt=thirty_days_ago
+                ).count() if hasattr(School, 'created_at') else current_schools
+                
+                old_users = CustomUser.objects.filter(
+                    is_active=True,
+                    date_joined__lt=thirty_days_ago
+                ).count()
+                
+                # Calculate percentage changes
+                def calculate_change(current, old):
+                    if old == 0:
+                        return 100.0 if current > 0 else 0.0
+                    return round(((current - old) / old) * 100, 1)
+                
+                workstreams_change = calculate_change(current_workstreams, old_workstreams)
+                schools_change = calculate_change(current_schools, old_schools)
+                users_change = calculate_change(current_users, old_users)
                 
                 stats = {
                     'total_students': Student.objects.filter(current_status='active').count(),
                     'total_teachers': Teacher.objects.count(),
-                    'total_workstreams': WorkStream.objects.filter(is_active=True).count(),
-                    'total_schools': School.objects.count(),
+                    'total_workstreams': current_workstreams,
+                    'total_schools': current_schools,
                     'total_classrooms': ClassRoom.objects.count(),
-                    'inactive_students': Student.objects.exclude(current_status='active').count()
+                    'inactive_students': Student.objects.exclude(current_status='active').count(),
+                    'total_users': current_users,
+                    'workstreams_change': workstreams_change,
+                    'schools_change': schools_change,
+                    'users_change': users_change
                 }
             
             elif user.role == 'manager_workstream':
@@ -476,11 +564,11 @@ class DashboardStatisticsView(APIView):
                     ).count()
                 }
             
-            elif user.role == Role.STUDENT:
+            elif user.role == 'student':
                 from reports.services.count__student_services import get_student_dashboard_statistics
                 stats = get_student_dashboard_statistics(student_id=user.id, actor=user)
             
-            elif user.role == Role.GUARDIAN:
+            elif user.role == 'guardian':
                 from guardian.models import GuardianStudentLink
                 from django.db.models import Count, Avg
                 
@@ -502,10 +590,14 @@ class DashboardStatisticsView(APIView):
 
             return Response({
                 'role': user.role,
-                'statistics': stats
+                'statistics': stats,
+                'recent_activity': recent_activity,
+                'activity_chart': activity_chart
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response(
                 {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST

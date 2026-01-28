@@ -25,6 +25,8 @@ class WorkstreamOutputSerializer(serializers.Serializer):
     capacity = serializers.IntegerField(required=False, min_value=1)
     location = serializers.CharField(required=False)
     is_active = serializers.BooleanField(required=False)
+    total_users = serializers.IntegerField(read_only=True)
+    total_schools = serializers.IntegerField(read_only=True)
 
     @extend_schema_field(serializers.CharField())
     def get_description(self, obj):

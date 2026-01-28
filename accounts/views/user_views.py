@@ -1,6 +1,9 @@
 from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.http import HttpResponse
+import csv
+from datetime import datetime
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 from accounts.models import CustomUser, Role
 from accounts.selectors.user_selectors import user_list, user_get
@@ -30,7 +33,7 @@ class UserListApi(PaginatedAPIMixin, APIView):
     class FilterSerializer(serializers.Serializer):
         role = serializers.ChoiceField(choices=CustomUser.ROLE_CHOICES, required=False, help_text="Filter by role")
         search = serializers.CharField(required=False, help_text="Search by name or email")
-        include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
+        is_active = serializers.BooleanField(required=False, allow_null=True, help_text="Filter by active status")
 
     class UserOutputSerializer(serializers.ModelSerializer):
         work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
@@ -80,6 +83,41 @@ class UserListApi(PaginatedAPIMixin, APIView):
         
         data = self.UserOutputSerializer(users, many=True).data
         return Response(data)
+
+
+class UserExportApi(APIView):
+    """Export filtered users to CSV."""
+    permission_classes = [IsAdminOrManager]
+
+    def get(self, request):
+        filter_serializer = UserListApi.FilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        
+        users = user_list(
+            user=request.user,
+            filters=filter_serializer.validated_data
+        )
+
+        response = HttpResponse(content_type='text/csv')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        response['Content-Disposition'] = f'attachment; filename="users_export_{timestamp}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Full Name', 'Email', 'Role', 'Status', 'Workstream', 'School', 'Date Joined'])
+
+        for user in users:
+            writer.writerow([
+                user.id,
+                user.full_name,
+                user.email,
+                user.get_role_display(),
+                'Active' if user.is_active else 'Inactive',
+                user.work_stream.workstream_name if user.work_stream else 'N/A',
+                user.school.school_name if user.school else 'N/A',
+                user.date_joined.strftime("%Y-%m-%d %H:%M:%S") if user.date_joined else 'N/A'
+            ])
+
+        return response
 
 
 # Roles that have separate profile tables - these should NOT be created via this endpoint
