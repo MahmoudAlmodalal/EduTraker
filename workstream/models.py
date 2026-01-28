@@ -22,6 +22,7 @@ class WorkStream(SoftDeleteModel):
         validators=[MinValueValidator(1)],
         help_text="Maximum number of schools"
     )
+    location = models.CharField(max_length=255, null=True, blank=True, help_text="Workstream regional location")
     
     class Meta:
         db_table = "work_streams"

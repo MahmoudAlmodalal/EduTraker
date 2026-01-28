@@ -13,6 +13,7 @@ class WorkstreamCreateInputSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     manager_id = serializers.IntegerField(required=False, allow_null=True)
     capacity = serializers.IntegerField(min_value=1, default=100)
+    location = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
 
 class WorkstreamOutputSerializer(serializers.Serializer):
@@ -20,16 +21,23 @@ class WorkstreamOutputSerializer(serializers.Serializer):
     workstream_name = serializers.CharField(required=False)
     description = serializers.SerializerMethodField()
     manager_id = serializers.IntegerField(required=False)
+    manager_name = serializers.SerializerMethodField()
     capacity = serializers.IntegerField(required=False, min_value=1)
+    location = serializers.CharField(required=False)
     is_active = serializers.BooleanField(required=False)
 
     @extend_schema_field(serializers.CharField())
     def get_description(self, obj):
         return obj.description or ""
+
+    @extend_schema_field(serializers.CharField())
+    def get_manager_name(self, obj):
+        return obj.manager.full_name if obj.manager else "Pending"
     
 class WorkstreamUpdateInputSerializer(serializers.Serializer):
     workstream_name = serializers.CharField(required=False)
     description = serializers.CharField(required=False, allow_blank=True)
     manager_id = serializers.IntegerField(required=False)
     capacity = serializers.IntegerField(required=False, min_value=1)
+    location = serializers.CharField(required=False, allow_blank=True, max_length=255)
     is_active = serializers.BooleanField(required=False)
