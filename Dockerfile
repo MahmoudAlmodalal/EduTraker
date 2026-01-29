@@ -6,12 +6,13 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# Install system dependencies for MySQL client and healthchecks
+# Install system dependencies for MySQL client, healthchecks, and CA certificates
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     pkg-config \
     gcc \
     netcat-openbsd \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -24,9 +25,9 @@ COPY . .
 
 # Create an entrypoint script to handle migrations and wait for DB
 RUN echo '#!/bin/sh\n\
-echo "Waiting for database..."\n\
-while ! nc -z $DB_HOST 3306; do\n\
-  sleep 0.1\n\
+echo "Waiting for database at $DB_HOST:$DB_PORT..."\n\
+while ! nc -z $DB_HOST $DB_PORT; do\n\
+  sleep 1\n\
 done\n\
 echo "Database started"\n\
 \n\
