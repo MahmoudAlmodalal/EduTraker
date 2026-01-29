@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
-
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,10 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-8i&_bt0@d_a&8ry@+cqmv^-s0e=jr(gv^(c(l0e63%)d!tu(=k'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-8i&_bt0@d_a&8ry@+cqmv^-s0e=jr(gv^(c(l0e63%)d!tu(=k')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -157,8 +157,6 @@ WSGI_APPLICATION = 'eduTrack.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-import sys
-
 if 'test' in sys.argv:
     DATABASES = {
         'default': {
@@ -167,20 +165,19 @@ if 'test' in sys.argv:
         }
     }
 else:
-    
     DATABASES = {
         'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'test' ,
-        'USER': '3YDpriSpMwZ3Zdg.root' ,
-        'PASSWORD': 'lgjXy7L4VgGIEvF4' ,
-        'HOST': 'gateway01.eu-central-1.prod.aws.tidbcloud.com' ,
-        'PORT': '4000' ,
-        'OPTIONS': {
-            'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'} # لضمان عمل الاتصال على Render
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'test'),
+            'USER': os.environ.get('DB_USER', '3YDpriSpMw23Zdg.root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'lgjXy7L4VgGIEvF4'),
+            'HOST': os.environ.get('DB_HOST', 'gateway01.eu-central-1.prod.aws.tidbcloud.com'),
+            'PORT': os.environ.get('DB_PORT', '4000'),
+            'OPTIONS': {
+                'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'}
+            }
         }
     }
-}
 
 
 # Password validation
@@ -218,6 +215,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
