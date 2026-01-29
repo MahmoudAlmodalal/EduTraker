@@ -134,6 +134,11 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'eduTrack.urls'
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development
+
+CORS_ALLOWED_ORIGINS = [
+    "https://edutrakerfront.onrender.com",
+    "http://localhost:5173",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 TEMPLATES = [
