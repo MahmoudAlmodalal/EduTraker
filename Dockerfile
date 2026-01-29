@@ -24,12 +24,17 @@ RUN pip install gunicorn
 COPY . .
 
 # Create an entrypoint script to handle migrations and wait for DB
+# Fixed: Added check for DB_HOST and DB_PORT to avoid nc usage error if they are empty
 RUN echo '#!/bin/sh\n\
-echo "Waiting for database at $DB_HOST:$DB_PORT..."\n\
-while ! nc -z $DB_HOST $DB_PORT; do\n\
-  sleep 1\n\
-done\n\
-echo "Database started"\n\
+if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then\n\
+  echo "Waiting for database at $DB_HOST:$DB_PORT..."\n\
+  while ! nc -z "$DB_HOST" "$DB_PORT"; do\n\
+    sleep 1\n\
+  done\n\
+  echo "Database started"\n\
+else\n\
+  echo "DB_HOST or DB_PORT not set, skipping wait..."\n\
+fi\n\
 \n\
 python manage.py migrate --noinput\n\
 python manage.py collectstatic --noinput\n\
