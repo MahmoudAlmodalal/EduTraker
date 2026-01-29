@@ -27,7 +27,7 @@ COPY . .
 RUN echo '#!/bin/sh\n\
 set -e\n\
 \n\
-echo "Starting EduTraker Entrypoint..."\n\
+echo "Starting EduTraker Automated Entrypoint..."\n\
 \n\
 if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then\n\
   echo "Checking database connection at $DB_HOST:$DB_PORT..."\n\
@@ -40,18 +40,23 @@ else\n\
   echo "DB_HOST or DB_PORT not set, skipping connection check..."\n\
 fi\n\
 \n\
-echo "Current Environment: MIGRATE_FAKE=$MIGRATE_FAKE"\n\
-\n\
 echo "Running migrations..."\n\
-if [ "$MIGRATE_FAKE" = "True" ]; then\n\
+# Automated Schema Sync Logic\n\
+if [ "$FORCE_MIGRATE_SYNC" = "True" ]; then\n\
+  echo "FORCE_MIGRATE_SYNC is True. Re-syncing migration state..."\n\
+  python manage.py migrate --fake-initial || echo "Fake initial failed, continuing..."\n\
+  python manage.py migrate --noinput\n\
+elif [ "$MIGRATE_FAKE" = "True" ]; then\n\
   echo "Faking migrations..."\n\
   python manage.py migrate --noinput --fake\n\
 else\n\
-  echo "Executing: python manage.py migrate --noinput"\n\
+  echo "Executing standard migration..."\n\
+  # Try standard migrate, if it fails due to schema mismatch, attempt to show status\n\
   python manage.py migrate --noinput || {\n\
-    echo "Migration failed! Attempting to show migration status..."\n\
+    echo "Migration failed. This usually means the DB schema is out of sync with migration files."\n\
+    echo "Attempting to reconcile by faking existing migrations..."\n\
+    python manage.py migrate --fake-initial --noinput || echo "Auto-reconcile failed."\n\
     python manage.py showmigrations\n\
-    echo "If this is a duplicate column error, try setting MIGRATE_FAKE=True in Render environment variables."\n\
   }\n\
 fi\n\
 \n\
