@@ -172,18 +172,24 @@ if 'test' in sys.argv:
         }
     }
 else:
+    DB_NAME = os.environ.get('DB_NAME', 'test')
+    DB_USER = os.environ.get('DB_USER', 'root')
+    DB_HOST = os.environ.get('DB_HOST', 'localhost')
+    DB_PORT = os.environ.get('DB_PORT', '3306')
+    DB_SSL = os.environ.get('DB_SSL', 'False') == 'True'
+    
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('DB_NAME', 'test'),
-            'USER': os.environ.get('DB_USER', 'root'),
+            'NAME': DB_NAME,
+            'USER': DB_USER,
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '3306'),
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
             'OPTIONS': {
                 'ssl': {
                     'ca': os.environ.get('DB_CA_PATH', '/etc/ssl/certs/ca-certificates.crt')
-                } if os.environ.get('DB_SSL', 'False') == 'True' else {}
+                } if DB_SSL else {}
             }
         }
     }

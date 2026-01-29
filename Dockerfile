@@ -6,11 +6,12 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# Install system dependencies for MySQL client and CA certificates
+# Install system dependencies for MySQL client, healthchecks, and CA certificates
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     pkg-config \
     gcc \
+    netcat-openbsd \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,21 +23,30 @@ RUN pip install gunicorn
 # Copy project files
 COPY . .
 
-# Create a simplified entrypoint script
+# Create an entrypoint script to handle migrations and wait for DB
 RUN echo '#!/bin/sh\n\
-echo "Starting backend service..."\n\
+set -e\n\
 \n\
-# Run migrations\n\
+if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then\n\
+  echo "Checking database connection at $DB_HOST:$DB_PORT..."\n\
+  # Using timeout to prevent infinite loops in environments with limited connectivity\n\
+  if timeout 30s nc -z "$DB_HOST" "$DB_PORT"; then\n\
+    echo "Database is reachable."\n\
+  else\n\
+    echo "Warning: Could not reach database at $DB_HOST:$DB_PORT. Continuing anyway..."\n\
+  fi\n\
+else\n\
+  echo "DB_HOST or DB_PORT not set, skipping connection check..."\n\
+fi\n\
+\n\
 echo "Running migrations..."\n\
-python manage.py migrate --noinput || echo "Migration failed, continuing..."\n\
+python manage.py migrate --noinput\n\
 \n\
-# Collect static files\n\
 echo "Collecting static files..."\n\
 python manage.py collectstatic --noinput\n\
 \n\
-# Start Gunicorn\n\
 echo "Starting Gunicorn..."\n\
-exec gunicorn --bind 0.0.0.0:8000 eduTrack.wsgi:application' > /app/entrypoint.sh
+exec gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 eduTrack.wsgi:application' > /app/entrypoint.sh
 
 RUN chmod +x /app/entrypoint.sh
 
