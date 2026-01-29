@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -165,16 +167,20 @@ if 'test' in sys.argv:
         }
     }
 else:
+    
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'edutraker_db',  # Name of the database you created in MySQL
-            'USER': 'root',          # Your MySQL username
-            'PASSWORD': 'EduTraker@2025!', # Your MySQL password
-            'HOST': 'localhost',     # Or the IP address if hosted remotely
-            'PORT': '3306',          # Default MySQL port
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'test' ,
+        'USER': '3YDpriSpMwZ3Zdg.root' ,
+        'PASSWORD': 'lgjXy7L4VgGIEvF4' ,
+        'HOST': 'gateway01.eu-central-1.prod.aws.tidbcloud.com' ,
+        'PORT': '4000' ,
+        'OPTIONS': {
+            'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'} # لضمان عمل الاتصال على Render
         }
     }
+}
 
 
 # Password validation
