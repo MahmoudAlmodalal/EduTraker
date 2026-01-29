@@ -177,7 +177,19 @@ else:
     DB_HOST = os.environ.get('DB_HOST', 'localhost')
     DB_PORT = os.environ.get('DB_PORT', '3306')
     DB_SSL = os.environ.get('DB_SSL', 'False') == 'True'
+    DB_CA_PATH = os.environ.get('DB_CA_PATH', '/etc/ssl/certs/ca-certificates.crt')
     
+    # Print database config (except password) for debugging during deployment
+    if DEBUG:
+        print(f"--- Database Configuration ---")
+        print(f"HOST: {DB_HOST}")
+        print(f"PORT: {DB_PORT}")
+        print(f"NAME: {DB_NAME}")
+        print(f"USER: {DB_USER}")
+        print(f"SSL: {DB_SSL}")
+        print(f"CA PATH: {DB_CA_PATH}")
+        print(f"-------------------------------")
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -188,7 +200,7 @@ else:
             'PORT': DB_PORT,
             'OPTIONS': {
                 'ssl': {
-                    'ca': os.environ.get('DB_CA_PATH', '/etc/ssl/certs/ca-certificates.crt')
+                    'ca': DB_CA_PATH
                 } if DB_SSL else {}
             }
         }
