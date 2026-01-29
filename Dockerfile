@@ -27,6 +27,8 @@ COPY . .
 RUN echo '#!/bin/sh\n\
 set -e\n\
 \n\
+echo "Starting EduTraker Entrypoint..."\n\
+\n\
 if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then\n\
   echo "Checking database connection at $DB_HOST:$DB_PORT..."\n\
   if timeout 30s nc -z "$DB_HOST" "$DB_PORT"; then\n\
@@ -38,12 +40,19 @@ else\n\
   echo "DB_HOST or DB_PORT not set, skipping connection check..."\n\
 fi\n\
 \n\
+echo "Current Environment: MIGRATE_FAKE=$MIGRATE_FAKE"\n\
+\n\
 echo "Running migrations..."\n\
 if [ "$MIGRATE_FAKE" = "True" ]; then\n\
   echo "Faking migrations..."\n\
   python manage.py migrate --noinput --fake\n\
 else\n\
-  python manage.py migrate --noinput || echo "Migration failed. If this is a duplicate column error, try setting MIGRATE_FAKE=True or cleaning the DB."\n\
+  echo "Executing: python manage.py migrate --noinput"\n\
+  python manage.py migrate --noinput || {\n\
+    echo "Migration failed! Attempting to show migration status..."\n\
+    python manage.py showmigrations\n\
+    echo "If this is a duplicate column error, try setting MIGRATE_FAKE=True in Render environment variables."\n\
+  }\n\
 fi\n\
 \n\
 echo "Collecting static files..."\n\
