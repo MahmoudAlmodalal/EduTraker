@@ -29,7 +29,6 @@ set -e\n\
 \n\
 if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then\n\
   echo "Checking database connection at $DB_HOST:$DB_PORT..."\n\
-  # Using timeout to prevent infinite loops in environments with limited connectivity\n\
   if timeout 30s nc -z "$DB_HOST" "$DB_PORT"; then\n\
     echo "Database is reachable."\n\
   else\n\
@@ -40,7 +39,12 @@ else\n\
 fi\n\
 \n\
 echo "Running migrations..."\n\
-python manage.py migrate --noinput\n\
+if [ "$MIGRATE_FAKE" = "True" ]; then\n\
+  echo "Faking migrations..."\n\
+  python manage.py migrate --noinput --fake\n\
+else\n\
+  python manage.py migrate --noinput || echo "Migration failed. If this is a duplicate column error, try setting MIGRATE_FAKE=True or cleaning the DB."\n\
+fi\n\
 \n\
 echo "Collecting static files..."\n\
 python manage.py collectstatic --noinput\n\
