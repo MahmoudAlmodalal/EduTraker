@@ -23,12 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-8i&_bt0@d_a&8ry@+cqmv^-s0e=jr(gv^(c(l0e63%)d!tu(=k')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -133,12 +133,14 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'eduTrack.urls'
 
-CORS_ALLOW_ALL_ORIGINS = True  # For development
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://edutrakerfront.onrender.com",
-    "http://localhost:5173",
+    os.environ.get('FRONTEND_URL', 'http://localhost:5173'),
 ]
+if os.environ.get('ADDITIONAL_CORS_ORIGINS'):
+    CORS_ALLOWED_ORIGINS.extend(os.environ.get('ADDITIONAL_CORS_ORIGINS').split(','))
+
 CORS_ALLOW_CREDENTIALS = True
 
 TEMPLATES = [
@@ -174,12 +176,12 @@ else:
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': os.environ.get('DB_NAME', 'test'),
-            'USER': os.environ.get('DB_USER', '3YDpriSpMw23Zdg.root'),
-            'PASSWORD': os.environ.get('DB_PASSWORD', 'lgjXy7L4VgGIEvF4'),
-            'HOST': os.environ.get('DB_HOST', 'gateway01.eu-central-1.prod.aws.tidbcloud.com'),
-            'PORT': os.environ.get('DB_PORT', '4000'),
+            'USER': os.environ.get('DB_USER', 'root'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
             'OPTIONS': {
-                'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'}
+                'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'} if os.environ.get('DB_SSL', 'False') == 'True' else {}
             }
         }
     }
