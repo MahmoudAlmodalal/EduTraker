@@ -426,6 +426,7 @@ class DashboardStatisticsView(APIView):
             # 1. Fetch Recent Activity
             # logic depends on role - for admin, see everything. 
             # For others, maybe specific entities. For now keeping it simple:
+            from reports.models import ActivityLog, UserLoginHistory
             if user.role == 'admin':
                 recent_activity_qs = ActivityLog.objects.all().order_by('-created_at')[:10]
             else:
@@ -503,12 +504,12 @@ class DashboardStatisticsView(APIView):
                 users_change = calculate_change(current_users, old_users)
                 
                 stats = {
-                    'total_students': Student.objects.filter(current_status='active').count(),
+                    'total_students': Student.objects.filter(enrollment_status='active').count(),
                     'total_teachers': Teacher.objects.count(),
                     'total_workstreams': current_workstreams,
                     'total_schools': current_schools,
                     'total_classrooms': ClassRoom.objects.count(),
-                    'inactive_students': Student.objects.exclude(current_status='active').count(),
+                    'inactive_students': Student.objects.exclude(enrollment_status='active').count(),
                     'total_users': current_users,
                     'workstreams_change': workstreams_change,
                     'schools_change': schools_change,
@@ -559,8 +560,8 @@ class DashboardStatisticsView(APIView):
                 stats = {
                     'school_name': school.school_name,
                     'total_students': Student.objects.filter(
-                        school_id=user.school_id,
-                        current_status='active'
+                        user__school_id=user.school_id,
+                        enrollment_status='active'
                     ).count()
                 }
             
