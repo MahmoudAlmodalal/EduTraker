@@ -1,5 +1,7 @@
 from django.urls import path
 
+app_name = "guardian"
+
 from guardian.views.guardian_views import (
     GuardianListApi,
     GuardianCreateApi,
