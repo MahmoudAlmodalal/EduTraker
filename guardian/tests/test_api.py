@@ -167,7 +167,7 @@ class GuardianApiTests(APITestCase):
 
     def test_link_student_constraints(self):
         """Test linking guardian and student."""
-        url = reverse('guardian:guardian-student-link', kwargs={'guardian_id': self.guardian1_user.id})
+        url = reverse('guardian:guardian-students', kwargs={'guardian_id': self.guardian1_user.id})
         
         # Link in same school
         data = {
@@ -193,7 +193,7 @@ class GuardianApiTests(APITestCase):
             guardian=self.guardian1, student=self.student1, relationship_type="parent"
         )
         
-        url = reverse('guardian:guardian-student-link', kwargs={'guardian_id': self.guardian1_user.id})
+        url = reverse('guardian:guardian-students', kwargs={'guardian_id': self.guardian1_user.id})
         self.client.force_authenticate(user=self.school_manager1)
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)

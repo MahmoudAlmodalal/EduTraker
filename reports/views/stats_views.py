@@ -433,7 +433,7 @@ class DashboardStatisticsView(APIView):
                 # For basic users, maybe just their own actions or actions on their workstream/school
                 recent_activity_qs = ActivityLog.objects.filter(actor=user).order_by('-created_at')[:10]
 
-            from .serializers import ActivityLogSerializer
+            from reports.serializers import ActivityLogSerializer
             recent_activity = ActivityLogSerializer(recent_activity_qs, many=True).data
             
             # 2. Fetch Activity Chart (Login Frequency)
