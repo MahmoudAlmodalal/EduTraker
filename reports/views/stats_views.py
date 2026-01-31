@@ -417,7 +417,6 @@ class DashboardStatisticsView(APIView):
         
         try:
             # Common: Fetch recent activity relevant to the user
-            from .models import ActivityLog, UserLoginHistory
             from django.db.models import Count
             from django.db.models.functions import TruncDate
             from django.utils import timezone
