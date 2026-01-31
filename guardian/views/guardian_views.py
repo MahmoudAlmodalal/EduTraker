@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher, IsGuardian
 from accounts.pagination import PaginatedAPIMixin
+from accounts.models import Role
 from guardian.models import Guardian, GuardianStudentLink
 from guardian.selectors.guardian_selectors import guardian_list, guardian_get, guardian_student_list
 from guardian.services.guardian_services import (
