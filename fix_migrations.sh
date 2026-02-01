@@ -9,6 +9,8 @@ cd "$(dirname "$0")"
 
 # Fake the teacher 0001 migration
 echo "Faking teacher.0001_initial migration..."
+# The logs specifically mention 'test_course_allocations'
+# We fake the teacher initial migration to bypass the creation of this table
 python manage.py migrate --fake teacher 0001
 
 # Run the rest of the migrations normally
