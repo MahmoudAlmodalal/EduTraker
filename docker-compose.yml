@@ -9,7 +9,7 @@ services:
       - DB_PORT=4000
       - DB_NAME=test
       - DB_USER=3YDpriSpMw23Zdg.root
-      - DB_PASSWORD=lgjXy7L4VgGIEvF4
+      - DB_PASSWORD=ZzD9gKqa1yqt1utF
       - DEBUG=True
     ports:
       - "8000:8000"
