@@ -8,6 +8,7 @@ from accounts.pagination import PaginatedAPIMixin
 from student.models import StudentEnrollment
 from student.selectors.enrollment_selectors import (
     student_enrollment_list,
+    enrollment_list,
     enrollment_get,
 )
 from student.services.enrollment_services import (
@@ -106,6 +107,35 @@ class StudentEnrollmentListApi(PaginatedAPIMixin, APIView):
         if status_filter := filter_serializer.validated_data.get('status'):
             enrollments = enrollments.filter(status=status_filter)
         
+        page = self.paginate_queryset(enrollments)
+        if page is not None:
+            return self.get_paginated_response(EnrollmentOutputSerializer(page, many=True).data)
+        return Response(EnrollmentOutputSerializer(enrollments, many=True).data)
+
+
+class EnrollmentListApi(PaginatedAPIMixin, APIView):
+    """List all enrollments."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    @extend_schema(
+        tags=['Student Enrollment'],
+        summary='List all enrollments',
+        description='Get a list of all student enrollments filtered by permissions.',
+        parameters=[
+            OpenApiParameter(name='status', type=str, description='Filter by status'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
+        ],
+        responses={200: EnrollmentOutputSerializer(many=True)}
+    )
+    def get(self, request):
+        filter_serializer = EnrollmentFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        enrollments = enrollment_list(
+            filters=filter_serializer.validated_data,
+            actor=request.user,
+            include_inactive=filter_serializer.validated_data.get('include_inactive', False)
+        )
         page = self.paginate_queryset(enrollments)
         if page is not None:
             return self.get_paginated_response(EnrollmentOutputSerializer(page, many=True).data)

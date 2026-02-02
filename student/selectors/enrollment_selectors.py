@@ -42,3 +42,35 @@ def student_enrollment_list(*, student_id: int, actor: CustomUser, include_inact
     return qs.select_related(
         'class_room', 'class_room__grade', 'academic_year'
     ).filter(student_id=student_id)
+
+
+def enrollment_list(*, filters: dict, actor: CustomUser, include_inactive: bool = False) -> QuerySet[StudentEnrollment]:
+    """Return a QuerySet of StudentEnrollments filtered by actor role and optional filters."""
+    if include_inactive and actor.role == Role.ADMIN:
+        qs = StudentEnrollment.all_objects
+    else:
+        qs = StudentEnrollment.objects
+
+    qs = qs.select_related(
+        'student', 'student__user', 'student__user__school',
+        'class_room', 'class_room__grade', 'academic_year'
+    )
+
+    # Role-based filtering
+    if actor.role == Role.ADMIN:
+        pass
+    elif actor.role == Role.MANAGER_WORKSTREAM:
+        qs = qs.filter(student__user__school__work_stream_id=actor.work_stream_id)
+    elif actor.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
+        qs = qs.filter(student__user__school_id=actor.school_id)
+    else:
+        qs = qs.none()
+
+    # Apply optional filters
+    if status := filters.get("status"):
+        qs = qs.filter(status=status)
+    
+    if student_id := filters.get("student_id"):
+        qs = qs.filter(student_id=student_id)
+
+    return qs

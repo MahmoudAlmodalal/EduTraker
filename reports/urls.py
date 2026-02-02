@@ -10,6 +10,7 @@ from reports.views.stats_views import (
     DashboardStatisticsView
 )
 from reports.views.export_views import ReportExportView
+from reports.views.activity_log_views import ActivityLogListView
 
 urlpatterns = [
     # Dashboard statistics (role-based)
@@ -38,4 +39,7 @@ urlpatterns = [
     
     # Export
     path('export/', ReportExportView.as_view(), name='report-export'),
+    
+    # Activity Logs
+    path('activity-logs/', ActivityLogListView.as_view(), name='activity-logs'),
 ]

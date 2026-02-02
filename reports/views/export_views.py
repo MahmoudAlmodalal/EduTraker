@@ -23,7 +23,7 @@ class ReportExportView(APIView):
             'application/json': {
                 'type': 'object',
                 'properties': {
-                    'report_type': {'type': 'string', 'enum': ['generic', 'student_performance', 'attendance', 'student_list']},
+                    'report_type': {'type': 'string', 'enum': ['generic', 'student_performance', 'attendance', 'student_list', 'comprehensive_academic', 'system_usage']},
                     'export_format': {'type': 'string', 'enum': ['excel', 'csv', 'pdf'], 'default': 'excel'},
                     'data': {
                         'type': 'array', 
@@ -61,7 +61,8 @@ class ReportExportView(APIView):
         export_format = request.data.get("export_format") or request.data.get("format") or "excel"
         export_format = export_format.lower()
         
-        school_id = request.user.school_id if hasattr(request.user, 'school_id') else None
+        # Safely get school_id. Super Admins might not have a school_id attribute depending on the User model implementation.
+        school_id = getattr(request.user, 'school_id', None)
 
         if report_type == "student_performance":
             data = ReportGenerationService.get_student_performance_data(school_id=school_id)
@@ -72,6 +73,12 @@ class ReportExportView(APIView):
         elif report_type == "student_list":
             data = ReportGenerationService.get_student_list(school_id=school_id)
             headers = ["name", "email", "id", "status"]
+        elif report_type == "comprehensive_academic":
+            data = ReportGenerationService.get_comprehensive_academic_data(school_id=school_id, actor=request.user)
+            headers = ["category", "workstream", "count", "schools", "metric", "school_name", "students", "teachers"]
+        elif report_type == "system_usage":
+            data = ReportGenerationService.get_comprehensive_system_usage_data(school_id=school_id, actor=request.user)
+            headers = ["category", "workstream", "teacher_count", "metric", "value", "description"]
         else:
             # Check if data provided (generic export)
             data = request.data.get("data", [])

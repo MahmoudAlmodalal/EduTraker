@@ -184,7 +184,7 @@ def get_schools_overview(*, actor: CustomUser) -> Dict:
             'school_id': school.id,
             'school_name': school.school_name,
             'workstream_id': school.work_stream_id,
-            'workstream_name': school.work_stream.name,
+            'workstream_name': school.work_stream.workstream_name,
             'manager_name': school.manager.full_name if school.manager else None,
             'student_count': school.student_count,
             'teacher_count': school.teacher_count,

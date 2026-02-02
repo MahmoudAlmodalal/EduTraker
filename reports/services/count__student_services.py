@@ -211,7 +211,7 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
     # Get all marks for this student
     marks = Mark.objects.filter(
         student=student
-    ).select_related('assignment')
+    ).select_related('assignment', 'assignment__course_allocation__course')
     
     # Calculate statistics
     marks_data = []
@@ -221,6 +221,7 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
     
     for mark in marks:
         assignment = mark.assignment
+        course = assignment.course_allocation.course if assignment.course_allocation else None
         score = float(mark.score)
         full_mark = float(assignment.full_mark)
         percentage = round((score / full_mark) * 100, 2) if full_mark > 0 else 0
@@ -229,6 +230,9 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
             'assignment_id': assignment.id,
             'assignment_code': assignment.assignment_code,
             'title': assignment.title,
+            'course_id': course.id if course else None,
+            'course_name': course.name if course else "Unknown",
+            'course_code': course.course_code if course else None,
             'exam_type': assignment.exam_type,
             'score': score,
             'full_mark': full_mark,

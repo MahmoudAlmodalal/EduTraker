@@ -9,6 +9,10 @@ from school.models import Course
 from school.selectors.school_selectors import school_get
 from school.selectors.course_selectors import course_list, course_get
 from school.services.course_services import course_create, course_update, course_deactivate, course_activate
+from school.selectors.academic_year_selectors import get_current_academic_year
+from teacher.models import Teacher, CourseAllocation
+from school.models import ClassRoom
+from django.shortcuts import get_object_or_404
 
 
 # =============================================================================
@@ -26,15 +30,23 @@ class CourseOutputSerializer(serializers.ModelSerializer):
     """Output serializer for course responses."""
     grade_name = serializers.CharField(source='grade.name', read_only=True)
     deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
+    teacher_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'course_code', 'school', 'grade', 'grade_name', 'name',
             'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'teacher_name'
         ]
         read_only_fields = ['id', 'school', 'created_at', 'updated_at', 'deactivated_by_name']
+
+    def get_teacher_name(self, obj):
+        # Return the first teacher assigned to this course via allocations
+        allocation = obj.allocations.select_related('teacher__user').first()
+        if allocation and allocation.teacher and allocation.teacher.user:
+            return allocation.teacher.user.full_name
+        return None
 
 
 class CourseFilterSerializer(serializers.Serializer):
@@ -230,7 +242,79 @@ class CourseDeactivateApi(APIView):
     def post(self, request, school_id, course_id):
         course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
         course_deactivate(course=course, actor=request.user)
+        course_activate(course=course, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseAllocationApi(APIView):
+    """Assign a teacher to a course (Allocate to all classrooms of the grade)."""
+    permission_classes = [IsAdminOrManager]
+
+    class InputSerializer(serializers.Serializer):
+        teacher_id = serializers.IntegerField(required=True, help_text="Teacher User ID")
+
+    @extend_schema(
+        tags=['Course Management'],
+        summary='Assign teacher to course',
+        description='Assign a teacher to this course for all classrooms in the current academic year.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
+        ],
+        request=InputSerializer,
+        responses={200: OpenApiResponse(description='Teacher assigned successfully')}
+    )
+    def post(self, request, school_id, course_id):
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        teacher_id = serializer.validated_data['teacher_id']
+
+        # Get instances
+        course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
+        teacher = get_object_or_404(Teacher, user_id=teacher_id) # Teacher PK is user
+        
+        # Get context
+        academic_year = get_current_academic_year(school_id=school_id)
+        if not academic_year:
+            return Response(
+                {"detail": "No active academic year found for this school. Please configure an academic year first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get relevant classrooms
+        classrooms = ClassRoom.objects.filter(
+            school_id=school_id,
+            grade=course.grade,
+            academic_year=academic_year
+        )
+
+        if not classrooms.exists():
+            return Response(
+                {"detail": "No classrooms found for this grade in the current academic year."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create allocations
+        created_count = 0
+        updated_count = 0
+        
+        for classroom in classrooms:
+            allocation, created = CourseAllocation.objects.update_or_create(
+                course=course,
+                class_room=classroom,
+                academic_year=academic_year,
+                defaults={'teacher': teacher}
+            )
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        return Response({
+            "detail": f"Assigned teacher to {created_count + updated_count} classrooms.",
+            "created": created_count,
+            "updated": updated_count
+        })
 
 
 class CourseActivateApi(APIView):

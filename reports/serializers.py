@@ -40,10 +40,13 @@ class ComprehensiveStatisticsSerializer(serializers.Serializer):
 
 class ActivityLogSerializer(serializers.ModelSerializer):
     created_at_human = serializers.SerializerMethodField()
+    actor_name = serializers.SerializerMethodField()
+    actor_email = serializers.SerializerMethodField()
     
     class Meta:
         model = ActivityLog
-        fields = ['id', 'action_type', 'entity_type', 'entity_id', 'description', 'created_at', 'created_at_human']
+        fields = ['id', 'action_type', 'entity_type', 'entity_id', 'description', 
+                  'actor_name', 'actor_email', 'created_at', 'created_at_human']
         
     def get_created_at_human(self, obj):
         from django.utils.timesince import timesince
@@ -54,6 +57,12 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         if diff.days == 0 and diff.seconds < 60:
             return "Just now"
         return f"{timesince(obj.created_at)} ago"
+    
+    def get_actor_name(self, obj):
+        return obj.actor.full_name if obj.actor else "System"
+    
+    def get_actor_email(self, obj):
+        return obj.actor.email if obj.actor else "system@edutraker.com"
 
 class DashboardStatisticsSerializer(serializers.Serializer):
     role = serializers.CharField(help_text="User role")

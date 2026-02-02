@@ -1,6 +1,7 @@
 from rest_framework.exceptions import NotFound, PermissionDenied
 from django.db.models import QuerySet
 from typing import Optional
+from datetime import date
 
 from accounts.models import CustomUser, Role
 from accounts.policies.academic_year_policies import can_manage_academic_year
@@ -58,3 +59,20 @@ def get_academic_year(*, actor: CustomUser, academic_year_id: int, include_inact
         raise PermissionDenied("You are not allowed to access this academic year")
 
     return ay
+
+
+def get_current_academic_year(*, school_id: int) -> Optional[AcademicYear]:
+    """
+    Get the current active academic year based on today's date.
+    If no year matches today, return the latest one.
+    """
+    today = date.today()
+    qs = AcademicYear.objects.filter(school_id=school_id)
+    
+    # Try to find one active today
+    current = qs.filter(start_date__lte=today, end_date__gte=today).first()
+    if current:
+        return current
+        
+    # Fallback to latest
+    return qs.order_by('-end_date').first()

@@ -1,4 +1,4 @@
-from rest_framework import status, serializers
+from rest_framework import status, serializers, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -349,6 +349,33 @@ class UserUpdateApi(APIView):
             data.pop("school", None)
 
         user = user_update(user=user, data=data)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserProfileUpdateApi(APIView):
+    """Update current user's profile."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['User Management'],
+        summary='Update profile',
+        description='Update current user profile. Cannot update sensitive fields like role.',
+        request=UserUpdateApi.UserUpdateInputSerializer,
+        responses={204: OpenApiResponse(description='Profile updated successfully')}
+    )
+    def patch(self, request):
+        user = request.user
+        serializer = UserUpdateApi.UserUpdateInputSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Prevent changing sensitive fields
+        data.pop("role", None)
+        data.pop("work_stream", None)
+        data.pop("school", None)
+        data.pop("is_active", None)
+
+        user_update(user=user, data=data)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
