@@ -61,7 +61,8 @@ class ReportExportView(APIView):
         export_format = request.data.get("export_format") or request.data.get("format") or "excel"
         export_format = export_format.lower()
         
-        school_id = request.user.school_id if hasattr(request.user, 'school_id') else None
+        # Safely get school_id. Super Admins might not have a school_id attribute depending on the User model implementation.
+        school_id = getattr(request.user, 'school_id', None)
 
         if report_type == "student_performance":
             data = ReportGenerationService.get_student_performance_data(school_id=school_id)
