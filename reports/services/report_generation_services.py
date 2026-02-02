@@ -83,3 +83,101 @@ class ReportGenerationService:
                 "status": student.enrollment_status
             })
         return data
+
+    @staticmethod
+    def get_comprehensive_academic_data(school_id: int = None, actor = None) -> List[Dict[str, Any]]:
+        """
+        Generate comprehensive academic report data including students by workstream,
+        schools overview, and academic performance metrics.
+        """
+        from reports.services.count_admin_services import (
+            get_students_by_workstream,
+            get_schools_overview
+        )
+        from accounts.models import CustomUser
+        
+        data = []
+        
+        # Get students by workstream
+        students_data = get_students_by_workstream(actor=actor) if actor else {'by_workstream': []}
+        if students_data and 'by_workstream' in students_data:
+            for ws in students_data['by_workstream']:
+                data.append({
+                    'category': 'Students by Workstream',
+                    'workstream': ws.get('workstream_name', 'N/A'),
+                    'count': ws.get('student_count', 0),
+                    'schools': ws.get('school_count', 0),
+                    'metric': 'enrollment'
+                })
+        
+        # Get schools overview
+        schools_data = get_schools_overview(actor=actor) if actor else {'schools': []}
+        if schools_data and 'schools' in schools_data:
+            for school in schools_data['schools']:
+                data.append({
+                    'category': 'Schools Overview',
+                    'school_name': school.get('school_name', 'N/A'),
+                    'workstream': school.get('workstream_name', 'N/A'),
+                    'students': school.get('student_count', 0),
+                    'teachers': school.get('teacher_count', 0),
+                    'metric': 'overview'
+                })
+        
+        return data
+
+    @staticmethod
+    def get_comprehensive_system_usage_data(school_id: int = None, actor = None) -> List[Dict[str, Any]]:
+        """
+        Generate system usage report data including teachers by workstream,
+        activity metrics, and platform usage statistics.
+        """
+        from reports.services.count_admin_services import (
+            get_teachers_by_workstream,
+            get_global_statistics
+        )
+        from accounts.models import CustomUser
+        
+        data = []
+        
+        # Get teachers by workstream
+        teachers_data = get_teachers_by_workstream(actor=actor) if actor else {'by_workstream': []}
+        if teachers_data and 'by_workstream' in teachers_data:
+            for ws in teachers_data['by_workstream']:
+                data.append({
+                    'category': 'Teachers by Workstream',
+                    'workstream': ws.get('workstream_name', 'N/A'),
+                    'teacher_count': ws.get('teacher_count', 0),
+                    'metric': 'staffing'
+                })
+        
+        # Get global statistics for system metrics
+        global_stats = get_global_statistics(actor=actor) if actor else {}
+        if global_stats:
+            # Add platform-wide metrics
+            data.append({
+                'category': 'Platform Statistics',
+                'metric': 'total_users',
+                'value': global_stats.get('total_users', 0),
+                'description': 'Total Users'
+            })
+            data.append({
+                'category': 'Platform Statistics',
+                'metric': 'total_students',
+                'value': global_stats.get('total_students', 0),
+                'description': 'Total Students'
+            })
+            data.append({
+                'category': 'Platform Statistics',
+                'metric': 'total_teachers',
+                'value': global_stats.get('total_teachers', 0),
+                'description': 'Total Teachers'
+            })
+            data.append({
+                'category': 'Platform Statistics',
+                'metric': 'total_schools',
+                'value': global_stats.get('total_schools', 0),
+                'description': 'Total Schools'
+            })
+        
+        return data
+

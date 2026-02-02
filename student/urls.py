@@ -14,6 +14,7 @@ from student.views.student_views import (
 )
 from student.views.enrollment_views import (
     StudentEnrollmentListApi,
+    EnrollmentListApi,
     EnrollmentCreateApi,
     EnrollmentDetailApi,
     EnrollmentDeactivateApi,
@@ -34,6 +35,7 @@ urlpatterns = [
     path('students/<int:student_id>/enrollments/', StudentEnrollmentListApi.as_view(), name='student-enrollment-list'),
 
     # Enrollment endpoints (standalone)
+    path('enrollments/', EnrollmentListApi.as_view(), name='enrollment-list'),
     path('enrollments/create/', EnrollmentCreateApi.as_view(), name='enrollment-create'),
     path('enrollments/<int:enrollment_id>/', EnrollmentDetailApi.as_view(), name='enrollment-detail'),
     path('enrollments/<int:enrollment_id>/deactivate/', EnrollmentDeactivateApi.as_view(), name='enrollment-deactivate'),

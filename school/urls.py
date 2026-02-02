@@ -29,7 +29,9 @@ from school.views.course_views import (
     CourseCreateApi,
     CourseDetailApi,
     CourseDeactivateApi,
+    CourseDeactivateApi,
     CourseActivateApi,
+    CourseAllocationApi,
 )
 from school.views.class_room_views import (
     ClassRoomListApi,
@@ -68,6 +70,7 @@ urlpatterns = [
     path("school/<int:school_id>/courses/<int:course_id>/", CourseDetailApi.as_view(), name="course-detail"),
     path("school/<int:school_id>/courses/<int:course_id>/deactivate/", CourseDeactivateApi.as_view(), name="course-deactivate"),
     path("school/<int:school_id>/courses/<int:course_id>/activate/", CourseActivateApi.as_view(), name="course-activate"),
+    path("school/<int:school_id>/courses/<int:course_id>/assign-teacher/", CourseAllocationApi.as_view(), name="course-assign-teacher"),
 
     # Classroom endpoints
     path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/", ClassRoomListApi.as_view(), name="classroom-list"),

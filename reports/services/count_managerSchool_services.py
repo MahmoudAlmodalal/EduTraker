@@ -101,6 +101,12 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
         for classroom in classrooms
     ]
     
+    # Total secretaries (CustomUser with role secretary and matching school)
+    total_secretaries = CustomUser.objects.filter(
+        school_id=school_id,
+        role=Role.SECRETARY
+    ).count()
+    
     return {
         'school_id': school_id,
         'school_name': school.school_name,
@@ -110,6 +116,7 @@ def get_school_summary(*, school_id: int, actor: CustomUser) -> Dict:
         'total_students': total_students,
         'active_students': active_students,
         'total_teachers': total_teachers,
+        'total_secretaries': total_secretaries,
         'total_classrooms': total_classrooms,
         'total_courses': total_courses,
         'by_grade': list(by_grade),

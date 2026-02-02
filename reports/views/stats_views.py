@@ -535,8 +535,11 @@ class DashboardStatisticsView(APIView):
                 stats = {
                     'school_name': data['school_name'],
                     'total_students': data['total_students'],
-                    'by_grade': data['by_grade'],
-                    'classroom_count': len(data['by_classroom'])
+                    'total_teachers': data['total_teachers'],
+                    'total_secretaries': data['total_secretaries'],
+                    'classroom_count': data['total_classrooms'],
+                    'course_count': data['total_courses'],
+                    'by_grade': data['by_grade']
                 }
             
             elif user.role == 'teacher':
@@ -554,15 +557,40 @@ class DashboardStatisticsView(APIView):
             elif user.role == 'secretary':
                 from school.models import School
                 from student.models import Student
+                from teacher.models import Attendance
+                from accounts.models import Message
+                from django.utils import timezone
                 
                 school = School.objects.get(id=user.school_id)
+                today = timezone.now().date()
+                
                 stats = {
                     'school_name': school.school_name,
                     'total_students': Student.objects.filter(
                         user__school_id=user.school_id,
                         enrollment_status='active'
-                    ).count()
+                    ).count(),
+                    'absent_today': Attendance.objects.filter(
+                        student__user__school_id=user.school_id,
+                        date=today,
+                        status='Absent'
+                    ).count(),
+                    'unread_messages': Message.objects.filter(
+                        recipient=user,
+                        is_read=false
+                    ).count() if hasattr(user, 'received_messages') else 0 # Adjust based on actual message model
                 }
+                
+                # Let's check the Message model in accounts or user_messages
+                # Actually, looking at imports in this file:
+                # from accounts.serializers import MessageSerializer
+                # But wait, there is a user_messages app.
+                
+                from user_messages.models import Message as UserMessage
+                stats['unread_messages'] = UserMessage.objects.filter(
+                    recipient=user,
+                    is_read=False
+                ).count()
             
             elif user.role == 'student':
                 from reports.services.count__student_services import get_student_dashboard_statistics
