@@ -32,11 +32,11 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = [
-            'id', 'sender', 'recipient_ids', 'receipts', 
-            'subject', 'body', 'attachments', 
-            'thread_id', 'sent_at', 'is_draft'
+            'id', 'sender', 'recipient_ids', 'receipts',
+            'subject', 'body', 'attachments',
+            'thread_id', 'parent_message', 'sent_at', 'is_draft'
         ]
-        read_only_fields = ['sender', 'thread_id', 'sent_at', 'receipts']
+        read_only_fields = ['sender', 'sent_at', 'receipts']
         ref_name = 'UserMessageSerializer'
 
     def create(self, validated_data):
@@ -45,13 +45,18 @@ class MessageSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['sender'] = request.user
-            
+
         message = Message.objects.create(**validated_data)
-        
+
         # Create receipts
         for user in recipients:
             MessageReceipt.objects.create(message=message, recipient=user)
-            
+
+        # Refresh the message instance to include receipts in the response
+        message.refresh_from_db()
+        # Prefetch receipts with recipients for serialization
+        message = Message.objects.select_related('sender').prefetch_related('receipts__recipient').get(id=message.id)
+
         return message
 
 class MessageDetailSerializer(MessageSerializer):
