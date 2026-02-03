@@ -28,15 +28,21 @@ class MessageSerializer(serializers.ModelSerializer):
     )
     # Output: Receipt status for each recipient (or just list of recipients for simple view)
     receipts = MessageReceiptSerializer(many=True, read_only=True)
+    
+    parent_message = serializers.PrimaryKeyRelatedField(
+        queryset=Message.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Message
         fields = [
             'id', 'sender', 'recipient_ids', 'receipts', 
             'subject', 'body', 'attachments', 
-            'thread_id', 'sent_at', 'is_draft'
+            'thread_id', 'parent_message', 'sent_at', 'is_draft'
         ]
-        read_only_fields = ['sender', 'thread_id', 'sent_at', 'receipts']
+        read_only_fields = ['sender', 'sent_at', 'receipts']
         ref_name = 'UserMessageSerializer'
 
     def create(self, validated_data):
