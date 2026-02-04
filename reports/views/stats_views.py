@@ -529,6 +529,7 @@ class DashboardStatisticsView(APIView):
                     'total_students': data['total_students'],
                     'total_teachers': data['total_teachers'],
                     'school_count': data['school_count'],
+                    'manager_count': data.get('manager_count', 0),
                     'classroom_count': data['classroom_count'],
                     'schools': data['by_school']
                 }

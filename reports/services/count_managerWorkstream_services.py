@@ -89,6 +89,7 @@ def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
         'total_students': total_students,
         'total_teachers': total_teachers,
         'school_count': len(by_school),
+        'manager_count': schools.filter(manager__isnull=False).values('manager').distinct().count(),
         'classroom_count': total_classrooms,
         'course_count': total_courses,
         'by_school': by_school
