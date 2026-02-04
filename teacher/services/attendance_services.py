@@ -6,6 +6,7 @@ from typing import Optional
 from teacher.models import Attendance, Teacher, CourseAllocation
 from student.models import Student
 from accounts.models import CustomUser, Role
+from notifications.services.notification_services import notification_create
 from accounts.policies.user_policies import _has_school_access
 
 
@@ -40,6 +41,16 @@ def attendance_record(
         attendance.recorded_by = teacher
         attendance.is_active = True
         attendance.save()
+        
+    # Create notification for the student
+    notification_create(
+        recipient=student.user,
+        sender=teacher.user,
+        title="Attendance Marked",
+        message=f"Attendance for {course_allocation.student_group} on {date} has been marked as {status}.",
+        notification_type="attendance_marked",
+        action_url=f"/student/attendance"
+    )
 
     return attendance
 

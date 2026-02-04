@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Message, MessageReceipt
+from notifications.services.notification_services import notification_create
 
 User = get_user_model()
 
@@ -47,16 +48,32 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         recipients = validated_data.pop('recipients', [])
-        # Assign sender from context if not present (handled in view usually, but good to ensure)
+        # Assign sender from context if not present
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['sender'] = request.user
             
+        # IMPORTANT: Threading Logic
+        # If this is a reply (has parent_message), it MUST share the same thread_id
+        parent = validated_data.get('parent_message')
+        if parent:
+            validated_data['thread_id'] = parent.thread_id
+            
         message = Message.objects.create(**validated_data)
         
-        # Create receipts
+        # Create receipts and notifications
         for user in recipients:
             MessageReceipt.objects.create(message=message, recipient=user)
+            
+            # Create a system notification for the recipient
+            notification_create(
+                recipient=user,
+                sender=message.sender,
+                title="New Message",
+                message=f"You have received a new message from {message.sender.full_name}: {message.subject}",
+                notification_type="message_received",
+                action_url=f"/super-admin/communication" # Adjust based on role if needed
+            )
             
         return message
 

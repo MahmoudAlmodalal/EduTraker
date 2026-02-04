@@ -10,6 +10,7 @@ from accounts.pagination import PaginatedAPIMixin
 from school.selectors.school_selectors import school_list, school_get
 from school.services.school_services import create_school, update_school, deactivate_school, activate_school
 from workstream.models import WorkStream
+from accounts.models import Role
 
 from school.serializers.school_serializers import (
     SchoolOutputSerializer,
@@ -115,7 +116,15 @@ class SchoolCreateAPIView(APIView):
         in_ser = SchoolCreateInputSerializer(data=request.data)
         in_ser.is_valid(raise_exception=True)
 
-        workstream = in_ser.validated_data["work_stream"]
+        # Prefer explicit work_stream from payload; otherwise fall back to the
+        # authenticated user's work_stream (typical for manager_workstream role).
+        workstream = in_ser.validated_data.get("work_stream") or getattr(request.user, "work_stream", None)
+
+        if workstream is None:
+            return Response(
+                {"work_stream": ["This field is required for this operation."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         school = create_school(
             actor=request.user,
@@ -229,3 +238,61 @@ class SchoolActivateAPIView(APIView):
         school = school_get(actor=request.user, school_id=school_id, include_inactive=True)
         activate_school(actor=request.user, school=school)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SchoolBulkActivateAPIView(APIView):
+    """Activate all inactive schools accessible to the current user (within their scope)."""
+    permission_classes = [IsAdminOrManagerWorkstream]
+
+    @extend_schema(
+        tags=['School Management'],
+        summary='Bulk activate schools',
+        description='Activate all inactive schools in the current admin/workstream manager scope.',
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Bulk activation completed',
+                examples=[
+                    OpenApiExample(
+                        'Bulk Activation Result',
+                        value={
+                            'activated': 3,
+                            'errors': [
+                                {'id': 5, 'error': 'Workstream \"WS-1\" has reached its maximum capacity of 5 active schools.'}
+                            ]
+                        }
+                    )
+                ]
+            ),
+            403: OpenApiResponse(description='Permission denied'),
+        }
+    )
+    def post(self, request):
+        from school.models import School
+
+        actor = request.user
+        activated_count = 0
+        errors = []
+
+        # Start with all inactive schools visible to this actor
+        qs = School.all_objects.filter(is_active=False)
+
+        if actor.role == Role.MANAGER_WORKSTREAM:
+            qs = qs.filter(work_stream_id=actor.work_stream_id)
+
+        # Optional explicit work_stream filter (for admins)
+        work_stream_id = request.data.get('work_stream_id') or request.query_params.get('work_stream_id')
+        if work_stream_id:
+            qs = qs.filter(work_stream_id=work_stream_id)
+
+        for school in qs:
+            try:
+                activate_school(actor=actor, school=school)
+                activated_count += 1
+            except Exception as e:
+                errors.append({'id': school.id, 'error': str(e)})
+
+        return Response(
+            {'activated': activated_count, 'errors': errors},
+            status=status.HTTP_200_OK
+        )

@@ -86,3 +86,30 @@ def notification_create(
     notification.save()
     
     return notification
+
+@transaction.atomic
+def notification_mark_all_read(
+    *,
+    user: CustomUser
+) -> int:
+    """
+    Mark all unread notifications as read for the specified user.
+    
+    Returns:
+        Number of notifications marked as read
+    """
+    unread_notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False,
+        is_active=True
+    )
+    
+    count = unread_notifications.count()
+    if count > 0:
+        unread_notifications.update(
+            is_read=True,
+            read_at=timezone.now(),
+            updated_at=timezone.now()
+        )
+    
+    return count

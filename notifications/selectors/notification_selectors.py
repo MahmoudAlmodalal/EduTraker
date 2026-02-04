@@ -74,3 +74,16 @@ def notification_get(
         raise PermissionDenied("You don't have permission to access this notification.")
     
     return notification
+
+def notification_unread_count(
+    *,
+    user: CustomUser
+) -> int:
+    """
+    Get the count of unread notifications for a user.
+    """
+    return Notification.objects.filter(
+        recipient=user,
+        is_read=False,
+        is_active=True
+    ).count()

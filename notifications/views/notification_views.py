@@ -11,9 +11,11 @@ from notifications.models import Notification
 from notifications.selectors.notification_selectors import (
     notification_list,
     notification_get,
+    notification_unread_count,
 )
 from notifications.services.notification_services import (
     notification_mark_read,
+    notification_mark_all_read,
 )
 
 
@@ -116,3 +118,31 @@ class NotificationDetailApi(APIView):
             user=request.user
         )
         return Response(NotificationOutputSerializer(notification).data)
+
+class NotificationMarkAllReadApi(APIView):
+    """Mark all notifications as read for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='Mark all notifications as read',
+        request=None,
+        responses={200: serializers.DictField()}
+    )
+    def post(self, request):
+        count = notification_mark_all_read(user=request.user)
+        return Response({"message": f"Marked {count} notifications as read", "count": count})
+
+
+class NotificationUnreadCountApi(APIView):
+    """Get the unread notification count for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='Get unread notifications count',
+        responses={200: serializers.DictField()}
+    )
+    def get(self, request):
+        count = notification_unread_count(user=request.user)
+        return Response({"unread_count": count})

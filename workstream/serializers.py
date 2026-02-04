@@ -18,6 +18,7 @@ class WorkstreamCreateInputSerializer(serializers.Serializer):
 
 class WorkstreamOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
+    slug = serializers.SlugField(read_only=True)
     workstream_name = serializers.CharField(required=False)
     description = serializers.SerializerMethodField()
     manager_id = serializers.IntegerField(required=False)

@@ -44,10 +44,10 @@ class WorkstreamInfoView(APIView):
         description="Public endpoint to get basic workstream info (id and name only). Used on the login page to display workstream name.",
         parameters=[
             OpenApiParameter(
-                name="workstream_id",
-                type=int,
+                name="slug",
+                type=str,
                 location=OpenApiParameter.PATH,
-                description="The ID of the workstream to retrieve info for.",
+                description="The slug of the workstream to retrieve info for.",
             ),
         ],
         responses={
@@ -56,6 +56,7 @@ class WorkstreamInfoView(APIView):
                 fields={
                     "id": serializers.IntegerField(),
                     "name": serializers.CharField(),
+                    "slug": serializers.SlugField(),
                 },
             ),
             404: OpenApiResponse(description="Workstream not found."),
@@ -63,7 +64,7 @@ class WorkstreamInfoView(APIView):
         examples=[
             OpenApiExample(
                 "Successful Response",
-                value={"id": 1, "name": "EduTrack Main Campus"},
+                value={"id": 1, "name": "EduTrack Main Campus", "slug": "edutrack-main-campus"},
                 response_only=True,
                 status_codes=["200"],
             ),
@@ -75,10 +76,10 @@ class WorkstreamInfoView(APIView):
             ),
         ],
     )
-    def get(self, request, workstream_id: int):
-        workstream = get_object_or_404(WorkStream, id=workstream_id, is_active=True)
+    def get(self, request, slug: str):
+        workstream = get_object_or_404(WorkStream, slug=slug, is_active=True)
         return Response(
-            {"id": workstream.id, "name": workstream.workstream_name},
+            {"id": workstream.id, "name": workstream.workstream_name, "slug": workstream.slug},
             status=status.HTTP_200_OK,
         )
 

@@ -103,7 +103,7 @@ class MessageThreadView(generics.ListAPIView):
             thread_id=thread_id
         ).filter(
             models.Q(sender=user) | models.Q(receipts__recipient=user)
-        ).distinct().order_by('sent_at')
+        ).distinct().select_related('sender').prefetch_related('receipts__recipient').order_by('sent_at')
 
 
 class MessageReadView(APIView):
