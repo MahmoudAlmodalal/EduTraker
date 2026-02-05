@@ -40,6 +40,8 @@ class MessageSerializer(serializers.ModelSerializer):
         ref_name = 'UserMessageSerializer'
 
     def create(self, validated_data):
+        from notifications.models import Notification
+
         recipients = validated_data.pop('recipients', [])
         # Assign sender from context if not present (handled in view usually, but good to ensure)
         request = self.context.get('request')
@@ -48,9 +50,22 @@ class MessageSerializer(serializers.ModelSerializer):
 
         message = Message.objects.create(**validated_data)
 
-        # Create receipts
+        # Create receipts and notifications for each recipient
         for user in recipients:
             MessageReceipt.objects.create(message=message, recipient=user)
+
+            # Create notification for new message
+            Notification.objects.create(
+                sender=message.sender,
+                recipient=user,
+                title=f"New message from {message.sender.full_name or message.sender.email}",
+                message=f"Subject: {message.subject or '(No subject)'}\n{message.body[:100]}{'...' if len(message.body) > 100 else ''}",
+                notification_type="message_received",
+                related_object_type="message",
+                related_object_id=message.id,
+                action_url=f"/communication?messageId={message.id}",
+                is_read=False
+            )
 
         # Refresh the message instance to include receipts in the response
         message.refresh_from_db()
