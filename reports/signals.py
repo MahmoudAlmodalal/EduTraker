@@ -18,29 +18,25 @@ def get_client_ip(request):
 
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
-    """Log user login."""
+    """Log user login asynchronously."""
     try:
         ip = get_client_ip(request) if request else None
         user_agent = request.META.get('HTTP_USER_AGENT', '') if request else ''
         
-        UserLoginHistory.objects.create(
-            user=user,
+        # Import the async task
+        from .tasks import log_user_login_async
+        
+        # Queue the task asynchronously - this returns immediately
+        log_user_login_async.delay(
+            user_id=user.id,
             ip_address=ip,
-            user_agent=user_agent
+            user_agent=user_agent,
+            email=user.email
         )
         
-        # Also log to ActivityLog
-        ActivityLog.objects.create(
-            actor=user,
-            action_type='LOGIN',
-            entity_type='User',
-            entity_id=str(user.id),
-            description=f"{user.full_name or user.email} logged in",
-            ip_address=ip
-        )
     except Exception as e:
-        # Prevent login failure if logging fails
-        print(f"Error logging login: {e}")
+        # Prevent login failure if task queuing fails
+        print(f"Error queuing login logging task: {e}")
 
 @receiver(post_save, sender=School)
 def log_school_changes(sender, instance, created, **kwargs):

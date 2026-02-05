@@ -9,7 +9,13 @@ class SchoolListQuerySerializer(serializers.Serializer):
 
 class SchoolCreateInputSerializer(serializers.Serializer):
     school_name = serializers.CharField(max_length=255)
-    work_stream = serializers.PrimaryKeyRelatedField(queryset=WorkStream.objects.all())
+    # Make work_stream optional; when omitted, views can fall back to the
+    # authenticated user's work_stream (for manager_workstream roles).
+    work_stream = serializers.PrimaryKeyRelatedField(
+        queryset=WorkStream.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
 
 class SchoolUpdateInputSerializer(serializers.Serializer):

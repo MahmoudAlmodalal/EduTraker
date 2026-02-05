@@ -32,13 +32,14 @@ class MessageListCreateView(generics.ListCreateAPIView):
         ).distinct().select_related('sender').prefetch_related('receipts__recipient')
         
         # Optional: Filter by 'type' (inbox/sent) via query params if needed
-        box = self.request.query_params.get('box')
-        if box == 'inbox':
-            queryset = queryset.filter(receipts__recipient=user)
-        elif box == 'sent':
-            queryset = queryset.filter(sender=user)
+        # Filter by peer_id (conversation with specific user)
+        peer_id = self.request.query_params.get('peer_id')
+        if peer_id:
+            queryset = queryset.filter(
+                models.Q(sender_id=peer_id) | models.Q(receipts__recipient_id=peer_id)
+            )
             
-        return queryset.order_by('-sent_at')
+        return queryset.order_by('sent_at' if peer_id else '-sent_at')
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
@@ -103,7 +104,7 @@ class MessageThreadView(generics.ListAPIView):
             thread_id=thread_id
         ).filter(
             models.Q(sender=user) | models.Q(receipts__recipient=user)
-        ).distinct().order_by('sent_at')
+        ).distinct().select_related('sender').prefetch_related('receipts__recipient').order_by('sent_at')
 
 
 class MessageReadView(APIView):

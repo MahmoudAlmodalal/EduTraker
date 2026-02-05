@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Message, MessageReceipt
+from notifications.services.notification_services import notification_create
 
 User = get_user_model()
 
@@ -28,12 +29,18 @@ class MessageSerializer(serializers.ModelSerializer):
     )
     # Output: Receipt status for each recipient (or just list of recipients for simple view)
     receipts = MessageReceiptSerializer(many=True, read_only=True)
+    
+    parent_message = serializers.PrimaryKeyRelatedField(
+        queryset=Message.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = Message
         fields = [
-            'id', 'sender', 'recipient_ids', 'receipts',
-            'subject', 'body', 'attachments',
+            'id', 'sender', 'recipient_ids', 'receipts', 
+            'subject', 'body', 'attachments', 
             'thread_id', 'parent_message', 'sent_at', 'is_draft'
         ]
         read_only_fields = ['sender', 'sent_at', 'receipts']
@@ -43,35 +50,33 @@ class MessageSerializer(serializers.ModelSerializer):
         from notifications.models import Notification
 
         recipients = validated_data.pop('recipients', [])
-        # Assign sender from context if not present (handled in view usually, but good to ensure)
+        # Assign sender from context if not present
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['sender'] = request.user
-
+            
+        # IMPORTANT: Threading Logic
+        # If this is a reply (has parent_message), it MUST share the same thread_id
+        parent = validated_data.get('parent_message')
+        if parent:
+            validated_data['thread_id'] = parent.thread_id
+            
         message = Message.objects.create(**validated_data)
-
-        # Create receipts and notifications for each recipient
+        
+        # Create receipts and notifications
         for user in recipients:
             MessageReceipt.objects.create(message=message, recipient=user)
-
-            # Create notification for new message
-            Notification.objects.create(
-                sender=message.sender,
+            
+            # Create a system notification for the recipient
+            notification_create(
                 recipient=user,
-                title=f"New message from {message.sender.full_name or message.sender.email}",
-                message=f"Subject: {message.subject or '(No subject)'}\n{message.body[:100]}{'...' if len(message.body) > 100 else ''}",
+                sender=message.sender,
+                title="New Message",
+                message=f"You have received a new message from {message.sender.full_name}: {message.subject}",
                 notification_type="message_received",
-                related_object_type="message",
-                related_object_id=message.id,
-                action_url=f"/communication?messageId={message.id}",
-                is_read=False
+                action_url=f"/super-admin/communication" # Adjust based on role if needed
             )
-
-        # Refresh the message instance to include receipts in the response
-        message.refresh_from_db()
-        # Prefetch receipts with recipients for serialization
-        message = Message.objects.select_related('sender').prefetch_related('receipts__recipient').get(id=message.id)
-
+            
         return message
 
 class MessageDetailSerializer(MessageSerializer):

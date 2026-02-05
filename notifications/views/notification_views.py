@@ -11,9 +11,11 @@ from notifications.models import Notification
 from notifications.selectors.notification_selectors import (
     notification_list,
     notification_get,
+    notification_unread_count,
 )
 from notifications.services.notification_services import (
     notification_mark_read,
+    notification_mark_all_read,
 )
 
 
@@ -117,31 +119,6 @@ class NotificationDetailApi(APIView):
         )
         return Response(NotificationOutputSerializer(notification).data)
 
-
-class NotificationUnreadCountApi(APIView):
-    """Get unread notification count for the authenticated user."""
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        tags=['Notifications'],
-        summary='Get unread notification count',
-        responses={
-            200: {
-                'type': 'object',
-                'properties': {
-                    'unread_count': {'type': 'integer'}
-                }
-            }
-        }
-    )
-    def get(self, request):
-        unread_count = Notification.objects.filter(
-            recipient=request.user,
-            is_read=False
-        ).count()
-        return Response({'unread_count': unread_count})
-
-
 class NotificationMarkAllReadApi(APIView):
     """Mark all notifications as read for the authenticated user."""
     permission_classes = [IsAuthenticated]
@@ -150,23 +127,22 @@ class NotificationMarkAllReadApi(APIView):
         tags=['Notifications'],
         summary='Mark all notifications as read',
         request=None,
-        responses={
-            200: {
-                'type': 'object',
-                'properties': {
-                    'message': {'type': 'string'},
-                    'count': {'type': 'integer'}
-                }
-            }
-        }
+        responses={200: serializers.DictField()}
     )
     def post(self, request):
-        from django.utils import timezone
-        count = Notification.objects.filter(
-            recipient=request.user,
-            is_read=False
-        ).update(is_read=True, read_at=timezone.now())
-        return Response({
-            'message': f'{count} notifications marked as read',
-            'count': count
-        })
+        count = notification_mark_all_read(user=request.user)
+        return Response({"message": f"Marked {count} notifications as read", "count": count})
+
+
+class NotificationUnreadCountApi(APIView):
+    """Get the unread notification count for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='Get unread notifications count',
+        responses={200: serializers.DictField()}
+    )
+    def get(self, request):
+        count = notification_unread_count(user=request.user)
+        return Response({"unread_count": count})

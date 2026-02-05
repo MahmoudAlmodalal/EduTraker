@@ -8,6 +8,7 @@ from school.views.school_views import (
     SchoolUpdateAPIView,
     SchoolDeactivateAPIView,
     SchoolActivateAPIView,
+    SchoolBulkActivateAPIView,
 )
 from school.views.academic_year_views import (
     AcademicYearListAPIView,
@@ -48,6 +49,7 @@ urlpatterns = [
     path("school/<int:school_id>/update/", SchoolUpdateAPIView.as_view(), name="school-update"),
     path("school/<int:school_id>/deactivate/", SchoolDeactivateAPIView.as_view(), name="school-deactivate"),
     path("school/<int:school_id>/activate/", SchoolActivateAPIView.as_view(), name="school-activate"),
+    path("school/activate-all/", SchoolBulkActivateAPIView.as_view(), name="school-activate-all"),
     
     # Academic Year endpoints
     path("academic-years/", AcademicYearListAPIView.as_view(), name="academic-year-list"),

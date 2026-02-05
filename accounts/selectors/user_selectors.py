@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from accounts.policies.user_policies import can_access_user
 from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
 from typing import Optional, Dict, Any
+from django.db.models.functions import Lower
 
 
 def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
@@ -28,7 +29,13 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
          qs = qs.filter(is_active=is_active_val)
 
     if search := filters.get("search"):
-        qs = qs.filter(full_name__icontains=search)
+        qs = qs.annotate(
+            low_full_name=Lower('full_name'),
+            low_email=Lower('email')
+        ).filter(
+            Q(low_full_name__icontains=search.lower()) | 
+            Q(low_email__icontains=search.lower())
+        )
 
     return qs
 

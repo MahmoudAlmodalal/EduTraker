@@ -7,6 +7,7 @@ from decimal import Decimal
 from teacher.models import Mark, Teacher, Assignment
 from student.models import Student
 from accounts.models import CustomUser, Role
+from notifications.services.notification_services import notification_create
 
 
 @transaction.atomic
@@ -41,6 +42,16 @@ def mark_record(
         mark.graded_at = timezone.now()
         mark.is_active = True
         mark.save()
+        
+    # Create notification for the student
+    notification_create(
+        recipient=student.user,
+        sender=teacher.user,
+        title="Grade Posted",
+        message=f"A new grade has been posted for {assignment.title}. Score: {score}/{assignment.full_mark}",
+        notification_type="grade_posted",
+        action_url=f"/student/results"
+    )
 
     return mark
 

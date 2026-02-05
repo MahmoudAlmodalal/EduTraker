@@ -4,8 +4,8 @@ from notifications.views.notification_views import (
     NotificationListApi,
     NotificationMarkReadApi,
     NotificationDetailApi,
-    NotificationUnreadCountApi,
     NotificationMarkAllReadApi,
+    NotificationUnreadCountApi,
 )
 
 app_name = 'notifications'

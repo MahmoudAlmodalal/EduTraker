@@ -25,6 +25,7 @@ from reports.services.count_services import (
     get_student_count_by_classroom,
     get_comprehensive_statistics
 )
+from reports.services.activity_services import get_login_activity_chart
 
 
 class TeacherStudentCountView(APIView):
@@ -367,6 +368,7 @@ class ComprehensiveStatisticsView(APIView):
     def get(self, request):
         try:
             data = get_comprehensive_statistics(actor=request.user)
+            data['activity_chart'] = get_login_activity_chart()
             return Response(data, status=status.HTTP_200_OK)
         
         except PermissionDenied as e:
@@ -417,50 +419,52 @@ class DashboardStatisticsView(APIView):
         
         try:
             # Common: Fetch recent activity relevant to the user
-            from django.db.models import Count
-            from django.db.models.functions import TruncDate
             from django.utils import timezone
             from datetime import timedelta
             
             # 1. Fetch Recent Activity
-            # logic depends on role - for admin, see everything. 
-            # For others, maybe specific entities. For now keeping it simple:
-            from reports.models import ActivityLog, UserLoginHistory
+            from reports.models import ActivityLog
             if user.role == 'admin':
                 recent_activity_qs = ActivityLog.objects.all().order_by('-created_at')[:10]
+            
+            elif user.role == 'manager_workstream':
+                from school.models import School
+                from django.db.models import Q
+                
+                workstream_id = getattr(user, 'work_stream_id', None)
+                
+                query = Q(actor=user)
+                
+                if workstream_id:
+                    # Include events for this workstream
+                    query |= Q(entity_type='Workstream', entity_id=str(workstream_id))
+                    
+                    # Include events for schools in this workstream
+                    school_ids = list(School.objects.filter(work_stream_id=workstream_id).values_list('id', flat=True))
+                    if school_ids:
+                        query |= Q(entity_type='School', entity_id__in=[str(sid) for sid in school_ids])
+                
+                recent_activity_qs = ActivityLog.objects.filter(query).order_by('-created_at')[:10]
+                
+            elif user.role == 'manager_school':
+                from django.db.models import Q
+                school_id = getattr(user, 'school_id', None)
+                
+                query = Q(actor=user)
+                if school_id:
+                    query |= Q(entity_type='School', entity_id=str(school_id))
+                    
+                recent_activity_qs = ActivityLog.objects.filter(query).order_by('-created_at')[:10]
+                
             else:
-                # For basic users, maybe just their own actions or actions on their workstream/school
+                # For basic users, just their own actions
                 recent_activity_qs = ActivityLog.objects.filter(actor=user).order_by('-created_at')[:10]
 
             from reports.serializers import ActivityLogSerializer
             recent_activity = ActivityLogSerializer(recent_activity_qs, many=True).data
             
             # 2. Fetch Activity Chart (Login Frequency)
-            # Last 7 days
-            seven_days_ago = timezone.now() - timedelta(days=6)
-            
-            login_stats = UserLoginHistory.objects.filter(
-                login_time__gte=seven_days_ago
-            ).annotate(
-                date=TruncDate('login_time')
-            ).values('date').annotate(
-                logins=Count('id')
-            ).order_by('date')
-            
-            # Format for Recharts (or similar)
-            # Ensure all days are present
-            
-            chart_data_map = {item['date']: item['logins'] for item in login_stats}
-            
-            for i in range(7):
-                day = seven_days_ago.date() + timedelta(days=i)
-                day_name = day.strftime("%a") # Mon, Tue, etc.
-                count = chart_data_map.get(day, 0)
-                activity_chart.append({
-                    'name': day_name,
-                    'logins': count,
-                    'date': str(day)
-                })
+            activity_chart = get_login_activity_chart()
 
             if user.role == 'admin':
                 from student.models import Student
@@ -523,7 +527,10 @@ class DashboardStatisticsView(APIView):
                 stats = {
                     'workstream_name': data['workstream_name'],
                     'total_students': data['total_students'],
+                    'total_teachers': data['total_teachers'],
                     'school_count': data['school_count'],
+                    'manager_count': data.get('manager_count', 0),
+                    'classroom_count': data['classroom_count'],
                     'schools': data['by_school']
                 }
             

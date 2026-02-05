@@ -49,7 +49,7 @@ class WorkstreamRegisterView(APIView):
         summary='Register in a workstream',
         description='Register a new user in a specific workstream with STUDENT role by default.',
         parameters=[
-            OpenApiParameter(name='workstream_id', type=int, location=OpenApiParameter.PATH, description='Workstream ID'),
+            OpenApiParameter(name='slug', type=str, location=OpenApiParameter.PATH, description='Workstream Slug'),
         ],
         request=WorkstreamRegisterInputSerializer,
         examples=[
@@ -80,17 +80,16 @@ class WorkstreamRegisterView(APIView):
             400: OpenApiResponse(description='Validation error'),
         }
     )
-    def post(self, request, workstream_id):
+    def post(self, request, slug):
         serializer = self.WorkstreamRegisterInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         # Ensure workstream exists and is active before proceeding
-        if not WorkStream.objects.filter(id=workstream_id, is_active=True).exists():
-            return Response({"detail": "Workstream not found."}, status=status.HTTP_404_NOT_FOUND)
+        workstream = get_object_or_404(WorkStream, slug=slug, is_active=True)
         
         try:
             user = workstream_register_user(
-                workstream_id=workstream_id,
+                workstream_id=workstream.id,
                 email=serializer.validated_data['email'],
                 full_name=serializer.validated_data['full_name'],
                 password=serializer.validated_data['password'],
@@ -177,13 +176,15 @@ class WorkstreamLoginView(APIView):
             403: OpenApiResponse(description='User not authorized for this workstream'),
         }
     )
-    def post(self, request, workstream_id):
+    def post(self, request, slug):
         serializer = self.WorkstreamLoginInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
+        workstream = get_object_or_404(WorkStream, slug=slug, is_active=True)
+        
         try:
             result = workstream_login(
-                workstream_id=workstream_id,
+                workstream_id=workstream.id,
                 email=serializer.validated_data['email'],
                 password=serializer.validated_data['password'],
             )

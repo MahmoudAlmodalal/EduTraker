@@ -25,7 +25,9 @@ def school_get(*, actor: CustomUser, school_id: int, include_inactive: bool = Fa
 
 def school_list(*, actor: CustomUser, work_stream_id: Optional[int] = None, include_inactive: bool = False):
     """List schools accessible to the actor with filtering and RBAC."""
-    if include_inactive and actor.role == Role.ADMIN:
+    # Use all_objects (including inactive) when explicitly requested for
+    # privileged roles that manage schools at workstream/global level.
+    if include_inactive and actor.role in (Role.ADMIN, Role.MANAGER_WORKSTREAM,):
         qs = School.all_objects.all()
     else:
         qs = School.objects.all()

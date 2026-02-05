@@ -157,3 +157,40 @@ class NotificationApiTests(APITestCase):
         self.assertEqual(response.data['count'], 14)
         # Results should be paginated
         self.assertLess(len(response.data['results']), 14)
+
+    def test_unread_count_api(self):
+        """Test the unread count API endpoint."""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('notifications:notification-unread-count')
+        
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # notification1 is unread, notification2 is read. Count should be 1.
+        self.assertEqual(response.data['unread_count'], 1)
+        
+        # Create another unread notification
+        Notification.objects.create(
+            recipient=self.user,
+            title="Extra Unread",
+            message="Message",
+            notification_type="system",
+            is_read=False
+        )
+        
+        response = self.client.get(url)
+        self.assertEqual(response.data['unread_count'], 2)
+
+    def test_mark_all_read_api(self):
+        """Test marking all notifications as read via API."""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('notifications:notification-mark-all-read')
+        
+        # Initially, 1 is unread
+        self.assertEqual(Notification.objects.filter(recipient=self.user, is_read=False).count(), 1)
+        
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        
+        # Now 0 should be unread
+        self.assertEqual(Notification.objects.filter(recipient=self.user, is_read=False).count(), 0)
