@@ -47,6 +47,8 @@ class MessageSerializer(serializers.ModelSerializer):
         ref_name = 'UserMessageSerializer'
 
     def create(self, validated_data):
+        from notifications.models import Notification
+
         recipients = validated_data.pop('recipients', [])
         # Assign sender from context if not present
         request = self.context.get('request')
