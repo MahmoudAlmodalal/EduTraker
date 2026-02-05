@@ -35,7 +35,7 @@ def log_user_login(sender, request, user, **kwargs):
             action_type='LOGIN',
             entity_type='User',
             entity_id=str(user.id),
-            description=f"User {user.email} logged in",
+            description=f"{user.full_name or user.email} logged in",
             ip_address=ip
         )
     except Exception as e:

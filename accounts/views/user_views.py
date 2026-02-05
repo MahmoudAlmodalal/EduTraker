@@ -8,22 +8,23 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from accounts.models import CustomUser, Role
 from accounts.selectors.user_selectors import user_list, user_get
 from accounts.services.user_services import (
-    user_create, 
-    user_update, 
+    user_create,
+    user_update,
     user_deactivate,
     user_activate
 )
 from accounts.serializers import MessageSerializer
-from accounts.permissions import (IsAdminOrManager, 
-    IsWorkStreamManager, 
-    IsSchoolManager, 
-    IsTeacher, 
-    IsSecretary, 
+from accounts.permissions import (IsAdminOrManager,
+    IsWorkStreamManager,
+    IsSchoolManager,
+    IsTeacher,
+    IsSecretary,
     IsStaffUser,
     IsAdminOrManagerOrSecretary,
 )
 from accounts.pagination import PaginatedAPIMixin
 from django.core.exceptions import PermissionDenied
+from reports.utils import log_activity
 
 
 class UserListApi(PaginatedAPIMixin, APIView):
@@ -349,6 +350,17 @@ class UserUpdateApi(APIView):
             data.pop("school", None)
 
         user = user_update(user=user, data=data)
+
+        # Log activity
+        log_activity(
+            actor=request.user,
+            action_type='UPDATE',
+            entity_type='User',
+            description=f"Updated user: {user.full_name}",
+            entity_id=user.id,
+            request=request
+        )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -406,6 +418,17 @@ class UserDeactivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_deactivate(user=user)
+
+        # Log activity
+        log_activity(
+            actor=request.user,
+            action_type='UPDATE',
+            entity_type='User',
+            description=f"Deactivated user: {user.full_name}",
+            entity_id=user.id,
+            request=request
+        )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class UserActivateApi(APIView):
@@ -435,4 +458,15 @@ class UserActivateApi(APIView):
             )
         user = user_get(user_id=user_id,actor=request.user)
         user_activate(user=user)
+
+        # Log activity
+        log_activity(
+            actor=request.user,
+            action_type='UPDATE',
+            entity_type='User',
+            description=f"Activated user: {user.full_name}",
+            entity_id=user.id,
+            request=request
+        )
+
         return Response(status=status.HTTP_204_NO_CONTENT)

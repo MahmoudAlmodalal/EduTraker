@@ -7,6 +7,7 @@ from reports.services.export_service import ExportService
 from accounts.permissions import IsStaffUser
 
 from reports.services.report_generation_services import ReportGenerationService
+from reports.utils import log_activity
 
 class ReportExportView(APIView):
     """
@@ -96,6 +97,15 @@ class ReportExportView(APIView):
         if not data:
             # We still proceed to generate an empty file with headers
             pass
+
+        # Log the export activity
+        log_activity(
+            actor=request.user,
+            action_type='EXPORT',
+            entity_type='Report',
+            description=f"Exported {report_type} report as {export_format}",
+            request=request
+        )
 
         if export_format == "csv":
             return ExportService.export_to_csv(data, headers, filename=report_type)

@@ -5,6 +5,7 @@ from accounts.selectors.user_selectors import user_get_by_email
 from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
 from typing import Optional
 from workstream.models import WorkStream
+from reports.utils import log_activity
 
 
 @transaction.atomic
@@ -66,6 +67,16 @@ def user_create(
     user.set_password(password)
     user.full_clean()
     user.save()
+
+    # Log activity
+    role_display = dict(CustomUser.ROLE_CHOICES).get(role, role)
+    log_activity(
+        actor=creator,
+        action_type='CREATE',
+        entity_type='User',
+        description=f"Created {role_display}: {full_name}",
+        entity_id=user.id
+    )
 
     return user
 
