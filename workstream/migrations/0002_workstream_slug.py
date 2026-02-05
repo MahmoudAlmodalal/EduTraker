@@ -18,7 +18,6 @@ class Migration(migrations.Migration):
                 help_text="Workstream URL slug",
                 max_length=255,
                 null=True,
-                unique=True,
             ),
         ),
     ]

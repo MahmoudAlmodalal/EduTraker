@@ -17,14 +17,14 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='guardianstudentlink',
             name='student',
-            field=models.ForeignKey(help_text='Student in this relationship', on_delete=django.db.models.deletion.CASCADE, related_name='guardian_links', to='student.student'),
+            field=models.BigIntegerField(help_text='Student ID in this relationship', null=True),
         ),
-        migrations.AddIndex(
-            model_name='guardianstudentlink',
-            index=models.Index(fields=['student'], name='idx_link_student'),
-        ),
-        migrations.AddConstraint(
-            model_name='guardianstudentlink',
-            constraint=models.UniqueConstraint(fields=('guardian', 'student'), name='unique_guardian_student'),
-        ),
+        # migrations.AddIndex(
+        #     model_name='guardianstudentlink',
+        #     index=models.Index(fields=['student'], name='idx_link_student'),
+        # ),
+        # migrations.AddConstraint(
+        #     model_name='guardianstudentlink',
+        #     constraint=models.UniqueConstraint(fields=('guardian', 'student'), name='unique_guardian_student'),
+        # ),
     ]

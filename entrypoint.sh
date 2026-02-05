@@ -27,6 +27,7 @@ if [ $# -eq 0 ]; then
     # Automated Schema Sync Logic
     if [ "$FORCE_MIGRATE_SYNC" = "True" ]; then
       echo "FORCE_MIGRATE_SYNC is True. Re-syncing migration state..."
+      python db_fix.py || echo "db_fix.py failed, continuing..."
       python manage.py migrate --fake-initial || echo "Fake initial failed, continuing..."
       python manage.py migrate --noinput
     elif [ "$MIGRATE_FAKE" = "True" ]; then
@@ -34,6 +35,8 @@ if [ $# -eq 0 ]; then
       python manage.py migrate --noinput --fake
     else
       echo "Executing standard migration..."
+      # Run db reconciliation before migration
+      python db_fix.py || echo "db_fix.py failed, continuing..."
       python manage.py migrate --noinput || {
         echo "Migration failed. Attempting to reconcile..."
         python manage.py migrate --fake-initial --noinput || echo "Auto-reconcile failed."
