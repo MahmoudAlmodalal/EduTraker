@@ -37,8 +37,9 @@ class UserListApi(PaginatedAPIMixin, APIView):
         is_active = serializers.BooleanField(required=False, allow_null=True, help_text="Filter by active status")
 
     class UserOutputSerializer(serializers.ModelSerializer):
-        work_stream_name = serializers.CharField(source='work_stream.name', read_only=True)
-        school_name = serializers.CharField(source='school.school_name', read_only=True)
+        work_stream_name = serializers.SerializerMethodField()
+        school_name = serializers.SerializerMethodField()
+
         class Meta:
             model = CustomUser
             fields = [
@@ -47,6 +48,12 @@ class UserListApi(PaginatedAPIMixin, APIView):
                 'school', 'school_name',
                 'is_active', 'date_joined'
             ]
+
+        def get_work_stream_name(self, obj):
+            return obj.work_stream.workstream_name if obj.work_stream else None
+
+        def get_school_name(self, obj):
+            return obj.school.school_name if obj.school else None
 
     @extend_schema(
         tags=['User Management'],

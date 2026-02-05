@@ -116,3 +116,57 @@ class NotificationDetailApi(APIView):
             user=request.user
         )
         return Response(NotificationOutputSerializer(notification).data)
+
+
+class NotificationUnreadCountApi(APIView):
+    """Get unread notification count for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='Get unread notification count',
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'unread_count': {'type': 'integer'}
+                }
+            }
+        }
+    )
+    def get(self, request):
+        unread_count = Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).count()
+        return Response({'unread_count': unread_count})
+
+
+class NotificationMarkAllReadApi(APIView):
+    """Mark all notifications as read for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='Mark all notifications as read',
+        request=None,
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'message': {'type': 'string'},
+                    'count': {'type': 'integer'}
+                }
+            }
+        }
+    )
+    def post(self, request):
+        from django.utils import timezone
+        count = Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).update(is_read=True, read_at=timezone.now())
+        return Response({
+            'message': f'{count} notifications marked as read',
+            'count': count
+        })
