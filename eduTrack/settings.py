@@ -124,6 +124,7 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -138,6 +139,7 @@ CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'T
 
 CORS_ALLOWED_ORIGINS = [
     os.environ.get('FRONTEND_URL', 'http://localhost:5173'),
+    'https://edutrakerfront.onrender.com',
 ]
 if os.environ.get('ADDITIONAL_CORS_ORIGINS'):
     CORS_ALLOWED_ORIGINS.extend(os.environ.get('ADDITIONAL_CORS_ORIGINS').split(','))
@@ -244,6 +246,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
