@@ -11,7 +11,7 @@ from reportlab.lib.units import inch
 
 class ExportService:
     @staticmethod
-    def export_to_excel(data, headers, filename="report"):
+    def export_to_excel(data, headers, filename="report", user_name=None):
         """
         Generates a professional Excel file with styling.
         """
@@ -32,9 +32,22 @@ class ExportService:
             bottom=Side(style='thin', color='D3D3D3')
         )
 
+        # Add report info at the top
+        info_font = Font(size=10, italic=True, color="666666")
+        current_row = 1
+        
+        if user_name:
+            ws.cell(row=current_row, column=1, value=f"Exported by: {user_name}")
+            ws.cell(row=current_row, column=1).font = info_font
+            current_row += 1
+        
+        ws.cell(row=current_row, column=1, value=f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}")
+        ws.cell(row=current_row, column=1).font = info_font
+        current_row += 2  # Add space before table
+
         # Write and style header
         for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_num, value=header.replace('_', ' ').title())
+            cell = ws.cell(row=current_row, column=col_num, value=header.replace('_', ' ').title())
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = header_alignment
@@ -44,7 +57,8 @@ class ExportService:
         light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
         
         # Write data with styling
-        for row_num, row_data in enumerate(data, 2):
+        start_data_row = current_row + 1
+        for row_num, row_data in enumerate(data, start_data_row):
             for col_num, header in enumerate(headers, 1):
                 value = row_data.get(header, "")
                 
@@ -76,7 +90,7 @@ class ExportService:
             ws.column_dimensions[column].width = adjusted_width
 
         # Freeze the header row
-        ws.freeze_panes = "A2"
+        ws.freeze_panes = f"A{current_row + 1}"
 
         # Prepare response
         response = HttpResponse(
@@ -89,7 +103,7 @@ class ExportService:
         return response
 
     @staticmethod
-    def export_to_csv(data, headers, filename="report"):
+    def export_to_csv(data, headers, filename="report", user_name=None):
         """
         Generates a CSV file with UTF-8 BOM for Excel compatibility.
         """
@@ -101,27 +115,33 @@ class ExportService:
         # Add UTF-8 BOM for proper Excel opening
         response.write('\ufeff')
         
-        writer = csv.DictWriter(response, fieldnames=headers)
+        writer = csv.writer(response)
+        
+        # Add report info
+        if user_name:
+            writer.writerow([f"Exported by: {user_name}"])
+        writer.writerow([f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}"])
+        writer.writerow([])  # Empty row for spacing
         
         # Write header with nice formatting
-        header_dict = {h: h.replace('_', ' ').title() for h in headers}
-        writer.writerow(header_dict)
+        header_row = [h.replace('_', ' ').title() for h in headers]
+        writer.writerow(header_row)
         
         for row in data:
-            clean_row = {}
+            row_data = []
             for header in headers:
                 val = row.get(header, "")
                 if isinstance(val, (list, dict)):
                     val = str(val)
                 elif isinstance(val, datetime):
                     val = val.strftime("%Y-%m-%d %H:%M")
-                clean_row[header] = val
-            writer.writerow(clean_row)
+                row_data.append(val)
+            writer.writerow(row_data)
             
         return response
 
     @staticmethod
-    def export_to_pdf(data, headers, filename="report", title=None):
+    def export_to_pdf(data, headers, filename="report", title=None, user_name=None):
         """
         Generates a professional PDF report with table styling.
         """
@@ -152,17 +172,21 @@ class ExportService:
             report_title = title or filename.replace('_', ' ').title()
             elements.append(Paragraph(report_title, title_style))
             
-            # Add timestamp
-            date_style = ParagraphStyle(
-                'DateStyle',
+            # Add user and timestamp info
+            info_style = ParagraphStyle(
+                'InfoStyle',
                 parent=styles['Normal'],
                 fontSize=10,
                 textColor=colors.grey,
                 alignment=1,
-                spaceAfter=20
+                spaceAfter=5
             )
-            elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}", date_style))
-            elements.append(Spacer(1, 12))
+            
+            if user_name:
+                elements.append(Paragraph(f"Exported by: {user_name}", info_style))
+            
+            elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}", info_style))
+            elements.append(Spacer(1, 20))
             
             # Prepare table data
             table_data = []
