@@ -68,7 +68,9 @@ urlpatterns = [
     # These aliases map frontend-expected URL paths to existing backend views
     # so the EduTrakerFront app can reach all endpoints cleanly.
 
-    # Student-facing endpoints (frontend uses /student/ prefix)
+    # Student-facing endpoints (frontend uses /student/ prefix).
+    # The underlying views already enforce role-based filtering on the queryset,
+    # so students only see their own attendance/marks.
     path('api/student/attendance/', AttendanceListApi.as_view(), name='compat-student-attendance'),
     path('api/student/marks/', MarkListApi.as_view(), name='compat-student-marks'),
     path('api/student/students/', StudentListApi.as_view(), name='compat-student-students'),

@@ -2,6 +2,10 @@
 Compatibility stub views for frontend API endpoints that don't have
 dedicated backend implementations yet. These return safe empty/default
 responses so the frontend doesn't encounter unexpected errors.
+
+TODO: Replace each stub with a real implementation and add role-specific
+permission classes (e.g., IsTeacher, IsSecretary) when building out
+these features.
 """
 from rest_framework.views import APIView
 from rest_framework.response import Response
