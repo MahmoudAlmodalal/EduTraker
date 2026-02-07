@@ -146,3 +146,23 @@ class NotificationUnreadCountApi(APIView):
     def get(self, request):
         count = notification_unread_count(user=request.user)
         return Response({"unread_count": count})
+
+
+class AlertsNotificationListApi(APIView):
+    """List critical alerts for the authenticated user."""
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Notifications'],
+        summary='List user alerts',
+        responses={200: NotificationOutputSerializer(many=True)}
+    )
+    def get(self, request):
+        # Filter for system notifications or specific alert types
+        # This can be expanded based on business logic
+        notifications = Notification.objects.filter(
+            recipient=request.user,
+            notification_type__in=['system', 'account_change']
+        ).order_by('-created_at')[:10]
+        
+        return Response(NotificationOutputSerializer(notifications, many=True).data)

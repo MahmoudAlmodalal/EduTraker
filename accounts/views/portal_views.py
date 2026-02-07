@@ -129,11 +129,13 @@ class PortalLoginView(APIView):
             user = obj['user']
             return {
                 'id': user.id,
+                'user_id': user.id, # Alias for frontend
                 'email': user.email,
                 'full_name': user.full_name,
                 'role': user.role,
                 'work_stream': user.work_stream_id,
                 'school': user.school_id,
+                'school_id': user.school_id, # Alias for frontend
                 'is_active': user.is_active,
             }
     

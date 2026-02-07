@@ -31,15 +31,17 @@ from reports.services.count_managerWorkstream_services import (
     get_workstream_dashboard_statistics,
 )
 from reports.services.count_managerSchool_services import (
+    get_school_dashboard_statistics,
+    get_school_manager_summary,
+    get_course_summary,
+    get_school_performance_trend,
+    get_subject_performance_distribution,
     get_school_summary,
+    get_classroom_details,
     get_students_by_grade,
     get_students_by_classroom,
     get_teachers_in_school,
     get_courses_in_school,
-    get_classroom_details,
-    get_school_dashboard_statistics,
-    get_school_manager_summary,
-    get_course_summary,
 )
 from reports.services.count_teacher_services import (
     get_teacher_summary,
@@ -157,6 +159,8 @@ __all__ = [
     'get_courses_in_school',
     'get_classroom_details',
     'get_school_dashboard_statistics',
+    'get_school_performance_trend',
+    'get_subject_performance_distribution',
     
     # Teacher services
     'get_teacher_summary',

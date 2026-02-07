@@ -1,10 +1,11 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg
+from django.db.models.functions import TruncMonth
 from django.core.exceptions import PermissionDenied
 from accounts.models import CustomUser, Role
 from school.models import School, ClassRoom, Course
-from teacher.models import Teacher, CourseAllocation
+from teacher.models import Teacher, CourseAllocation, Mark
 from student.models import Student, StudentEnrollment
-from typing import Dict
+from typing import Dict, List
 
 
 def _check_school_permission(actor: CustomUser, school_id: int) -> None:
@@ -479,8 +480,64 @@ def get_school_dashboard_statistics(*, school_id: int, actor: CustomUser) -> Dic
         'summary': get_school_summary(school_id=school_id, actor=actor),
         'students_by_grade': get_students_by_grade(school_id=school_id, actor=actor),
         'teachers': get_teachers_in_school(school_id=school_id, actor=actor),
-        'courses': get_courses_in_school(school_id=school_id, actor=actor)
+        'courses': get_courses_in_school(school_id=school_id, actor=actor),
+        'performance_trend': get_school_performance_trend(school_id=school_id, actor=actor),
+        'subject_performance': get_subject_performance_distribution(school_id=school_id, actor=actor)
     }
+
+
+def get_school_performance_trend(*, school_id: int, actor: CustomUser, months: int = 6) -> List[Dict]:
+    """
+    Get monthly average performance (percentage) for the last N months.
+    """
+    _check_school_permission(actor, school_id)
+    
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    cutoff_date = timezone.now() - timedelta(days=months*30)
+    
+    performance_stats = Mark.objects.filter(
+        student__user__school_id=school_id,
+        created_at__gte=cutoff_date,
+        percentage__isnull=False
+    ).annotate(
+        month=TruncMonth('created_at')
+    ).values('month').annotate(
+        avg_score=Avg('percentage')
+    ).order_by('month')
+    
+    return [
+        {
+            'month': stat['month'].strftime('%b %Y'),
+            'score': round(float(stat['avg_score']), 1)
+        }
+        for stat in performance_stats
+    ]
+
+
+def get_subject_performance_distribution(*, school_id: int, actor: CustomUser) -> List[Dict]:
+    """
+    Get average performance percentage per subject for a school.
+    """
+    _check_school_permission(actor, school_id)
+    
+    subject_stats = Mark.objects.filter(
+        student__user__school_id=school_id,
+        percentage__isnull=False
+    ).values(
+        'assignment__course_allocation__course__name'
+    ).annotate(
+        avg_score=Avg('percentage')
+    ).order_by('-avg_score')
+    
+    return [
+        {
+            'subject': stat['assignment__course_allocation__course__name'],
+            'score': round(float(stat['avg_score']), 1)
+        }
+        for stat in subject_stats
+    ]
 
 
 def get_school_manager_summary(*, manager_id: int, actor: CustomUser) -> Dict:

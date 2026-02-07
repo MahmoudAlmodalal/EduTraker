@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsAdminOrManager
+from accounts.permissions import IsAdminOrManager, IsAdminOrManagerOrSecretary
 from accounts.pagination import PaginatedAPIMixin
 from school.models import Grade
 from school.selectors.grade_selectors import grade_list, grade_get
@@ -49,7 +49,7 @@ class GradeFilterSerializer(serializers.Serializer):
 
 class GradeListApi(PaginatedAPIMixin, APIView):
     """List all grades."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=['Grade Management'],

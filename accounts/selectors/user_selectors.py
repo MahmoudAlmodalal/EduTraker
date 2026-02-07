@@ -16,11 +16,16 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
     if user.role == Role.MANAGER_WORKSTREAM:
         qs = qs.filter(work_stream=user.work_stream)
 
-    elif user.role == Role.MANAGER_SCHOOL:
+    elif user.role in [Role.TEACHER, Role.SECRETARY, Role.MANAGER_SCHOOL]:
+        # Staff can see Students, Guardians, and other Staff in their school
         qs = qs.filter(school=user.school)
 
-    elif user.role in [Role.TEACHER, Role.SECRETARY]:
-        qs = qs.filter(role__in=[Role.GUARDIAN, Role.STUDENT], school=user.school)
+    elif user.role in [Role.STUDENT, Role.GUARDIAN]:
+        # Students/Guardians can see Staff in their school
+        qs = qs.filter(
+            school=user.school,
+            role__in=[Role.TEACHER, Role.SECRETARY, Role.MANAGER_SCHOOL]
+        )
 
     if role := filters.get("role"):
         qs = qs.filter(role=role)

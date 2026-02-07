@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse, extend_schema_field
 
-from accounts.permissions import IsAdminOrManager
+from accounts.permissions import IsAdminOrManager, IsAdminOrManagerOrSecretary
 from accounts.pagination import PaginatedAPIMixin
 from school.models import ClassRoom
 from school.selectors.school_selectors import school_get
@@ -58,7 +58,7 @@ class ClassRoomFilterSerializer(serializers.Serializer):
 
 class ClassRoomListApi(PaginatedAPIMixin, APIView):
     """List classrooms for a specific school and academic year."""
-    permission_classes = [IsAdminOrManager]
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         tags=['Classroom Management'],

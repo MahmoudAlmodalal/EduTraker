@@ -37,6 +37,7 @@ from teacher.views.lesson_plan_views import (
     LessonPlanListCreateAPIView,
     LessonPlanRetrieveUpdateDestroyAPIView,
 )
+from teacher.views.schedule_views import TeacherScheduleApi
 
 app_name = 'teacher'
 
@@ -75,6 +76,10 @@ urlpatterns = [
     # Lesson Plans
     path('lesson-plans/', LessonPlanListCreateAPIView.as_view(), name='lesson-plan-list-create'),
     path('lesson-plans/<int:pk>/', LessonPlanRetrieveUpdateDestroyAPIView.as_view(), name='lesson-plan-detail'),
+    
+    # Schedule
+    path('schedule/', TeacherScheduleApi.as_view(), name='teacher-schedule'),
+
     path('marks/bulk-import/', BulkMarkImportApi.as_view(), name='mark-bulk-import'),
     path('analytics/knowledge-gaps/', KnowledgeGapListApi.as_view(), name='knowledge-gaps'),
 ]

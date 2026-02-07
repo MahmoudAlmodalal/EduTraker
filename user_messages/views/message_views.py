@@ -7,6 +7,9 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from ..models import Message, MessageReceipt
 from ..serializers import MessageSerializer, MessageDetailSerializer
+from ..serializers import UserMinimalSerializer
+from accounts.selectors.user_selectors import user_list
+from accounts.models import CustomUser, Role
 
 @extend_schema(
     tags=['User Messages'],
@@ -39,7 +42,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
                 models.Q(sender_id=peer_id) | models.Q(receipts__recipient_id=peer_id)
             )
             
-        return queryset.order_by('sent_at' if peer_id else '-sent_at')
+        return queryset.order_by('-sent_at')
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
@@ -146,3 +149,75 @@ class MessageReadView(APIView):
             receipt.read_at = timezone.now()
             receipt.save()
         return Response({'status': 'marked as read'}, status=status.HTTP_200_OK)
+@extend_schema(
+    tags=['User Messages'],
+    summary='Search users for messaging',
+    description='Search for users to send messages to. Returns minimal info (name, email) and is filtered by school visibility.',
+    parameters=[
+        OpenApiParameter(name='search', type=str, description='Search by name or email'),
+    ],
+    responses={200: UserMinimalSerializer(many=True)}
+)
+class CommunicationUserSearchApi(generics.ListAPIView):
+    """
+    GET: Search for users for messaging. 
+    Broader search than user_list — allows messaging across schools in the same workstream.
+    ADMIN can search all users. 
+    MANAGER_WORKSTREAM can search all users in their workstream.
+    MANAGER_SCHOOL, TEACHER, SECRETARY can search all users in their workstream (cross-school messaging).
+    STUDENT, GUARDIAN can search staff in their school.
+    """
+
+    def get_serializer_class(self):
+        return UserMinimalSerializer
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        search_term = self.request.query_params.get('search', '')
+        if not search_term or len(search_term) < 2:
+            return CustomUser.objects.none()
+
+        user = self.request.user
+        qs = CustomUser.objects.filter(is_active=True)
+
+        if user.role == Role.ADMIN:
+            # Admin can message anyone
+            pass
+        elif user.role == Role.MANAGER_WORKSTREAM:
+            # Workstream manager can message anyone in their workstream
+            qs = qs.filter(work_stream=user.work_stream)
+        elif user.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
+            # School staff can message anyone in their workstream (cross-school)
+            work_stream = user.work_stream or (user.school.work_stream if user.school else None)
+            if work_stream:
+                qs = qs.filter(
+                    models.Q(work_stream=work_stream) |
+                    models.Q(school__work_stream=work_stream)
+                )
+            elif user.school:
+                qs = qs.filter(school=user.school)
+        elif user.role in [Role.STUDENT, Role.GUARDIAN]:
+            # Students/Guardians can message staff in their school
+            qs = qs.filter(
+                school=user.school,
+                role__in=[Role.TEACHER, Role.SECRETARY, Role.MANAGER_SCHOOL]
+            )
+        else:
+            return CustomUser.objects.none()
+
+        # Exclude self from results
+        qs = qs.exclude(id=user.id)
+
+        # Apply search filter
+        from django.db.models import Q
+        from django.db.models.functions import Lower
+        qs = qs.annotate(
+            low_full_name=Lower('full_name'),
+            low_email=Lower('email')
+        ).filter(
+            Q(low_full_name__icontains=search_term.lower()) |
+            Q(low_email__icontains=search_term.lower())
+        )
+
+        return qs[:20]  # Limit results

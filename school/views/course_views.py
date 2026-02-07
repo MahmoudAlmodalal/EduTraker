@@ -242,7 +242,6 @@ class CourseDeactivateApi(APIView):
     def post(self, request, school_id, course_id):
         course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
         course_deactivate(course=course, actor=request.user)
-        course_activate(course=course, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

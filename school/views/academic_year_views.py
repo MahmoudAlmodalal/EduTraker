@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsWorkStreamManager
+from accounts.permissions import IsAdminOrManager, IsAdminOrManagerOrSecretary
 from accounts.pagination import PaginatedAPIMixin
 from school.selectors.academic_year_selectors import get_academic_year, list_academic_years
 from school.services.academic_year_services import (
@@ -22,7 +22,7 @@ from school.serializers.academic_year_serializers import (
 
 class AcademicYearListAPIView(PaginatedAPIMixin, APIView):
     """List academic years for a school."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManagerOrSecretary]
 
     @extend_schema(
         operation_id='academic_years_list',
@@ -87,7 +87,7 @@ class AcademicYearListAPIView(PaginatedAPIMixin, APIView):
 
 class AcademicYearCreateAPIView(APIView):
     """Create a new academic year."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManager]
 
     @extend_schema(
         tags=['Academic Year Management'],
@@ -135,7 +135,7 @@ class AcademicYearCreateAPIView(APIView):
 
 class AcademicYearDetailAPIView(APIView):
     """Retrieve details of a specific academic year."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManager]
 
     @extend_schema(
         operation_id='academic_years_detail',
@@ -180,7 +180,7 @@ class AcademicYearDetailAPIView(APIView):
 
 class AcademicYearUpdateAPIView(APIView):
     """Update an existing academic year."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManager]
 
     @extend_schema(
         tags=['Academic Year Management'],
@@ -248,7 +248,7 @@ class AcademicYearUpdateAPIView(APIView):
 
 class AcademicYearDeactivateAPIView(APIView):
     """Deactivate an academic year."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManager]
 
     @extend_schema(
         tags=['Academic Year Management'],
@@ -277,7 +277,7 @@ class AcademicYearDeactivateAPIView(APIView):
 
 class AcademicYearActivateAPIView(APIView):
     """Activate an academic year."""
-    permission_classes = [IsWorkStreamManager]
+    permission_classes = [IsAdminOrManager]
 
     @extend_schema(
         tags=['Academic Year Management'],

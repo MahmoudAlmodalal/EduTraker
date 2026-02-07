@@ -276,3 +276,6 @@ class TeacherActivateApi(APIView):
         teacher = teacher_get(teacher_id=teacher_id, actor=request.user, include_inactive=True)
         teacher_activate(teacher=teacher, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+        teacher_activate(teacher=teacher, actor=request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

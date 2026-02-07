@@ -1,6 +1,5 @@
 from django.utils import timezone
-from django.core.exceptions import ValidationError
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from accounts.models import CustomUser, Role
 from accounts.policies.academic_year_policies import can_manage_academic_year

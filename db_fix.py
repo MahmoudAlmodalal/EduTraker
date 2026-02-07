@@ -35,6 +35,17 @@ def run():
         # 3. Check 'students' table (managed in student)
         add_column_if_missing(cursor, "students", "student_id", "VARCHAR(50) UNIQUE NULL")
 
+        # 4. Reconcile 'token_blacklist_blacklistedtoken' column names
+        # SimpleJWT might expect 'token_id' instead of 'blacklistedtoken_id' or similar
+        print("Checking token_blacklist_blacklistedtoken columns...")
+        try:
+            if not column_exists(cursor, "token_blacklist_blacklistedtoken", "token_id") and \
+               column_exists(cursor, "token_blacklist_blacklistedtoken", "blacklistedtoken_id"):
+                print("Renaming blacklistedtoken_id to token_id in token_blacklist_blacklistedtoken...")
+                cursor.execute("ALTER TABLE `token_blacklist_blacklistedtoken` CHANGE `blacklistedtoken_id` `token_id` bigint(20) NOT NULL")
+        except Exception as e:
+            print(f"Non-critical error reconciling token_blacklist: {e}")
+
     # Create admin user
     try:
         user, created = CustomUser.objects.get_or_create(

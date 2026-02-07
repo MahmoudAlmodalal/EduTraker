@@ -17,13 +17,15 @@ from reports.serializers import (
 from accounts.permissions import IsStaffUser, IsAdminOrManager, IsStudent
 from rest_framework.permissions import IsAuthenticated
 from reports.services.count_services import (
-    get_student_count_by_teacher,
-    get_student_count_by_workstream,
-    get_student_count_by_school,
-    get_student_count_by_school_manager,
     get_student_count_by_course,
     get_student_count_by_classroom,
-    get_comprehensive_statistics
+    get_comprehensive_statistics,
+    get_school_performance_trend,
+    get_subject_performance_distribution,
+    get_student_count_by_school,
+    get_student_count_by_school_manager,
+    get_student_count_by_teacher,
+    get_student_count_by_workstream
 )
 from reports.services.activity_services import get_login_activity_chart
 
@@ -565,7 +567,7 @@ class DashboardStatisticsView(APIView):
                 from school.models import School
                 from student.models import Student
                 from teacher.models import Attendance
-                from accounts.models import Message
+                
                 from django.utils import timezone
                 
                 school = School.objects.get(id=user.school_id)
@@ -582,10 +584,7 @@ class DashboardStatisticsView(APIView):
                         date=today,
                         status='Absent'
                     ).count(),
-                    'unread_messages': Message.objects.filter(
-                        recipient=user,
-                        is_read=false
-                    ).count() if hasattr(user, 'received_messages') else 0 # Adjust based on actual message model
+                    'unread_messages': 0 # Will be set correctly below
                 }
                 
                 # Let's check the Message model in accounts or user_messages
@@ -637,3 +636,49 @@ class DashboardStatisticsView(APIView):
                 {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+class SchoolPerformanceView(APIView):
+    """
+    GET: Get academic performance trends and subject distribution for a school
+    """
+    permission_classes = [IsAdminOrManager]
+    
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get school performance data',
+        parameters=[OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID')],
+        responses={
+            200: OpenApiResponse(
+                description='Performance data',
+                examples=[
+                    OpenApiExample(
+                        'School Performance Response',
+                        value={
+                            'performance_trend': [
+                                {'month': 'Jan 2024', 'score': 85.5}
+                            ],
+                            'subject_performance': [
+                                {'subject': 'Math', 'score': 82.0}
+                            ]
+                        }
+                    )
+                ]
+            )
+        }
+    )
+    def get(self, request, school_id=None):
+        # If school_id not in path, use user school_id
+        target_school_id = school_id or getattr(request.user, 'school_id', None)
+        if not target_school_id:
+            return Response({'detail': 'School ID required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            trend = get_school_performance_trend(school_id=target_school_id, actor=request.user)
+            distribution = get_subject_performance_distribution(school_id=target_school_id, actor=request.user)
+            return Response({
+                'performance_trend': trend,
+                'subject_performance': distribution
+            }, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

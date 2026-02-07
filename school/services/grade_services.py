@@ -19,15 +19,15 @@ def grade_create(
     Create a new Grade (global).
 
     Authorization:
-        - ADMIN only (grades are global entities)
+        - ADMIN, MANAGER_WORKSTREAM, or MANAGER_SCHOOL
 
     Raises:
-        PermissionDenied: If creator is not admin
+        PermissionDenied: If creator lacks permission
         ValidationError: If validation fails
     """
-    # Authorization: admin only
-    if creator.role != Role.ADMIN:
-        raise PermissionDenied("Only admins can create grades.")
+    # Authorization: admins and managers
+    if creator.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("Only admins and managers can create grades.")
 
     # Validate age range
     if min_age > max_age:
@@ -59,9 +59,12 @@ def grade_update(
 ) -> Grade:
     """
     Update an existing Grade.
+    
+    Authorization:
+        - ADMIN, MANAGER_WORKSTREAM, or MANAGER_SCHOOL
     """
-    if actor.role != Role.ADMIN:
-        raise PermissionDenied("Only admins can update grades.")
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("Only admins and managers can update grades.")
 
     if "name" in data:
         grade.name = data["name"]
@@ -91,9 +94,12 @@ def grade_update(
 def grade_deactivate(*, grade: Grade, actor: CustomUser) -> None:
     """
     Deactivate a Grade (soft delete).
+    
+    Authorization:
+        - ADMIN, MANAGER_WORKSTREAM, or MANAGER_SCHOOL
     """
-    if actor.role != Role.ADMIN:
-        raise PermissionDenied("Only admins can deactivate grades.")
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("Only admins and managers can deactivate grades.")
 
     if not grade.is_active:
         raise ValidationError("Grade already deactivated.")
@@ -105,9 +111,12 @@ def grade_deactivate(*, grade: Grade, actor: CustomUser) -> None:
 def grade_activate(*, grade: Grade, actor: CustomUser) -> None:
     """
     Activate a Grade.
+    
+    Authorization:
+        - ADMIN, MANAGER_WORKSTREAM, or MANAGER_SCHOOL
     """
-    if actor.role != Role.ADMIN:
-        raise PermissionDenied("Only admins can activate grades.")
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("Only admins and managers can activate grades.")
 
     if grade.is_active:
         raise ValidationError("Grade is already active.")

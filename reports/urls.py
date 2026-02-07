@@ -7,7 +7,8 @@ from reports.views.stats_views import (
     CourseStudentCountView,
     ClassroomStudentCountView,
     ComprehensiveStatisticsView,
-    DashboardStatisticsView
+    DashboardStatisticsView,
+    SchoolPerformanceView
 )
 from reports.views.export_views import ReportExportView
 from reports.views.activity_log_views import ActivityLogListView
@@ -42,4 +43,8 @@ urlpatterns = [
     
     # Activity Logs
     path('activity-logs/', ActivityLogListView.as_view(), name='activity-logs'),
+    
+    # Performance
+    path('school-performance/', SchoolPerformanceView.as_view(), name='school-performance'),
+    path('school/<int:school_id>/performance/', SchoolPerformanceView.as_view(), name='school-performance-detail'),
 ]

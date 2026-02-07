@@ -3,21 +3,8 @@ from django.core.exceptions import PermissionDenied
 from accounts.models import CustomUser, Role
 from workstream.models import WorkStream
 from school.models import School, ClassRoom, Course
-from teacher.models import Teacher
-from student.models import Student
-from typing import Dict
-
-
-def _check_workstream_permission(actor: CustomUser, workstream_id: int) -> None:
-    """Check if actor has permission to access workstream data."""
-    if actor.role == Role.ADMIN:
-        return
-    if actor.role == Role.MANAGER_WORKSTREAM:
-        if actor.work_stream_id != workstream_id:
-            raise PermissionDenied("Access denied. You can only view your own workstream.")
-        return
-    raise PermissionDenied("Access denied. Workstream manager or admin role required.")
-
+from teacher.models import Teacher, Attendance
+from typing import Dict, List
 
 def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
     """
@@ -65,13 +52,31 @@ def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
     total_classrooms = 0
     
     for school in schools:
+        # Calculate attendance stats
+        attendance_stats = Attendance.objects.filter(
+            student__user__school_id=school.id
+        ).aggregate(
+            total=Count('id'),
+            present=Count('id', filter=Q(status__in=['present', 'late', 'excused'])),
+            absent=Count('id', filter=Q(status='absent'))
+        )
+        
+        total_recs = attendance_stats['total'] or 0
+        present_recs = attendance_stats['present'] or 0
+        absent_recs = attendance_stats['absent'] or 0
+        
+        attendance_pct = round((present_recs / total_recs) * 100, 1) if total_recs > 0 else 0.0
+        absent_pct = round((absent_recs / total_recs) * 100, 1) if total_recs > 0 else 0.0
+
         by_school.append({
             'school_id': school.id,
             'school_name': school.school_name,
             'manager_name': school.manager.full_name if school.manager else None,
             'student_count': school.student_count,
             'teacher_count': school.teacher_count,
-            'classroom_count': school.classroom_count
+            'classroom_count': school.classroom_count,
+            'attendance_percentage': attendance_pct,
+            'absent_percentage': absent_pct
         })
         total_students += school.student_count
         total_teachers += school.teacher_count

@@ -343,3 +343,86 @@ class UserMessageApiTests(APITestCase):
         
         # read_at should remain the same
         self.assertEqual(receipt.read_at, first_read_at)
+
+
+class UserSearchApiTests(APITestCase):
+    def setUp(self):
+        # Create schools
+        from school.models import School
+        from workstream.models import WorkStream
+        
+        self.ws = WorkStream.objects.create(name="Test Workstream", slug="test-ws")
+        self.school1 = School.objects.create(school_name="School One", slug="school-1", work_stream=self.ws)
+        self.school2 = School.objects.create(school_name="School Two", slug="school-2", work_stream=self.ws)
+        
+        # School 1 users
+        self.s1_manager = User.objects.create_user(
+            email='s1_manager@example.com', full_name='S1 Manager', role='manager_school', school=self.school1, work_stream=self.ws
+        )
+        self.s1_teacher = User.objects.create_user(
+            email='s1_teacher@example.com', full_name='S1 Teacher', role='teacher', school=self.school1, work_stream=self.ws
+        )
+        self.s1_student = User.objects.create_user(
+            email='s1_student@example.com', full_name='S1 Student', role='student', school=self.school1, work_stream=self.ws
+        )
+        
+        # School 2 users
+        self.s2_manager = User.objects.create_user(
+            email='s2_manager@example.com', full_name='S2 Manager', role='manager_school', school=self.school2, work_stream=self.ws
+        )
+        self.s2_teacher = User.objects.create_user(
+            email='s2_teacher@example.com', full_name='S2 Teacher', role='teacher', school=self.school2, work_stream=self.ws
+        )
+
+        self.search_url = reverse('user_messages:user-search')
+
+    def test_search_empty_query(self):
+        self.client.force_authenticate(user=self.s1_manager)
+        response = self.client.get(self.search_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should return nothing if no search term
+        self.assertEqual(len(response.data.get('results', [])), 0)
+
+    def test_school_manager_visibility(self):
+        """School manager should only see users in their school."""
+        self.client.force_authenticate(user=self.s1_manager)
+        
+        # Search for "Teacher"
+        response = self.client.get(self.search_url, {'search': 'Teacher'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', [])
+        
+        # Should only see S1 Teacher, not S2 Teacher
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['email'], self.s1_teacher.email)
+
+    def test_teacher_visibility(self):
+        """Teacher should see students and staff in their school."""
+        self.client.force_authenticate(user=self.s1_teacher)
+        
+        # Search for "S1"
+        response = self.client.get(self.search_url, {'search': 'S1'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', [])
+        
+        # Should see S1 Manager and S1 Student (and themselves, but usually user_list returns self)
+        # Actually user_list doesn't explicitly exclude self
+        emails = [r['email'] for r in results]
+        self.assertIn(self.s1_manager.email, emails)
+        self.assertIn(self.s1_student.email, emails)
+        self.assertNotIn(self.s2_manager.email, emails)
+
+    def test_student_visibility(self):
+        """Student should only see staff (Teacher, Secretary, Manager) in their school."""
+        self.client.force_authenticate(user=self.s1_student)
+        
+        # Search for "S1"
+        response = self.client.get(self.search_url, {'search': 'S1'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get('results', [])
+        
+        emails = [r['email'] for r in results]
+        self.assertIn(self.s1_manager.email, emails)
+        self.assertIn(self.s1_teacher.email, emails)
+        # Student should NOT see other students unless logic grows (currently restricted to staff)
+        self.assertNotIn(self.s1_student.email, emails)
