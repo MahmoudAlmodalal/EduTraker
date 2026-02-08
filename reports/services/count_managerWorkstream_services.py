@@ -6,6 +6,25 @@ from school.models import School, ClassRoom, Course
 from teacher.models import Teacher, Attendance
 from typing import Dict, List
 
+
+def _check_workstream_permission(actor: CustomUser, workstream_id: int) -> None:
+    """
+    Check if the actor has permission to access workstream data.
+
+    Raises:
+        PermissionDenied: If the actor doesn't have access to this workstream
+    """
+    if actor.role == Role.ADMIN:
+        return  # Admins can access any workstream
+
+    if actor.role == Role.MANAGER_WORKSTREAM:
+        if actor.work_stream_id == workstream_id:
+            return  # Workstream manager can access their own workstream
+        raise PermissionDenied("You don't have permission to access this workstream.")
+
+    raise PermissionDenied("You don't have permission to access workstream data.")
+
+
 def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
     """
     Get overview statistics for a specific workstream.

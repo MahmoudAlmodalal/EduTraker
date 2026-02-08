@@ -182,33 +182,42 @@ def logout_user(*, refresh_token: str) -> bool:
 def request_password_reset(*, email: str) -> Dict:
     """
     Request a password reset for a user.
-    Returns a reset token that can be used to reset the password.
-    In production, this would send an email with the reset link.
+    Sends an email with the reset link in production.
+    In debug mode, also returns the token for testing purposes.
     """
-    user = user_get_by_email(email=email)
-    
-    if not user:
-        # Don't reveal whether the email exists
-        return {'message': 'If this email exists, a password reset link has been sent.'}
-    
-    if not user.is_active:
-        return {'message': 'If this email exists, a password reset link has been sent.'}
-    
-    # Generate a password reset token
+    from django.conf import settings
     from django.contrib.auth.tokens import default_token_generator
     from django.utils.http import urlsafe_base64_encode
     from django.utils.encoding import force_bytes
-    
+    from accounts.services.email_service import send_password_reset_email
+
+    user = user_get_by_email(email=email)
+
+    if not user:
+        # Don't reveal whether the email exists
+        return {'message': 'If this email exists, a password reset link has been sent.'}
+
+    if not user.is_active:
+        return {'message': 'If this email exists, a password reset link has been sent.'}
+
+    # Generate a password reset token
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    
-    # In production, you would send an email here
-    # For now, we return the token for testing purposes
-    return {
+
+    # Send the password reset email
+    email_sent = send_password_reset_email(user=user, uid=uid, token=token)
+
+    response = {
         'message': 'If this email exists, a password reset link has been sent.',
-        'uid': uid,
-        'token': token,
     }
+
+    # In DEBUG mode, also return the token for development/testing
+    if settings.DEBUG:
+        response['uid'] = uid
+        response['token'] = token
+        response['email_sent'] = email_sent
+
+    return response
 
 
 def reset_password(*, uid: str, token: str, new_password: str) -> bool:
