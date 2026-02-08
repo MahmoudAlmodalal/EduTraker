@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to EduTraker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .email-wrapper {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 40px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .message {
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .credentials-box {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .credentials-box h3 {
+            margin: 0 0 15px;
+            color: #166534;
+            font-size: 16px;
+        }
+        .credential-item {
+            margin: 10px 0;
+        }
+        .credential-item label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .credential-item .value {
+            font-family: 'Courier New', monospace;
+            background-color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #d1fae5;
+            font-size: 14px;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .login-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 40px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+        .warning {
+            background-color: #fef3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .warning p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 25px 40px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+        .footer p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #888;
+        }
+        .footer a {
+            color: #10b981;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-wrapper">
+            <div class="header">
+                <h1>Welcome to EduTraker!</h1>
+                <p>Your account has been created</p>
+            </div>
+
+            <div class="content">
+                <p class="greeting">Hi {{ user_name }},</p>
+
+                <p class="message">
+                    Your EduTraker account has been successfully created. You can now access
+                    the educational management platform.
+                </p>
+
+                {% if temporary_password %}
+                <div class="credentials-box">
+                    <h3>Your Login Credentials</h3>
+                    <div class="credential-item">
+                        <label>Email</label>
+                        <div class="value">{{ user_email }}</div>
+                    </div>
+                    <div class="credential-item">
+                        <label>Temporary Password</label>
+                        <div class="value">{{ temporary_password }}</div>
+                    </div>
+                </div>
+
+                <div class="warning">
+                    <p>
+                        <strong>Important:</strong> Please change your password after your first login
+                        for security purposes.
+                    </p>
+                </div>
+                {% endif %}
+
+                <div class="button-container">
+                    <a href="{{ login_url }}" class="login-button">Login to EduTraker</a>
+                </div>
+
+                <p class="message">
+                    If you have any questions or need assistance, please contact your
+                    system administrator.
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>This email was sent by EduTraker</p>
+                <p>
+                    <a href="{{ frontend_url }}">{{ frontend_url }}</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

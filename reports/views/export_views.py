@@ -110,9 +110,33 @@ class ReportExportView(APIView):
             request=request
         )
 
+        # Get user context for export header/footer
+        user_name = getattr(request.user, 'full_name', None) or getattr(request.user, 'email', 'Unknown User')
+
+        # Get workstream name
+        workstream_name = None
+        work_stream = getattr(request.user, 'work_stream', None)
+        if work_stream:
+            workstream_name = getattr(work_stream, 'name', None)
+
+        # Get school name
+        school_name = None
+        school = getattr(request.user, 'school', None)
+        if school:
+            school_name = getattr(school, 'school_name', None) or getattr(school, 'name', None)
+
         if export_format == "csv":
-            return ExportService.export_to_csv(data, headers, filename=report_type)
+            return ExportService.export_to_csv(
+                data, headers, filename=report_type,
+                user_name=user_name, workstream_name=workstream_name, school_name=school_name
+            )
         elif export_format == "pdf":
-            return ExportService.export_to_pdf(data, headers, filename=report_type)
+            return ExportService.export_to_pdf(
+                data, headers, filename=report_type,
+                user_name=user_name, workstream_name=workstream_name, school_name=school_name
+            )
         else:
-            return ExportService.export_to_excel(data, headers, filename=report_type)
+            return ExportService.export_to_excel(
+                data, headers, filename=report_type,
+                user_name=user_name, workstream_name=workstream_name, school_name=school_name
+            )

@@ -11,9 +11,10 @@ from reportlab.lib.units import inch
 
 class ExportService:
     @staticmethod
-    def export_to_excel(data, headers, filename="report", user_name=None):
+    def export_to_excel(data, headers, filename="report", user_name=None, workstream_name=None, school_name=None):
         """
         Generates a professional Excel file with styling.
+        Includes user, workstream, and school information in the header.
         """
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -23,7 +24,7 @@ class ExportService:
         header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=12)
         header_alignment = Alignment(horizontal="center", vertical="center")
-        
+
         cell_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
         border = Border(
             left=Side(style='thin', color='D3D3D3'),
@@ -34,13 +35,31 @@ class ExportService:
 
         # Add report info at the top
         info_font = Font(size=10, italic=True, color="666666")
+        title_font = Font(size=14, bold=True, color="4472C4")
         current_row = 1
-        
+
+        # Add report title
+        report_title = filename.replace('_', ' ').title() + " Report"
+        ws.cell(row=current_row, column=1, value=report_title)
+        ws.cell(row=current_row, column=1).font = title_font
+        current_row += 1
+
+        # Add organization info
+        if workstream_name:
+            ws.cell(row=current_row, column=1, value=f"Workstream: {workstream_name}")
+            ws.cell(row=current_row, column=1).font = info_font
+            current_row += 1
+
+        if school_name:
+            ws.cell(row=current_row, column=1, value=f"School: {school_name}")
+            ws.cell(row=current_row, column=1).font = info_font
+            current_row += 1
+
         if user_name:
             ws.cell(row=current_row, column=1, value=f"Exported by: {user_name}")
             ws.cell(row=current_row, column=1).font = info_font
             current_row += 1
-        
+
         ws.cell(row=current_row, column=1, value=f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}")
         ws.cell(row=current_row, column=1).font = info_font
         current_row += 2  # Add space before table
@@ -103,9 +122,10 @@ class ExportService:
         return response
 
     @staticmethod
-    def export_to_csv(data, headers, filename="report", user_name=None):
+    def export_to_csv(data, headers, filename="report", user_name=None, workstream_name=None, school_name=None):
         """
         Generates a CSV file with UTF-8 BOM for Excel compatibility.
+        Includes user, workstream, and school information in the header.
         """
         import csv
         response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
@@ -114,10 +134,19 @@ class ExportService:
 
         # Add UTF-8 BOM for proper Excel opening
         response.write('\ufeff')
-        
+
         writer = csv.writer(response)
-        
-        # Add report info
+
+        # Add report title
+        report_title = filename.replace('_', ' ').title() + " Report"
+        writer.writerow([report_title])
+        writer.writerow([])  # Empty row for spacing
+
+        # Add organization info
+        if workstream_name:
+            writer.writerow([f"Workstream: {workstream_name}"])
+        if school_name:
+            writer.writerow([f"School: {school_name}"])
         if user_name:
             writer.writerow([f"Exported by: {user_name}"])
         writer.writerow([f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}"])
@@ -141,37 +170,57 @@ class ExportService:
         return response
 
     @staticmethod
-    def export_to_pdf(data, headers, filename="report", title=None, user_name=None):
+    def export_to_pdf(data, headers, filename="report", title=None, user_name=None, workstream_name=None, school_name=None):
         """
         Generates a professional PDF report with table styling.
+        Includes user, workstream, and school information in the header and footer.
         """
         try:
             response = HttpResponse(content_type='application/pdf')
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             response['Content-Disposition'] = f'attachment; filename="{filename}_{timestamp}.pdf"'
-            
+
             # Create the PDF document
             doc = SimpleDocTemplate(response, pagesize=A4,
                                    rightMargin=30, leftMargin=30,
                                    topMargin=30, bottomMargin=30)
-            
+
             elements = []
             styles = getSampleStyleSheet()
-            
+
             # Add custom title style
             title_style = ParagraphStyle(
                 'CustomTitle',
                 parent=styles['Heading1'],
                 fontSize=24,
                 textColor=colors.HexColor('#4472C4'),
-                spaceAfter=30,
+                spaceAfter=10,
                 alignment=1  # Center
             )
-            
+
+            # Add organization info style
+            org_style = ParagraphStyle(
+                'OrgStyle',
+                parent=styles['Normal'],
+                fontSize=12,
+                textColor=colors.HexColor('#333333'),
+                alignment=1,
+                spaceAfter=3
+            )
+
             # Add title
             report_title = title or filename.replace('_', ' ').title()
             elements.append(Paragraph(report_title, title_style))
-            
+
+            # Add organization info (workstream and school)
+            if workstream_name:
+                elements.append(Paragraph(f"<b>Workstream:</b> {workstream_name}", org_style))
+
+            if school_name:
+                elements.append(Paragraph(f"<b>School:</b> {school_name}", org_style))
+
+            elements.append(Spacer(1, 10))
+
             # Add user and timestamp info
             info_style = ParagraphStyle(
                 'InfoStyle',
@@ -181,10 +230,10 @@ class ExportService:
                 alignment=1,
                 spaceAfter=5
             )
-            
+
             if user_name:
                 elements.append(Paragraph(f"Exported by: {user_name}", info_style))
-            
+
             elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}", info_style))
             elements.append(Spacer(1, 20))
             
@@ -249,6 +298,18 @@ class ExportService:
                 alignment=1
             )
             elements.append(Paragraph(f"Total Records: {len(data)}", footer_style))
+
+            # Add organization footer
+            footer_parts = []
+            if workstream_name:
+                footer_parts.append(workstream_name)
+            if school_name:
+                footer_parts.append(school_name)
+            if footer_parts:
+                org_footer = " | ".join(footer_parts)
+                elements.append(Paragraph(org_footer, footer_style))
+
+            elements.append(Paragraph("EduTracker - Education Management System", footer_style))
             
             # Build PDF
             doc.build(elements)
