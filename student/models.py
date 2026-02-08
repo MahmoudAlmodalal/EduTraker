@@ -15,6 +15,10 @@ class Student(SoftDeleteModel):
         ("graduated", "Graduated"),
         ("transferred", "Transferred"),
         ("withdrawn", "Withdrawn"),
+        ("suspended", "Suspended"),
+        ("pending", "Pending"),
+        ("expelled", "Expelled"),
+        ("rejected", "Rejected"),
     ]
     
     GENDER_CHOICES = [
@@ -100,6 +104,7 @@ class Student(SoftDeleteModel):
         help_text="Emergency contact info"
     )
     medical_notes = models.TextField(null=True, blank=True, help_text="Medical information/notes")
+    phone = models.CharField(max_length=20, null=True, blank=True, help_text="Student phone number")
     
     class Meta:
         db_table = "students"

@@ -20,6 +20,7 @@ from student.views.enrollment_views import (
     EnrollmentDeactivateApi,
     EnrollmentActivateApi,
 )
+from student.views.schedule_views import StudentScheduleApi
 
 app_name = 'student'
 
@@ -40,4 +41,7 @@ urlpatterns = [
     path('enrollments/<int:enrollment_id>/', EnrollmentDetailApi.as_view(), name='enrollment-detail'),
     path('enrollments/<int:enrollment_id>/deactivate/', EnrollmentDeactivateApi.as_view(), name='enrollment-deactivate'),
     path('enrollments/<int:enrollment_id>/activate/', EnrollmentActivateApi.as_view(), name='enrollment-activate'),
+    
+    # Schedule endpoints
+    path('students/<int:student_id>/schedule/', StudentScheduleApi.as_view(), name='student-schedule'),
 ]

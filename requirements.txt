@@ -27,4 +27,4 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 gunicorn==23.0.0
 whitenoise==6.7.0
-
+Faker==33.1.0

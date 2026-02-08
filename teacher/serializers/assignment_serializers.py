@@ -24,20 +24,31 @@ class AssignmentInputSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Assignment description"
     )
-    due_date = serializers.DateField(
+    due_date = serializers.DateTimeField(
         required=False,
         allow_null=True,
         help_text="Due date for the assignment"
     )
     exam_type = serializers.ChoiceField(
         choices=Assignment.EXAM_TYPE_CHOICES,
+        required=False,
         help_text="Type of assignment/exam"
+    )
+    assignment_type = serializers.ChoiceField(
+        choices=Assignment.EXAM_TYPE_CHOICES,
+        required=False,
+        help_text="Type of assignment/exam (preferred name)"
     )
     full_mark = serializers.DecimalField(
         max_digits=5,
         decimal_places=2,
         min_value=Decimal("0.01"),
         help_text="Full marks for this assignment"
+    )
+    course_allocation = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID of the course allocation this assignment belongs to"
     )
 
 

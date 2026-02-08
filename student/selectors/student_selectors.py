@@ -72,6 +72,9 @@ def student_list(*, filters: dict, user: CustomUser, include_inactive: bool = Fa
     if grade_id := filters.get("grade_id"):
         qs = qs.filter(enrollments__class_room__grade_id=grade_id).distinct()
 
+    if classroom_id := filters.get("classroom_id"):
+        qs = qs.filter(enrollments__class_room_id=classroom_id).distinct()
+
     if current_status := filters.get("current_status"):
         qs = qs.filter(current_status=current_status)
 

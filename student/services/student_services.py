@@ -31,6 +31,7 @@ def student_create(
     admission_date: date,
     address: Optional[str] = None,
     medical_notes: Optional[str] = None,
+    phone: Optional[str] = None,
     current_status: str = "active"
 ) -> Student:
     """
@@ -87,6 +88,7 @@ def student_create(
         current_status=current_status,
         address=address,
         medical_notes=medical_notes,
+        phone=phone,
     )
 
     student.full_clean()
@@ -106,7 +108,7 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
     Authorization:
         ADMIN: can update all fields
         MANAGER_SCHOOL: can update all fields for students in their school
-        SECRETARY: can update limited fields (address, admission_date, current_status, medical_notes)
+        SECRETARY: can update limited fields (address, admission_date, current_status, medical_notes, phone)
 
     Raises:
         PermissionDenied: If actor lacks permission
@@ -119,12 +121,18 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
     # Define allowed fields based on role
     if actor.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
         allowed_fields = [
-            'address', 'admission_date', 'current_status', 'medical_notes',
+            'address', 'admission_date', 'current_status', 'medical_notes', 'phone'
         ]
         allowed_user_fields = ['email', 'full_name', 'school_id']
     elif actor.role in [Role.TEACHER, Role.SECRETARY]:
-        allowed_fields = ['address', 'admission_date', 'current_status', 'medical_notes']
+        allowed_fields = ['address', 'admission_date', 'current_status', 'medical_notes', 'phone']
         allowed_user_fields = []
+    elif actor.role == Role.STUDENT:
+        # Students can update their own user details and some profile fields
+        if getattr(student, 'user_id', None) != actor.id: # Extra safety though selector checks it
+             raise PermissionDenied("You can only update your own profile.")
+        allowed_fields = ['address', 'medical_notes', 'phone']
+        allowed_user_fields = ['email', 'full_name']
     else:
         raise PermissionDenied("You don't have permission to update students.")
 

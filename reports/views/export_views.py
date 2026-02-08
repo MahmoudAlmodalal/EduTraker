@@ -24,7 +24,7 @@ class ReportExportView(APIView):
             'application/json': {
                 'type': 'object',
                 'properties': {
-                    'report_type': {'type': 'string', 'enum': ['generic', 'student_performance', 'attendance', 'student_list', 'comprehensive_academic', 'system_usage']},
+                    'report_type': {'type': 'string', 'enum': ['generic', 'student_performance', 'attendance', 'student_list', 'comprehensive_academic', 'system_usage', 'teacher_evaluations']},
                     'export_format': {'type': 'string', 'enum': ['excel', 'csv', 'pdf'], 'default': 'excel'},
                     'data': {
                         'type': 'array', 
@@ -80,6 +80,9 @@ class ReportExportView(APIView):
         elif report_type == "system_usage":
             data = ReportGenerationService.get_comprehensive_system_usage_data(school_id=school_id, actor=request.user)
             headers = ["category", "workstream", "teacher_count", "metric", "value", "description"]
+        elif report_type == "teacher_evaluations":
+            data = ReportGenerationService.get_teacher_evaluations_report(school_id=school_id, actor=request.user)
+            headers = ["reviewer", "reviewee", "date", "rating", "comments"]
         else:
             # Check if data provided (generic export)
             data = request.data.get("data", [])

@@ -126,6 +126,27 @@ class ReportGenerationService:
         return data
 
     @staticmethod
+    def get_teacher_evaluations_report(school_id: int = None, actor = None) -> List[Dict[str, Any]]:
+        """
+        Aggregates teacher evaluation data for reporting.
+        """
+        from manager.selectors.staff_evaluation_selectors import staff_evaluation_list
+        
+        # We pass empty filters to get all reachable evaluations
+        evaluations = staff_evaluation_list(filters={}, user=actor)
+        
+        data = []
+        for evaluation in evaluations:
+            data.append({
+                "reviewer": evaluation.reviewer.full_name,
+                "reviewee": evaluation.reviewee.full_name,
+                "date": evaluation.evaluation_date.isoformat(),
+                "rating": evaluation.rating_score,
+                "comments": evaluation.comments or ""
+            })
+        return data
+
+    @staticmethod
     def get_comprehensive_system_usage_data(school_id: int = None, actor = None) -> List[Dict[str, Any]]:
         """
         Generate system usage report data including teachers by workstream,

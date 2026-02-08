@@ -21,11 +21,13 @@ def assignment_create(
     *,
     creator: CustomUser,
     title: str,
-    exam_type: str,
+    exam_type: Optional[str] = None,
+    assignment_type: Optional[str] = None,
     full_mark: Decimal,
     assignment_code: Optional[str] = None,
     description: Optional[str] = None,
     due_date: Optional[date] = None,
+    course_allocation_id: Optional[int] = None,
 ) -> Assignment:
     """
     Create a new Assignment.
@@ -44,21 +46,39 @@ def assignment_create(
     if Assignment.objects.filter(created_by=teacher, assignment_code=assignment_code).exists():
         raise ValidationError({"assignment_code": "This assignment code already exists for your assignments."})
     
+    final_exam_type = assignment_type or exam_type
+    if not final_exam_type:
+        raise ValidationError({"exam_type": "Exam type or Assignment type is required."})
+
     # Validate exam_type
     valid_types = [choice[0] for choice in Assignment.EXAM_TYPE_CHOICES]
-    if exam_type not in valid_types:
+    if final_exam_type not in valid_types:
         raise ValidationError({
             "exam_type": f"Invalid type. Must be one of: {', '.join(valid_types)}"
         })
     
+    # Handle Course Allocation
+    course_allocation = None
+    if course_allocation_id:
+        from teacher.models import CourseAllocation
+        try:
+            course_allocation = CourseAllocation.objects.get(id=course_allocation_id)
+            # Optional: Check if the allocation belongs to this teacher
+            if course_allocation.teacher != teacher:
+                raise PermissionDenied("You can only create assignments for your own course allocations.")
+        except CourseAllocation.DoesNotExist:
+            raise ValidationError({"course_allocation_id": "Invalid course allocation ID."})
+
     assignment = Assignment(
         assignment_code=assignment_code,
         created_by=teacher,
         title=title,
         description=description,
         due_date=due_date,
-        exam_type=exam_type,
+        exam_type=final_exam_type,
+        assignment_type=final_exam_type,
         full_mark=full_mark,
+        course_allocation=course_allocation,
     )
     
     assignment.full_clean()

@@ -5,11 +5,13 @@ from school.models import Course, ClassRoom, AcademicYear
 class LearningMaterialSerializer(serializers.ModelSerializer):
     """Serializer for Learning Material."""
     uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    classroom_name = serializers.CharField(source='classroom.classroom_name', read_only=True)
     
     class Meta:
         model = LearningMaterial
         fields = [
-            'id', 'material_code', 'course', 'classroom', 'academic_year',
+            'id', 'material_code', 'course', 'course_name', 'classroom', 'classroom_name', 'academic_year',
             'uploaded_by', 'uploaded_by_name', 'title', 'description',
             'file_url', 'file_type', 'file_size', 'created_at'
         ]

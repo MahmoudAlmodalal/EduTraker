@@ -184,11 +184,8 @@ class CommunicationUserSearchApi(generics.ListAPIView):
         if user.role == Role.ADMIN:
             # Admin can message anyone
             pass
-        elif user.role == Role.MANAGER_WORKSTREAM:
-            # Workstream manager can message anyone in their workstream
-            qs = qs.filter(work_stream=user.work_stream)
-        elif user.role in [Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY]:
-            # School staff can message anyone in their workstream (cross-school)
+        elif user.role in [Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY, Role.STUDENT, Role.GUARDIAN]:
+            # All these roles can message anyone in their workstream (cross-school)
             work_stream = user.work_stream or (user.school.work_stream if user.school else None)
             if work_stream:
                 qs = qs.filter(
@@ -197,12 +194,6 @@ class CommunicationUserSearchApi(generics.ListAPIView):
                 )
             elif user.school:
                 qs = qs.filter(school=user.school)
-        elif user.role in [Role.STUDENT, Role.GUARDIAN]:
-            # Students/Guardians can message staff in their school
-            qs = qs.filter(
-                school=user.school,
-                role__in=[Role.TEACHER, Role.SECRETARY, Role.MANAGER_SCHOOL]
-            )
         else:
             return CustomUser.objects.none()
 

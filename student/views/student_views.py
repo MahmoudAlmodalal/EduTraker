@@ -32,6 +32,7 @@ class StudentFilterSerializer(serializers.Serializer):
     """Filter serializer for student list endpoint."""
     school_id = serializers.IntegerField(required=False, help_text="Filter by school")
     grade_id = serializers.IntegerField(required=False, help_text="Filter by grade (via enrollments)")
+    classroom_id = serializers.IntegerField(required=False, help_text="Filter by classroom (via enrollments)")
     current_status = serializers.CharField(required=False, help_text="Filter by status")
     search = serializers.CharField(required=False, help_text="Search by name or email")
     include_inactive = serializers.BooleanField(default=False, help_text="Include deactivated records")
@@ -41,6 +42,7 @@ class StudentInputSerializer(serializers.Serializer):
     """Input serializer for creating/updating students."""
     email = serializers.EmailField(required=False, help_text="Email address")
     full_name = serializers.CharField(max_length=150, required=False, help_text="Full name")
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True, help_text="Phone number")
     password = serializers.CharField(write_only=True, required=False, help_text="Password")
     school_id = serializers.IntegerField(required=False, help_text="School ID")
     grade_id = serializers.IntegerField(required=False, help_text="Grade ID (for initial enrollment)")
@@ -48,7 +50,11 @@ class StudentInputSerializer(serializers.Serializer):
     admission_date = serializers.DateField(required=False, help_text="Admission date")
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True, help_text="Address")
     medical_notes = serializers.CharField(required=False, allow_blank=True, allow_null=True, help_text="Medical notes")
-    current_status = serializers.ChoiceField(choices=['active', 'inactive', 'graduated', 'transferred', 'suspended'], required=False, help_text="Status")
+    current_status = serializers.ChoiceField(
+        choices=['active', 'inactive', 'graduated', 'transferred', 'withdrawn', 'suspended', 'pending', 'expelled', 'rejected'],
+        required=False,
+        help_text="Status"
+    )
 
 
 class StudentOutputSerializer(serializers.ModelSerializer):
@@ -69,7 +75,7 @@ class StudentOutputSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
-            'user_id', 'email', 'full_name', 'is_active',
+            'user_id', 'email', 'full_name', 'phone', 'is_active',
             'school_id', 'school_name', 'work_stream_id',
             'current_grade', 'date_of_birth', 'admission_date',
             'current_status', 'address', 'medical_notes',

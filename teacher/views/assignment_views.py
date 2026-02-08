@@ -108,11 +108,13 @@ class AssignmentListCreateApi(PaginatedAPIMixin, APIView):
         assignment = assignment_create(
             creator=request.user,
             title=serializer.validated_data['title'],
-            exam_type=serializer.validated_data['exam_type'],
+            exam_type=serializer.validated_data.get('exam_type'),
+            assignment_type=serializer.validated_data.get('assignment_type'),
             full_mark=serializer.validated_data['full_mark'],
             assignment_code=serializer.validated_data.get('assignment_code'),
             description=serializer.validated_data.get('description'),
             due_date=serializer.validated_data.get('due_date'),
+            course_allocation_id=serializer.validated_data.get('course_allocation'),
         )
         
         return Response(

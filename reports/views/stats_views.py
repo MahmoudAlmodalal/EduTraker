@@ -28,7 +28,10 @@ from reports.services.count_services import (
     get_student_count_by_workstream
 )
 from reports.services.activity_services import get_login_activity_chart
-
+from teacher.models import Teacher, CourseAllocation, Assignment, Attendance, Mark
+from student.models import StudentEnrollment
+from django.db.models import Avg, Count, Q
+from django.utils import timezone
 
 class TeacherStudentCountView(APIView):
     """
@@ -548,19 +551,78 @@ class DashboardStatisticsView(APIView):
                     'total_secretaries': data['total_secretaries'],
                     'classroom_count': data['total_classrooms'],
                     'course_count': data['total_courses'],
-                    'by_grade': data['by_grade']
+                    'by_grade': data['by_grade'],
+                    'subject_performance': get_subject_performance_distribution(school_id=user.school_id, actor=user)
                 }
             
             elif user.role == 'teacher':
+                
+                teacher = Teacher.objects.filter(user_id=user.id).first()
+                if not teacher:
+                    return Response({'detail': 'Teacher profile not found'}, status=404)
+                
+                # Basic teacher summary data
                 data = get_student_count_by_teacher(
                     teacher_id=user.id,
                     actor=user
                 )
+                
+                # 1. Average Attendance
+                # Get all course allocations for this teacher
+                alloc_ids = CourseAllocation.objects.filter(teacher=teacher).values_list('id', flat=True)
+                
+                # Get attendance records for these allocations
+                attendance_qs = Attendance.objects.filter(course_allocation_id__in=alloc_ids)
+                total_att = attendance_qs.count()
+                if total_att > 0:
+                    present_late = attendance_qs.filter(status__in=['present', 'late']).count()
+                    avg_attendance = (present_late / total_att) * 100
+                else:
+                    avg_attendance = 0
+                
+                # 2. Pending Assignments (Published assignments where due date is in the future)
+                now = timezone.now()
+                pending_assignments_count = Assignment.objects.filter(
+                    created_by=teacher,
+                    is_published=True,
+                    due_date__gt=now
+                ).count()
+                
+                # 3. Total Submissions to Grade
+                # We'll define this as (Total Students * Published Assignments) - Total Marks
+                # This is an approximation since a student might not be enrolled when an assignment was created,
+                # but it's a reasonable start.
+                
+                # Get all published assignments by this teacher
+                published_assignments = Assignment.objects.filter(
+                    created_by=teacher,
+                    is_published=True
+                )
+                
+                total_to_grade = 0
+                for assignment in published_assignments:
+                    # Get enrollment count for the classroom assigned to this assignment
+                    if assignment.course_allocation:
+                        student_count = StudentEnrollment.objects.filter(
+                            class_room=assignment.course_allocation.class_room,
+                            student__enrollment_status='active'
+                        ).count()
+                        
+                        # Get marks already recorded for this assignment
+                        graded_count = Mark.objects.filter(assignment=assignment).count()
+                        
+                        # Ungraded = Student Count - Graded Count
+                        ungraded = max(0, student_count - graded_count)
+                        total_to_grade += ungraded
+                
                 stats = {
                     'teacher_name': data['teacher_name'],
                     'total_students': data['total_students'],
                     'course_count': len(data['by_course']),
-                    'classroom_count': len(data['by_classroom'])
+                    'classroom_count': len(data['by_classroom']),
+                    'average_attendance': avg_attendance,
+                    'pending_assignments_count': pending_assignments_count,
+                    'total_submissions_to_grade': total_to_grade
                 }
             
             elif user.role == 'secretary':
@@ -592,10 +654,11 @@ class DashboardStatisticsView(APIView):
                 # from accounts.serializers import MessageSerializer
                 # But wait, there is a user_messages app.
                 
-                from user_messages.models import Message as UserMessage
-                stats['unread_messages'] = UserMessage.objects.filter(
+                from user_messages.models import MessageReceipt
+                stats['unread_messages'] = MessageReceipt.objects.filter(
                     recipient=user,
-                    is_read=False
+                    is_read=False,
+                    is_deleted=False
                 ).count()
             
             elif user.role == 'student':
@@ -605,9 +668,52 @@ class DashboardStatisticsView(APIView):
             elif user.role == 'guardian':
                 from guardian.models import GuardianStudentLink
                 from django.db.models import Count, Avg
+                from datetime import datetime
                 
                 links = GuardianStudentLink.objects.filter(guardian_id=user.id).select_related('student', 'student__user')
                 student_ids = links.values_list('student_id', flat=True)
+                
+                # Fetch upcoming assignments for linked students
+                upcoming_events = []
+                if student_ids:
+                    from student.models import StudentEnrollment
+                    # Get all classrooms for these students
+                    enrollments = StudentEnrollment.objects.filter(
+                        student_id__in=student_ids
+                    ).select_related('student', 'student__user', 'class_room')
+                    
+                    classroom_ids = enrollments.values_list('class_room_id', flat=True).distinct()
+                    
+                    # Get upcoming assignments for these classrooms
+                    now = timezone.now()
+                    upcoming_assignments = Assignment.objects.filter(
+                        course_allocation__class_room_id__in=classroom_ids,
+                        is_published=True,
+                        due_date__gt=now
+                    ).select_related('course_allocation', 'course_allocation__class_room').order_by('due_date')[:10]
+                    
+                    # Create a mapping of classroom to students
+                    classroom_to_students = {}
+                    for enrollment in enrollments:
+                        classroom_id = enrollment.class_room_id
+                        if classroom_id not in classroom_to_students:
+                            classroom_to_students[classroom_id] = []
+                        classroom_to_students[classroom_id].append(enrollment.student.user.full_name)
+                    
+                    # Format events for frontend
+                    for assignment in upcoming_assignments:
+                        classroom_id = assignment.course_allocation.class_room_id
+                        students_in_class = classroom_to_students.get(classroom_id, [])
+                        
+                        # Format date as "MMM DD, YYYY"
+                        formatted_date = assignment.due_date.strftime("%b %d, %Y")
+                        
+                        upcoming_events.append({
+                            'id': assignment.id,
+                            'title': assignment.title,
+                            'date': formatted_date,
+                            'child': ', '.join(students_in_class) if students_in_class else 'N/A'
+                        })
                 
                 stats = {
                     'total_children': links.count(),
@@ -620,6 +726,7 @@ class DashboardStatisticsView(APIView):
                         } for link in links
                     ],
                     'total_absences': sum(link.student.total_absences for link in links),
+                    'upcoming_events': upcoming_events,
                 }
 
             return Response({
