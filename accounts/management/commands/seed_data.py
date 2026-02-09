@@ -15,6 +15,7 @@ This script creates:
     - 6 Teachers with specializations
     - 3 Secretaries with department assignments (Administration, Student Records, etc.)
     - 15 Students distributed across grades
+    - Guardians (~10 per school) linked to students as families
     - 6 Courses per grade (Math, Science, English, History, PE, Art)
     - 6 Classrooms (2 sections per grade)
     - Student enrollments
@@ -31,8 +32,9 @@ from datetime import datetime, timedelta
 from workstream.models import WorkStream
 from school.models import School, Grade, AcademicYear, Course, ClassRoom
 from student.models import Student, StudentEnrollment
-from teacher.models import Teacher, CourseAllocation
+from teacher.models import Teacher, CourseAllocation, Attendance
 from secretary.models import Secretary
+from guardian.models import Guardian, GuardianStudentLink
 
 User = get_user_model()
 fake = Faker()
@@ -76,10 +78,13 @@ class Command(BaseCommand):
                 total_teachers = 0
                 total_secretaries = 0
                 total_students = 0
+                total_guardians = 0
+                total_guardian_links = 0
                 total_courses = 0
                 total_classrooms = 0
                 total_enrollments = 0
                 total_allocations = 0
+                total_attendance = 0
 
                 for school in schools:
                     # Create grades for the school if they don't exist
@@ -115,6 +120,11 @@ class Command(BaseCommand):
                     students = self.create_students(school, school_grades, count=15)
                     total_students += len(students)
 
+                    # Create guardians and link them to students
+                    guardians, guardian_links = self.create_guardians_for_students(school, students)
+                    total_guardians += len(guardians)
+                    total_guardian_links += len(guardian_links)
+
                     # Create student enrollments
                     enrollments = self.create_enrollments(students, classrooms, academic_year)
                     total_enrollments += len(enrollments)
@@ -123,11 +133,15 @@ class Command(BaseCommand):
                     allocations = self.create_course_allocations(courses, classrooms, teachers, academic_year)
                     total_allocations += len(allocations)
 
+                    # Create attendance records for the past 2 weeks
+                    attendance_records = self.create_attendance_records(students, allocations, teachers)
+                    total_attendance += len(attendance_records)
+
                     self.stdout.write(
                         self.style.SUCCESS(
                             f'  ✓ School "{school.school_name}": '
                             f'1 manager, {len(teachers)} teachers, {len(secretaries)} secretaries, '
-                            f'{len(students)} students, {len(courses)} courses, {len(classrooms)} classrooms'
+                            f'{len(students)} students, {len(guardians)} guardians, {len(attendance_records)} attendance records'
                         )
                     )
 
@@ -143,10 +157,13 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'  - Teachers: {total_teachers}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Secretaries: {total_secretaries}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Students: {total_students}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Guardians: {total_guardians}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Guardian-Student Links: {total_guardian_links}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Courses: {total_courses}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Classrooms: {total_classrooms}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Student Enrollments: {total_enrollments}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Course Allocations: {total_allocations}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Attendance Records: {total_attendance}'))
                 self.stdout.write(self.style.SUCCESS('\nDefault password for all users: Password123!'))
 
         except Exception as e:
@@ -156,6 +173,9 @@ class Command(BaseCommand):
     def clear_seeded_data(self):
         """Clear seeded data (optional, use with --clear flag)"""
         # Clear in order to respect foreign key constraints
+        Attendance.objects.all().delete()  # Clear attendance records
+        GuardianStudentLink.objects.all().delete()  # Clear guardian-student links first
+        Guardian.objects.all().delete()  # Clear guardian profiles
         StudentEnrollment.objects.all().delete()
         CourseAllocation.objects.all().delete()
         Student.objects.all().delete()
@@ -167,7 +187,7 @@ class Command(BaseCommand):
 
         # Use all_objects to include soft-deleted records
         User.all_objects.filter(role__in=[
-            'manager_workstream', 'manager_school', 'teacher', 'secretary', 'student'
+            'manager_workstream', 'manager_school', 'teacher', 'secretary', 'student', 'guardian'
         ]).delete()
         School.all_objects.all().delete()
         WorkStream.all_objects.all().delete()
@@ -555,3 +575,169 @@ class Command(BaseCommand):
             }
         )
         return academic_year
+
+    def create_guardians_for_students(self, school, students):
+        """
+        Create guardians and link them to students.
+        Simulates realistic family structures:
+        - Some students share guardians (siblings)
+        - Most students have 1-2 guardians
+        - Relationship types: parent, legal_guardian, foster_parent
+        """
+        guardians = []
+        guardian_links = []
+
+        # Group students into "families" of 1-3 students each
+        families = []
+        remaining_students = list(students)
+        random.shuffle(remaining_students)
+
+        while remaining_students:
+            # Family size: 1-3 students (weighted towards 1-2)
+            family_size = random.choices([1, 2, 3], weights=[50, 35, 15])[0]
+            family_size = min(family_size, len(remaining_students))
+
+            family = remaining_students[:family_size]
+            remaining_students = remaining_students[family_size:]
+            families.append(family)
+
+        # Create guardians for each family
+        guardian_index = 0
+        for family in families:
+            # Each family has 1-2 guardians (weighted towards 2)
+            num_guardians = random.choices([1, 2], weights=[30, 70])[0]
+
+            family_guardians = []
+            family_last_name = family[0].user.full_name.split()[-1]  # Use first student's last name
+
+            for i in range(num_guardians):
+                first_name = fake.first_name()
+                # Use same last name as students for realism
+                email = f"{first_name.lower()}.{family_last_name.lower()}.g{guardian_index}@edutracker.com"
+
+                # Create CustomUser with guardian role
+                user = User.objects.create_user(
+                    email=email,
+                    password='Password123!',
+                    full_name=f"{first_name} {family_last_name}",
+                    role='guardian',
+                    work_stream=school.work_stream,
+                    school=school,
+                    is_staff=False,
+                    is_superuser=False
+                )
+
+                # Create Guardian profile
+                guardian = Guardian.objects.create(
+                    user=user,
+                    phone_number=fake.phone_number()[:15]
+                )
+
+                guardians.append(guardian)
+                family_guardians.append((guardian, i == 0))  # First guardian is primary
+                guardian_index += 1
+
+            # Link all guardians to all students in this family
+            for student in family:
+                for guardian, is_first in family_guardians:
+                    # Determine relationship type
+                    relationship_type = random.choices(
+                        ['parent', 'legal_guardian', 'foster_parent'],
+                        weights=[85, 10, 5]
+                    )[0]
+
+                    link = GuardianStudentLink.objects.create(
+                        guardian=guardian,
+                        student=student,
+                        relationship_type=relationship_type,
+                        is_primary=is_first,  # First guardian is primary
+                        can_pickup=True
+                    )
+                    guardian_links.append(link)
+
+        return guardians, guardian_links
+
+    def create_attendance_records(self, students, allocations, teachers):
+        """
+        Create realistic attendance records for the past 2 weeks.
+        Most students are present (85%), some are absent (8%), late (5%), or excused (2%).
+        """
+        records = []
+        today = datetime.now().date()
+
+        # Generate records for the past 10 weekdays
+        dates = []
+        current = today
+        while len(dates) < 10:
+            if current.weekday() < 5:  # Monday to Friday
+                dates.append(current)
+            current -= timedelta(days=1)
+
+        # Get allocations for creating attendance
+        if not allocations:
+            return records
+
+        for student in students:
+            # Find a course allocation for this student (by grade)
+            student_allocations = [
+                a for a in allocations
+                if a.class_room.grade_id == student.grade_id
+            ]
+
+            if not student_allocations:
+                continue
+
+            # Pick one allocation for this student
+            allocation = random.choice(student_allocations)
+            teacher = allocation.teacher
+
+            for date in dates:
+                # Skip randomly (not every student has record every day)
+                if random.random() < 0.1:  # 10% chance to skip
+                    continue
+
+                # Determine status with weighted randomness
+                status = random.choices(
+                    ['present', 'absent', 'late', 'excused'],
+                    weights=[85, 8, 5, 2]
+                )[0]
+
+                # Add notes for non-present statuses
+                note = None
+                if status == 'absent':
+                    note = random.choice([
+                        'Medical leave',
+                        'Family emergency',
+                        'Not feeling well',
+                        None
+                    ])
+                elif status == 'late':
+                    note = random.choice([
+                        'Traffic delay',
+                        'Bus was late',
+                        '10 minutes late',
+                        None
+                    ])
+                elif status == 'excused':
+                    note = random.choice([
+                        'Doctor appointment',
+                        'School event',
+                        'Prior approval',
+                        None
+                    ])
+
+                try:
+                    record = Attendance.objects.create(
+                        student=student,
+                        course_allocation=allocation,
+                        date=date,
+                        status=status,
+                        note=note,
+                        recorded_by=teacher
+                    )
+                    records.append(record)
+                except Exception:
+                    # Skip if unique constraint violation (already exists)
+                    pass
+
+        return records
