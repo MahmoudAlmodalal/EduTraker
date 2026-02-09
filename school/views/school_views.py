@@ -143,7 +143,7 @@ class SchoolUpdateAPIView(APIView):
     @extend_schema(
         tags=['School Management'],
         summary='Update school',
-        description='Update an existing school\'s details.',
+        description='Update an existing school\'s details. Supports partial updates via PATCH.',
         parameters=[
             OpenApiParameter(
                 name='school_id',
@@ -168,9 +168,35 @@ class SchoolUpdateAPIView(APIView):
         }
     )
     def put(self, request, school_id: int):
+        return self.update(request, school_id)
+
+    @extend_schema(
+        tags=['School Management'],
+        summary='Partial update school',
+        description='Partially update an existing school\'s details.',
+        parameters=[
+            OpenApiParameter(
+                name='school_id',
+                type=int,
+                location=OpenApiParameter.PATH,
+                description='School ID'
+            ),
+        ],
+        request=SchoolUpdateInputSerializer,
+        responses={
+            204: OpenApiResponse(description='School updated successfully'),
+            400: OpenApiResponse(description='Validation error'),
+            403: OpenApiResponse(description='Permission denied'),
+            404: OpenApiResponse(description='School not found')
+        }
+    )
+    def patch(self, request, school_id: int):
+        return self.update(request, school_id)
+
+    def update(self, request, school_id: int):
         school = school_get(actor=request.user, school_id=school_id)
 
-        in_ser = SchoolUpdateInputSerializer(data=request.data)
+        in_ser = SchoolUpdateInputSerializer(data=request.data, partial=True)
         in_ser.is_valid(raise_exception=True)
 
         update_school(

@@ -67,6 +67,19 @@ def user_create(
         except WorkStream.DoesNotExist:
              raise ValidationError({"work_stream_id": "Workstream not found."})
 
+    # Validate School Manager Singularity
+    if role == Role.MANAGER_SCHOOL and school_id:
+        try:
+            from school.models import School
+            school = School.objects.get(id=school_id)
+            if school.manager is not None:
+                raise ValidationError(
+                    f"School '{school.school_name}' already has a manager assigned ({school.manager.full_name})."
+                )
+        except School.DoesNotExist:
+             raise ValidationError({"school_id": "School not found."})
+
+
     user = CustomUser(
         email=email,
         full_name=full_name,
@@ -84,6 +97,17 @@ def user_create(
         workstream = WorkStream.objects.get(id=work_stream_id)
         workstream.manager = user
         workstream.save(update_fields=['manager'])
+
+    # Sync School.manager field
+    if role == Role.MANAGER_SCHOOL and school_id:
+        try:
+            from school.models import School
+            school = School.objects.get(id=school_id)
+            school.manager = user
+            school.save(update_fields=['manager'])
+        except School.DoesNotExist:
+            pass
+
 
     # Log activity
     role_display = dict(CustomUser.ROLE_CHOICES).get(role, role)
@@ -132,12 +156,34 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
              except WorkStream.DoesNotExist:
                 pass # Will be handled by foreign key or subsequent save if invalid
 
-    # Handle clearing old workstream manager if needed
+    # If user is becoming a manager or is a manager changing schools
+    new_school_id = data.get('school_id', user.school_id) if 'school_id' in data else user.school_id
+    if new_role == Role.MANAGER_SCHOOL:
+        # If role changed to manager OR school changed
+        is_new_manager_role = (user.role != Role.MANAGER_SCHOOL)
+        is_school_change = (user.school_id != new_school_id)
+        
+        if (is_new_manager_role or is_school_change) and new_school_id:
+             try:
+                from school.models import School
+                school = School.objects.get(id=new_school_id)
+                # Ensure we aren't counting the current user if they are already the manager
+                if school.manager is not None and school.manager.id != user.id:
+                    raise ValidationError(
+                        f"School '{school.school_name}' already has a manager assigned ({school.manager.full_name})."
+                    )
+             except School.DoesNotExist:
+                pass
+
+
+    # Handle associated manager fields clearing 
     old_work_stream_id = user.work_stream_id
+    old_school_id = user.school_id
     old_role = user.role
 
     for field, value in data.items():
         setattr(user, field, value)
+
     
     if password:
         user.set_password(password)
@@ -153,6 +199,9 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
               ws.manager = user
               ws.save(update_fields=['manager'])
     
+
+
+    
     # Case 2: User was manager and moved AWAY from workstream or changed role -> Clear old workstream manager
     if old_role == Role.MANAGER_WORKSTREAM and old_work_stream_id:
          # If moved to different workstream OR different role OR removed workstream
@@ -163,6 +212,39 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
                         old_ws.manager = None
                         old_ws.save(update_fields=['manager'])
               except WorkStream.DoesNotExist:
+                   pass
+
+    # Case 1b: User became a school manager or moved to new school -> Set new school manager
+    if new_role == Role.MANAGER_SCHOOL and new_school_id:
+         if (old_role != Role.MANAGER_SCHOOL) or (old_school_id != new_school_id):
+              try:
+                  from school.models import School
+                  school = School.objects.get(id=new_school_id)
+                  school.manager = user
+                  school.save(update_fields=['manager'])
+              except School.DoesNotExist:
+                  pass
+
+    # Case 2: User was manager and moved AWAY or changed role -> Clear old manager
+    if old_role == Role.MANAGER_WORKSTREAM and old_work_stream_id:
+         if (new_role != Role.MANAGER_WORKSTREAM) or (new_work_stream_id != old_work_stream_id):
+              try:
+                   old_ws = WorkStream.objects.get(id=old_work_stream_id)
+                   if old_ws.manager_id == user.id:
+                        old_ws.manager = None
+                        old_ws.save(update_fields=['manager'])
+              except WorkStream.DoesNotExist:
+                   pass
+
+    if old_role == Role.MANAGER_SCHOOL and old_school_id:
+         if (new_role != Role.MANAGER_SCHOOL) or (new_school_id != old_school_id):
+              try:
+                   from school.models import School
+                   old_school = School.objects.get(id=old_school_id)
+                   if old_school.manager_id == user.id:
+                        old_school.manager = None
+                        old_school.save(update_fields=['manager'])
+              except School.DoesNotExist:
                    pass
 
     return user
@@ -182,6 +264,17 @@ def user_delete(*, user: CustomUser) -> None:
                    ws.save(update_fields=['manager'])
          except WorkStream.DoesNotExist:
               pass
+    
+    # If user was a school manager, clear the reference on the school
+    if user.role == Role.MANAGER_SCHOOL and user.school_id:
+         try:
+              from school.models import School
+              school = School.objects.get(id=user.school_id)
+              if school.manager_id == user.id:
+                   school.manager = None
+                   school.save(update_fields=['manager'])
+         except School.DoesNotExist:
+              pass
               
     user.delete()
 
@@ -193,6 +286,27 @@ def user_deactivate(*, user: CustomUser) -> CustomUser:
     """
     user.is_active = False
     user.save()
+
+    # If user was a manager, clear the reference
+    if user.role == Role.MANAGER_WORKSTREAM and user.work_stream_id:
+         try:
+              ws = WorkStream.objects.get(id=user.work_stream_id)
+              if ws.manager_id == user.id:
+                   ws.manager = None
+                   ws.save(update_fields=['manager'])
+         except WorkStream.DoesNotExist:
+              pass
+
+    if user.role == Role.MANAGER_SCHOOL and user.school_id:
+         try:
+              from school.models import School
+              school = School.objects.get(id=user.school_id)
+              if school.manager_id == user.id:
+                   school.manager = None
+                   school.save(update_fields=['manager'])
+         except School.DoesNotExist:
+              pass
+
     return user
 
 @transaction.atomic
@@ -206,4 +320,25 @@ def user_activate(*, user: CustomUser) -> CustomUser:
         
     user.is_active = True   
     user.save()
+
+    # If user is a manager, try to restore assignment
+    if user.role == Role.MANAGER_WORKSTREAM and user.work_stream_id:
+         try:
+              ws = WorkStream.objects.get(id=user.work_stream_id)
+              if ws.manager is None:
+                   ws.manager = user
+                   ws.save(update_fields=['manager'])
+         except WorkStream.DoesNotExist:
+              pass
+
+    if user.role == Role.MANAGER_SCHOOL and user.school_id:
+         try:
+              from school.models import School
+              school = School.objects.get(id=user.school_id)
+              if school.manager is None:
+                   school.manager = user
+                   school.save(update_fields=['manager'])
+         except School.DoesNotExist:
+              pass
+
     return user

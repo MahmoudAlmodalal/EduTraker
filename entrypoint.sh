@@ -47,7 +47,7 @@ if [ $# -eq 0 ]; then
     python manage.py collectstatic --noinput
 
     echo "Starting Gunicorn..."
-    exec gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 eduTrack.wsgi:application
+    exec gunicorn --reload --bind 0.0.0.0:8000 --workers 3 --timeout 120 eduTrack.wsgi:application
 else
     # If arguments are provided (like for celery), execute them
     echo "Executing provided command: $@"

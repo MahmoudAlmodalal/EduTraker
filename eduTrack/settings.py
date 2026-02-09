@@ -145,6 +145,14 @@ if os.environ.get('ADDITIONAL_CORS_ORIGINS'):
     CORS_ALLOWED_ORIGINS.extend(os.environ.get('ADDITIONAL_CORS_ORIGINS').split(','))
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
 TEMPLATES = [
     {
