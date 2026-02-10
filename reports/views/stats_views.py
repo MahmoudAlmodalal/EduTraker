@@ -461,15 +461,17 @@ class DashboardStatisticsView(APIView):
                     
                 recent_activity_qs = ActivityLog.objects.filter(query).order_by('-created_at')[:10]
                 
-            else:
                 # For basic users, just their own actions
                 recent_activity_qs = ActivityLog.objects.filter(actor=user).order_by('-created_at')[:10]
 
-            from reports.serializers import ActivityLogSerializer
-            recent_activity = ActivityLogSerializer(recent_activity_qs, many=True).data
+            if user.role != 'student':
+                from reports.serializers import ActivityLogSerializer
+                recent_activity = ActivityLogSerializer(recent_activity_qs, many=True).data
+            else:
+                recent_activity = []
             
             # 2. Fetch Activity Chart (Login Frequency)
-            activity_chart = get_login_activity_chart()
+            activity_chart = get_login_activity_chart() if user.role != 'student' else []
 
             if user.role == 'admin':
                 from student.models import Student

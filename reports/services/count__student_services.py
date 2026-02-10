@@ -46,31 +46,19 @@ def _check_student_permission(actor: CustomUser, student_id: int) -> None:
     raise PermissionDenied("Access denied.")
 
 
-def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
+def get_student_profile_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
     """
     Get basic enrollment info for a student.
-    
-    Returns:
-        {
-            'student_id': int,
-            'student_name': str,
-            'email': str,
-            'school_id': int,
-            'school_name': str,
-            'current_grade': {...} | None,
-            'current_status': str,
-            'admission_date': str,
-            'current_classroom': {...} | None
-        }
     """
-    try:
-        student = Student.objects.select_related(
-            'user', 'user__school'
-        ).get(user_id=student_id)
-    except Student.DoesNotExist:
-        raise ValueError("Student not found.")
+    if not student:
+        try:
+            student = Student.objects.select_related(
+                'user', 'user__school'
+            ).get(user_id=student_id)
+        except Student.DoesNotExist:
+            raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student.user_id)
     
     # Get current enrollment/classroom
     current_enrollment = StudentEnrollment.objects.filter(
@@ -98,7 +86,7 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
         }
     
     return {
-        'student_id': student_id,
+        'student_id': student.user_id,
         'student_name': student.user.full_name,
         'email': student.user.email,
         'school_id': student.user.school_id,
@@ -110,35 +98,17 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser) -> Dict:
     }
 
 
-def get_student_courses(*, student_id: int, actor: CustomUser) -> Dict:
+def get_student_courses(*, student_id: int, actor: CustomUser, student=None) -> Dict:
     """
     Get enrolled courses with teachers for a student.
-    
-    Returns:
-        {
-            'student_id': int,
-            'student_name': str,
-            'total_courses': int,
-            'courses': [
-                {
-                    'course_id': int,
-                    'course_code': str,
-                    'course_name': str,
-                    'grade_name': str,
-                    'classroom_id': int,
-                    'classroom_name': str,
-                    'teacher_id': int,
-                    'teacher_name': str
-                }
-            ]
-        }
     """
-    try:
-        student = Student.objects.select_related('user').get(user_id=student_id)
-    except Student.DoesNotExist:
-        raise ValueError("Student not found.")
+    if not student:
+        try:
+            student = Student.objects.select_related('user').get(user_id=student_id)
+        except Student.DoesNotExist:
+            raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student.user_id)
     
     # Get student's enrolled classrooms
     enrollments = StudentEnrollment.objects.filter(
@@ -168,45 +138,24 @@ def get_student_courses(*, student_id: int, actor: CustomUser) -> Dict:
     ]
     
     return {
-        'student_id': student_id,
+        'student_id': student.user_id,
         'student_name': student.user.full_name,
         'total_courses': len(courses),
         'courses': courses
     }
 
 
-def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
+def get_student_grades_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
     """
     Get marks/scores overview for a student.
-    
-    Returns:
-        {
-            'student_id': int,
-            'student_name': str,
-            'total_assignments': int,
-            'graded_assignments': int,
-            'overall_average': float | None,
-            'by_type': {...},
-            'marks': [
-                {
-                    'assignment_id': int,
-                    'assignment_code': str,
-                    'title': str,
-                    'exam_type': str,
-                    'score': float,
-                    'full_mark': float,
-                    'percentage': float,
-                    'due_date': str | None
-                }
-            ]
-        }
     """
-    try:
-        student = Student.objects.select_related('user').get(user_id=student_id)
-    except Student.DoesNotExist:
-        raise ValueError("Student not found.")
+    if not student:
+        try:
+            student = Student.objects.select_related('user').get(user_id=student_id)
+        except Student.DoesNotExist:
+            raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student.user_id)
     
     # Get all marks for this student
     marks = Mark.objects.filter(
@@ -277,7 +226,7 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
     ) if total_full_mark > 0 else None
     
     return {
-        'student_id': student_id,
+        'student_id': student.user_id,
         'student_name': student.user.full_name,
         'total_assignments': total_assignments,
         'graded_assignments': len(marks_data),
@@ -287,37 +236,17 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser) -> Dict:
     }
 
 
-def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dict:
+def get_student_attendance_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
     """
     Get attendance statistics for a student.
-    
-    Returns:
-        {
-            'student_id': int,
-            'student_name': str,
-            'total_records': int,
-            'attendance_rate': float,
-            'by_status': {...},
-            'by_course': [
-                {
-                    'course_id': int,
-                    'course_name': str,
-                    'total_records': int,
-                    'present_count': int,
-                    'absent_count': int,
-                    'late_count': int,
-                    'excused_count': int,
-                    'attendance_rate': float
-                }
-            ]
-        }
     """
-    try:
-        student = Student.objects.select_related('user').get(user_id=student_id)
-    except Student.DoesNotExist:
-        raise ValueError("Student not found.")
+    if not student:
+        try:
+            student = Student.objects.select_related('user').get(user_id=student_id)
+        except Student.DoesNotExist:
+            raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student.user_id)
     
     # Get all attendance records for this student (now via course_allocation)
     attendance_records = Attendance.objects.filter(student=student).select_related(
@@ -362,7 +291,7 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dic
     ]
     
     return {
-        'student_id': student_id,
+        'student_id': student.user_id,
         'student_name': student.user.full_name,
         'total_records': total_records,
         'attendance_rate': attendance_rate,
@@ -371,26 +300,17 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser) -> Dic
     }
 
 
-def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
+def get_classmates_count(*, student_id: int, actor: CustomUser, student=None) -> Dict:
     """
     Get number of classmates in current classroom.
-    
-    Returns:
-        {
-            'student_id': int,
-            'student_name': str,
-            'classroom_id': int | None,
-            'classroom_name': str | None,
-            'total_classmates': int,
-            'active_classmates': int
-        }
     """
-    try:
-        student = Student.objects.select_related('user').get(user_id=student_id)
-    except Student.DoesNotExist:
-        raise ValueError("Student not found.")
+    if not student:
+        try:
+            student = Student.objects.select_related('user').get(user_id=student_id)
+        except Student.DoesNotExist:
+            raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student.user_id)
     
     # Get current enrollment
     current_enrollment = StudentEnrollment.objects.filter(
@@ -400,7 +320,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
     
     if not current_enrollment:
         return {
-            'student_id': student_id,
+            'student_id': student.user_id,
             'student_name': student.user.full_name,
             'classroom_id': None,
             'classroom_name': None,
@@ -415,7 +335,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
         class_room=classroom
     ).exclude(
         student=student
-    ).select_related('student')
+    )
     
     total_classmates = classmates.count()
     active_classmates = classmates.filter(
@@ -423,7 +343,7 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
     ).count()
     
     return {
-        'student_id': student_id,
+        'student_id': student.user_id,
         'student_name': student.user.full_name,
         'classroom_id': classroom.id,
         'classroom_name': classroom.classroom_name,
@@ -435,15 +355,18 @@ def get_classmates_count(*, student_id: int, actor: CustomUser) -> Dict:
 def get_student_dashboard_statistics(*, student_id: int, actor: CustomUser) -> Dict:
     """
     Get comprehensive student dashboard statistics.
-    
-    Returns combined statistics for student dashboard.
     """
+    try:
+        student = Student.objects.select_related('user', 'user__school').get(user_id=student_id)
+    except Student.DoesNotExist:
+        raise ValueError("Student not found.")
+
     _check_student_permission(actor, student_id)
     
     return {
-        'profile': get_student_profile_summary(student_id=student_id, actor=actor),
-        'courses': get_student_courses(student_id=student_id, actor=actor),
-        'grades': get_student_grades_summary(student_id=student_id, actor=actor),
-        'attendance': get_student_attendance_summary(student_id=student_id, actor=actor),
-        'classmates': get_classmates_count(student_id=student_id, actor=actor)
+        'profile': get_student_profile_summary(student_id=student_id, actor=actor, student=student),
+        'courses': get_student_courses(student_id=student_id, actor=actor, student=student),
+        'grades': get_student_grades_summary(student_id=student_id, actor=actor, student=student),
+        'attendance': get_student_attendance_summary(student_id=student_id, actor=actor, student=student),
+        'classmates': get_classmates_count(student_id=student_id, actor=actor, student=student)
     }
