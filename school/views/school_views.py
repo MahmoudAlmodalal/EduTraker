@@ -130,7 +130,7 @@ class SchoolCreateAPIView(APIView):
             actor=request.user,
             school_name=in_ser.validated_data["school_name"],
             work_stream=workstream,
-            manager=request.user,
+            manager=None,
         )
 
         return Response({"id": school.id}, status=status.HTTP_201_CREATED)

@@ -67,15 +67,17 @@ def user_create(
         except WorkStream.DoesNotExist:
              raise ValidationError({"work_stream_id": "Workstream not found."})
 
-    # Validate School Manager Singularity
+    # Handle School Manager Assignment (allow replacement)
     if role == Role.MANAGER_SCHOOL and school_id:
         try:
             from school.models import School
             school = School.objects.get(id=school_id)
+            # If school already has a manager, clear it (we'll assign the new one later)
             if school.manager is not None:
-                raise ValidationError(
-                    f"School '{school.school_name}' already has a manager assigned ({school.manager.full_name})."
-                )
+                old_manager = school.manager
+                # Clear the old manager's school assignment
+                old_manager.school_id = None
+                old_manager.save(update_fields=['school_id'])
         except School.DoesNotExist:
              raise ValidationError({"school_id": "School not found."})
 
@@ -167,11 +169,12 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
              try:
                 from school.models import School
                 school = School.objects.get(id=new_school_id)
-                # Ensure we aren't counting the current user if they are already the manager
+                # If school already has a different manager, clear it (allow replacement)
                 if school.manager is not None and school.manager.id != user.id:
-                    raise ValidationError(
-                        f"School '{school.school_name}' already has a manager assigned ({school.manager.full_name})."
-                    )
+                    old_manager = school.manager
+                    # Clear the old manager's school assignment
+                    old_manager.school_id = None
+                    old_manager.save(update_fields=['school_id'])
              except School.DoesNotExist:
                 pass
 
