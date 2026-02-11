@@ -2,8 +2,23 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Message, MessageReceipt
 from notifications.services.notification_services import notification_create
+from accounts.models import Role
 
 User = get_user_model()
+
+
+def _notification_action_url_for_role(role: str) -> str:
+    """Return the communication route matching recipient role."""
+    role_routes = {
+        Role.ADMIN: "/super-admin/communication",
+        Role.MANAGER_WORKSTREAM: "/workstream/communication",
+        Role.MANAGER_SCHOOL: "/school-manager/communication",
+        Role.SECRETARY: "/secretary/communication",
+        Role.TEACHER: "/teacher/communication",
+        Role.STUDENT: "/student/communication",
+        Role.GUARDIAN: "/guardian/communication",
+    }
+    return role_routes.get(role, "/login/portal")
 
 class UserMinimalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,7 +126,7 @@ class MessageSerializer(serializers.ModelSerializer):
                 title="New Message",
                 message=f"You have received a new message from {message.sender.full_name}: {message.subject}",
                 notification_type="message_received",
-                action_url=f"/super-admin/communication" # Adjust based on role if needed
+                action_url=_notification_action_url_for_role(user.role)
             )
             
         return message
