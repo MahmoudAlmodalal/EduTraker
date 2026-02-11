@@ -1,11 +1,11 @@
 from django.db import transaction
 from accounts.models import CustomUser, Role
 from accounts.policies.user_policies import ROLE_CREATION_MATRIX
-from accounts.selectors.user_selectors import user_get_by_email
 from rest_framework.exceptions import ValidationError, PermissionDenied as DRFPermissionDenied
 from typing import Optional
 from workstream.models import WorkStream
 from reports.utils import log_activity
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 @transaction.atomic
@@ -30,9 +30,16 @@ def user_create(
     If profile_data is provided, creates the corresponding role profile
     (Secretary, Teacher, Student, Guardian).
     """
-    # Check email uniqueness
-    if user_get_by_email(email=email):
-        raise ValidationError({"email": "A user with this email already exists."})
+    normalized_email = email.strip().lower()
+
+    # Check email uniqueness against all users, including inactive (soft-deleted) ones
+    existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).first()
+    if existing_user:
+        if existing_user.is_active:
+            raise ValidationError({"email": "A user with this email already exists."})
+        raise ValidationError(
+            {"email": "A deactivated user with this email already exists. Reactivate the user instead of creating a new one."}
+        )
     
     # Check role creation permission
     allowed_roles = ROLE_CREATION_MATRIX.get(creator.role, [])
@@ -83,7 +90,7 @@ def user_create(
 
 
     user = CustomUser(
-        email=email,
+        email=normalized_email,
         full_name=full_name,
         role=role,
         work_stream_id=work_stream_id,
@@ -91,7 +98,10 @@ def user_create(
     )
 
     user.set_password(password)
-    user.full_clean()
+    try:
+        user.full_clean()
+    except DjangoValidationError as exc:
+        raise ValidationError(getattr(exc, "message_dict", {"detail": exc.messages}))
     user.save()
 
     # Sync WorkStream.manager field
@@ -132,8 +142,11 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
     """
     email = data.get('email')
     if email and email != user.email:
-        if user_get_by_email(email=email):
+        normalized_email = email.strip().lower()
+        existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=user.id).first()
+        if existing_user:
             raise ValidationError({"email": "A user with this email already exists."})
+        data['email'] = normalized_email
 
     password = data.pop('password', None)
     
@@ -191,7 +204,10 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
     if password:
         user.set_password(password)
         
-    user.full_clean()
+    try:
+        user.full_clean()
+    except DjangoValidationError as exc:
+        raise ValidationError(getattr(exc, "message_dict", {"detail": exc.messages}))
     user.save()
 
     # Sync WorkStream.manager logic

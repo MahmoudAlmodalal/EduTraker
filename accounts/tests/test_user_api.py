@@ -183,6 +183,30 @@ class UserCreateApiTests(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_inactive_duplicate_email_rejected_with_400(self):
+        """Creating a user with an inactive user's email should return 400, not 500."""
+        inactive_user = User(
+            email='inactive-dup@test.com',
+            full_name='Inactive Duplicate',
+            role='guest',
+            is_active=False
+        )
+        inactive_user.set_password('pass123')
+        inactive_user.save()
+        self.assertFalse(inactive_user.is_active)
+
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            'email': 'inactive-dup@test.com',
+            'full_name': 'New Active User',
+            'password': 'securepass123',
+            'role': 'guest'
+        }
+        response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
     def test_teacher_cannot_create_user(self):
         """Teachers should not be able to create users."""
         self.client.force_authenticate(user=self.teacher)
