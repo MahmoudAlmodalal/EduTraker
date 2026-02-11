@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from decimal import Decimal
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent, IsGuardian
 from accounts.pagination import PaginatedAPIMixin
 from teacher.models import Mark, Assignment
 from teacher.selectors.mark_selectors import mark_list, mark_get
@@ -60,7 +60,7 @@ class MarkOutputSerializer(serializers.ModelSerializer):
 
 class MarkListApi(PaginatedAPIMixin, APIView):
     """List marks."""
-    permission_classes = [IsStaffUser | IsStudent]
+    permission_classes = [IsStaffUser | IsStudent | IsGuardian]
 
     @extend_schema(
         tags=['Teacher - Marks'],
@@ -117,7 +117,7 @@ class MarkRecordApi(APIView):
 
 class MarkDetailApi(APIView):
     """Mark Detail."""
-    permission_classes = [IsStaffUser | IsStudent]
+    permission_classes = [IsStaffUser | IsStudent | IsGuardian]
 
     @extend_schema(
         tags=['Teacher - Marks'], 

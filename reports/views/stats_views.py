@@ -429,6 +429,7 @@ class DashboardStatisticsView(APIView):
             
             # 1. Fetch Recent Activity
             from reports.models import ActivityLog
+            recent_activity_qs = ActivityLog.objects.none()
             if user.role == 'admin':
                 recent_activity_qs = ActivityLog.objects.all().order_by('-created_at')[:10]
             
@@ -460,8 +461,8 @@ class DashboardStatisticsView(APIView):
                     query |= Q(entity_type='School', entity_id=str(school_id))
                     
                 recent_activity_qs = ActivityLog.objects.filter(query).order_by('-created_at')[:10]
-                
-                # For basic users, just their own actions
+            else:
+                # For non-manager roles, show user's own recent actions.
                 recent_activity_qs = ActivityLog.objects.filter(actor=user).order_by('-created_at')[:10]
 
             if user.role != 'student':
@@ -475,7 +476,6 @@ class DashboardStatisticsView(APIView):
 
             if user.role == 'admin':
                 from student.models import Student
-                from teacher.models import Teacher
                 from workstream.models import WorkStream
                 from school.models import School, ClassRoom
                 from accounts.models import CustomUser
@@ -630,7 +630,6 @@ class DashboardStatisticsView(APIView):
             elif user.role == 'secretary':
                 from school.models import School
                 from student.models import Student
-                from teacher.models import Attendance
                 
                 from django.utils import timezone
                 
@@ -678,7 +677,6 @@ class DashboardStatisticsView(APIView):
                 # Fetch upcoming assignments for linked students
                 upcoming_events = []
                 if student_ids:
-                    from student.models import StudentEnrollment
                     # Get all classrooms for these students
                     enrollments = StudentEnrollment.objects.filter(
                         student_id__in=student_ids
@@ -723,7 +721,15 @@ class DashboardStatisticsView(APIView):
                         {
                             'id': link.student_id,
                             'name': link.student.user.full_name,
-                            'grade': link.student.grade.grade_name if link.student.grade else "N/A",
+                            'grade': (
+                                link.student.grade.name
+                                if link.student.grade
+                                else (
+                                    f"Grade {link.student.grade_level}"
+                                    if getattr(link.student, 'grade_level', None)
+                                    else "N/A"
+                                )
+                            ),
                             'gpa': str(link.student.current_gpa) if link.student.current_gpa else "0.0",
                         } for link in links
                     ],

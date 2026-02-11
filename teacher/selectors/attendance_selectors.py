@@ -5,6 +5,7 @@ from datetime import date
 
 from teacher.models import Attendance, Teacher
 from accounts.models import CustomUser, Role
+from guardian.models import GuardianStudentLink
 
 
 def attendance_list(*, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Attendance]:
@@ -25,6 +26,11 @@ def attendance_list(*, actor: CustomUser, filters: dict, include_inactive: bool 
         qs = qs.filter(recorded_by__user_id=actor.id)
     elif actor.role == Role.STUDENT:
         qs = qs.filter(student__user_id=actor.id)
+    elif actor.role == Role.GUARDIAN:
+        linked_student_ids = GuardianStudentLink.objects.filter(
+            guardian_id=actor.id
+        ).values_list('student_id', flat=True)
+        qs = qs.filter(student_id__in=linked_student_ids)
     else:
         qs = qs.none()
 
@@ -77,6 +83,10 @@ def attendance_get(*, attendance_id: int, actor: CustomUser, include_inactive: b
             
     if actor.role == Role.STUDENT:
         if attendance.student.user_id == actor.id:
+            return attendance
+    
+    if actor.role == Role.GUARDIAN:
+        if GuardianStudentLink.objects.filter(guardian_id=actor.id, student_id=attendance.student_id).exists():
             return attendance
 
     raise PermissionDenied("You don't have permission to access this attendance record.")

@@ -4,6 +4,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from teacher.models import Mark
 from accounts.models import CustomUser, Role
+from guardian.models import GuardianStudentLink
 
 
 def mark_list(*, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Mark]:
@@ -24,6 +25,11 @@ def mark_list(*, actor: CustomUser, filters: dict, include_inactive: bool = Fals
         qs = qs.filter(graded_by__user_id=actor.id)
     elif actor.role == Role.STUDENT:
         qs = qs.filter(student__user_id=actor.id)
+    elif actor.role == Role.GUARDIAN:
+        linked_student_ids = GuardianStudentLink.objects.filter(
+            guardian_id=actor.id
+        ).values_list('student_id', flat=True)
+        qs = qs.filter(student_id__in=linked_student_ids)
     else:
         qs = qs.none()
 
@@ -67,6 +73,10 @@ def mark_get(*, mark_id: int, actor: CustomUser, include_inactive: bool = False)
             
     if actor.role == Role.STUDENT:
         if mark.student.user_id == actor.id:
+            return mark
+    
+    if actor.role == Role.GUARDIAN:
+        if GuardianStudentLink.objects.filter(guardian_id=actor.id, student_id=mark.student_id).exists():
             return mark
 
     raise PermissionDenied("You don't have permission to access this mark record.")

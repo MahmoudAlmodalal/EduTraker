@@ -1,31 +1,36 @@
-from django.db.models import Count, Q, Avg, Sum
+from django.db.models import Count, Q, Sum, Prefetch
 from django.core.exceptions import PermissionDenied
 from accounts.models import CustomUser, Role
-from school.models import ClassRoom, Course
 from teacher.models import CourseAllocation, Assignment, Attendance, Mark
 from student.models import Student, StudentEnrollment
 from typing import Dict
 
 
-def _check_student_permission(actor: CustomUser, student_id: int) -> None:
+ACTIVE_ENROLLMENT_STATUSES = ['enrolled', 'active']
+
+
+def _check_student_permission(actor: CustomUser, student_id: int, student: Student = None) -> None:
     """Check if actor has permission to access student data."""
     if actor.role == Role.ADMIN:
         return
     if actor.role == Role.MANAGER_WORKSTREAM:
         # Check if student is in the same workstream (via user.school)
-        student = Student.objects.filter(user_id=student_id).select_related('user__school__work_stream').first()
+        if student is None:
+            student = Student.objects.filter(user_id=student_id).select_related('user__school__work_stream').first()
         if student and student.user.school and actor.work_stream_id == student.user.school.work_stream_id:
             return
         raise PermissionDenied("Access denied. Student not in your workstream.")
     if actor.role == Role.MANAGER_SCHOOL:
         # Check if student is in the same school (via user.school_id)
-        student = Student.objects.filter(user_id=student_id).select_related('user').first()
+        if student is None:
+            student = Student.objects.filter(user_id=student_id).select_related('user').first()
         if student and actor.school_id == student.user.school_id:
             return
         raise PermissionDenied("Access denied. Student not in your school.")
     if actor.role == Role.TEACHER:
         # Check if teacher teaches this student
-        student = Student.objects.filter(user_id=student_id).first()
+        if student is None:
+            student = Student.objects.filter(user_id=student_id).first()
         if student:
             teaches_student = CourseAllocation.objects.filter(
                 teacher__user_id=actor.id,
@@ -46,7 +51,32 @@ def _check_student_permission(actor: CustomUser, student_id: int) -> None:
     raise PermissionDenied("Access denied.")
 
 
-def get_student_profile_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
+def _get_active_enrollments(student: Student):
+    cached_enrollments = getattr(student, 'active_enrollments', None)
+    if cached_enrollments is not None:
+        return cached_enrollments
+
+    return list(StudentEnrollment.objects.filter(
+        student=student,
+        status__in=ACTIVE_ENROLLMENT_STATUSES
+    ).select_related(
+        'class_room', 'class_room__grade', 'class_room__academic_year',
+        'class_room__homeroom_teacher__user'
+    ))
+
+
+def _get_current_enrollment(student: Student):
+    active_enrollments = _get_active_enrollments(student)
+    return active_enrollments[0] if active_enrollments else None
+
+
+def get_student_profile_summary(
+    *,
+    student_id: int,
+    actor: CustomUser,
+    student=None,
+    skip_permission_check: bool = False
+) -> Dict:
     """
     Get basic enrollment info for a student.
     """
@@ -58,16 +88,10 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser, student=N
         except Student.DoesNotExist:
             raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student.user_id)
-    
-    # Get current enrollment/classroom
-    current_enrollment = StudentEnrollment.objects.filter(
-        student=student,
-        status__in=['enrolled', 'active']
-    ).select_related(
-        'class_room', 'class_room__grade', 'class_room__academic_year',
-        'class_room__homeroom_teacher__user'
-    ).first()
+    if not skip_permission_check:
+        _check_student_permission(actor, student.user_id, student=student)
+
+    current_enrollment = _get_current_enrollment(student)
     
     current_classroom = None
     current_grade = None
@@ -98,7 +122,13 @@ def get_student_profile_summary(*, student_id: int, actor: CustomUser, student=N
     }
 
 
-def get_student_courses(*, student_id: int, actor: CustomUser, student=None) -> Dict:
+def get_student_courses(
+    *,
+    student_id: int,
+    actor: CustomUser,
+    student=None,
+    skip_permission_check: bool = False
+) -> Dict:
     """
     Get enrolled courses with teachers for a student.
     """
@@ -108,13 +138,10 @@ def get_student_courses(*, student_id: int, actor: CustomUser, student=None) -> 
         except Student.DoesNotExist:
             raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student.user_id)
-    
-    # Get student's enrolled classrooms
-    enrollments = StudentEnrollment.objects.filter(
-        student=student,
-        status__in=['enrolled', 'active']
-    ).values_list('class_room_id', flat=True)
+    if not skip_permission_check:
+        _check_student_permission(actor, student.user_id, student=student)
+
+    enrollments = [enrollment.class_room_id for enrollment in _get_active_enrollments(student)]
     
     # Get course allocations for those classrooms
     allocations = CourseAllocation.objects.filter(
@@ -145,7 +172,13 @@ def get_student_courses(*, student_id: int, actor: CustomUser, student=None) -> 
     }
 
 
-def get_student_grades_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
+def get_student_grades_summary(
+    *,
+    student_id: int,
+    actor: CustomUser,
+    student=None,
+    skip_permission_check: bool = False
+) -> Dict:
     """
     Get marks/scores overview for a student.
     """
@@ -154,27 +187,58 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser, student=No
             student = Student.objects.select_related('user').get(user_id=student_id)
         except Student.DoesNotExist:
             raise ValueError("Student not found.")
-    
-    _check_student_permission(actor, student.user_id)
-    
-    # Get all marks for this student
-    marks = Mark.objects.filter(
+
+    if not skip_permission_check:
+        _check_student_permission(actor, student.user_id, student=student)
+
+    marks_qs = Mark.objects.filter(
         student=student
-    ).select_related('assignment', 'assignment__course_allocation__course')
-    
-    # Calculate statistics
+    ).select_related(
+        'assignment',
+        'assignment__course_allocation',
+        'assignment__course_allocation__course'
+    )
+
+    aggregated_totals = marks_qs.aggregate(
+        graded_assignments=Count('id'),
+        total_score=Sum('score'),
+        total_full_mark=Sum('assignment__full_mark')
+    )
+
+    graded_assignments = aggregated_totals['graded_assignments'] or 0
+    total_score = float(aggregated_totals['total_score'] or 0)
+    total_full_mark = float(aggregated_totals['total_full_mark'] or 0)
+
+    exam_type_aggregates = marks_qs.values(
+        'assignment__exam_type', 'assignment__assignment_type'
+    ).annotate(
+        count=Count('id'),
+        total_score=Sum('score'),
+        total_full_mark=Sum('assignment__full_mark')
+    )
+
+    by_type = {}
+    for stats in exam_type_aggregates:
+        exam_type = stats['assignment__exam_type'] or stats['assignment__assignment_type'] or 'assignment'
+        exam_total_score = float(stats['total_score'] or 0)
+        exam_total_full_mark = float(stats['total_full_mark'] or 0)
+        by_type[exam_type] = {
+            'count': stats['count'],
+            'average_percentage': round(
+                (exam_total_score / exam_total_full_mark) * 100, 2
+            ) if exam_total_full_mark > 0 else 0
+        }
+
     marks_data = []
-    total_score = 0
-    total_full_mark = 0
-    type_stats = {}
-    
-    for mark in marks:
+    for mark in marks_qs:
         assignment = mark.assignment
-        course = assignment.course_allocation.course if assignment.course_allocation else None
+        course_allocation = assignment.course_allocation
+        course = course_allocation.course if course_allocation else None
+
         score = float(mark.score)
         full_mark = float(assignment.full_mark)
         percentage = round((score / full_mark) * 100, 2) if full_mark > 0 else 0
-        
+
         marks_data.append({
             'assignment_id': assignment.id,
             'assignment_code': assignment.assignment_code,
@@ -182,61 +246,40 @@ def get_student_grades_summary(*, student_id: int, actor: CustomUser, student=No
             'course_id': course.id if course else None,
             'course_name': course.name if course else "Unknown",
             'course_code': course.course_code if course else None,
-            'exam_type': assignment.exam_type,
+            'exam_type': assignment.exam_type or assignment.assignment_type,
             'score': score,
             'full_mark': full_mark,
             'percentage': percentage,
             'due_date': str(assignment.due_date) if assignment.due_date else None
         })
-        
-        total_score += score
-        total_full_mark += full_mark
-        
-        # Group by type
-        exam_type = assignment.exam_type
-        if exam_type not in type_stats:
-            type_stats[exam_type] = {'count': 0, 'total_score': 0, 'total_full_mark': 0}
-        type_stats[exam_type]['count'] += 1
-        type_stats[exam_type]['total_score'] += score
-        type_stats[exam_type]['total_full_mark'] += full_mark
-    
-    # Calculate averages by type
-    by_type = {}
-    for exam_type, stats in type_stats.items():
-        by_type[exam_type] = {
-            'count': stats['count'],
-            'average_percentage': round(
-                (stats['total_score'] / stats['total_full_mark']) * 100, 2
-            ) if stats['total_full_mark'] > 0 else 0
-        }
-    
-    # Get total assignments (including ungraded) - now via course_allocation
-    enrollments = StudentEnrollment.objects.filter(
-        student=student,
-        status__in=['enrolled', 'active']
-    ).values_list('class_room_id', flat=True)
-    
-    # Count assignments for courses the student is enrolled in via course allocations
+
+    enrollment_classroom_ids = [enrollment.class_room_id for enrollment in _get_active_enrollments(student)]
     total_assignments = Assignment.objects.filter(
-        course_allocation__class_room_id__in=enrollments
-    ).count()
-    
+        course_allocation__class_room_id__in=enrollment_classroom_ids
+    ).count() if enrollment_classroom_ids else 0
+
     overall_average = round(
         (total_score / total_full_mark) * 100, 2
     ) if total_full_mark > 0 else None
-    
+
     return {
         'student_id': student.user_id,
         'student_name': student.user.full_name,
         'total_assignments': total_assignments,
-        'graded_assignments': len(marks_data),
+        'graded_assignments': graded_assignments,
         'overall_average': overall_average,
         'by_type': by_type,
         'marks': marks_data
     }
 
 
-def get_student_attendance_summary(*, student_id: int, actor: CustomUser, student=None) -> Dict:
+def get_student_attendance_summary(
+    *,
+    student_id: int,
+    actor: CustomUser,
+    student=None,
+    skip_permission_check: bool = False
+) -> Dict:
     """
     Get attendance statistics for a student.
     """
@@ -246,7 +289,8 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser, studen
         except Student.DoesNotExist:
             raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student.user_id)
+    if not skip_permission_check:
+        _check_student_permission(actor, student.user_id, student=student)
     
     # Get all attendance records for this student (now via course_allocation)
     attendance_records = Attendance.objects.filter(student=student).select_related(
@@ -300,7 +344,13 @@ def get_student_attendance_summary(*, student_id: int, actor: CustomUser, studen
     }
 
 
-def get_classmates_count(*, student_id: int, actor: CustomUser, student=None) -> Dict:
+def get_classmates_count(
+    *,
+    student_id: int,
+    actor: CustomUser,
+    student=None,
+    skip_permission_check: bool = False
+) -> Dict:
     """
     Get number of classmates in current classroom.
     """
@@ -310,13 +360,10 @@ def get_classmates_count(*, student_id: int, actor: CustomUser, student=None) ->
         except Student.DoesNotExist:
             raise ValueError("Student not found.")
     
-    _check_student_permission(actor, student.user_id)
-    
-    # Get current enrollment
-    current_enrollment = StudentEnrollment.objects.filter(
-        student=student,
-        status__in=['enrolled', 'active']
-    ).select_related('class_room').first()
+    if not skip_permission_check:
+        _check_student_permission(actor, student.user_id, student=student)
+
+    current_enrollment = _get_current_enrollment(student)
     
     if not current_enrollment:
         return {
@@ -330,25 +377,24 @@ def get_classmates_count(*, student_id: int, actor: CustomUser, student=None) ->
     
     classroom = current_enrollment.class_room
     
-    # Count classmates (excluding this student)
     classmates = StudentEnrollment.objects.filter(
         class_room=classroom
     ).exclude(
         student=student
     )
-    
-    total_classmates = classmates.count()
-    active_classmates = classmates.filter(
-        student__enrollment_status='active'
-    ).count()
-    
+
+    classmates_totals = classmates.aggregate(
+        total_classmates=Count('id'),
+        active_classmates=Count('id', filter=Q(student__enrollment_status='active'))
+    )
+
     return {
         'student_id': student.user_id,
         'student_name': student.user.full_name,
         'classroom_id': classroom.id,
         'classroom_name': classroom.classroom_name,
-        'total_classmates': total_classmates,
-        'active_classmates': active_classmates
+        'total_classmates': classmates_totals['total_classmates'] or 0,
+        'active_classmates': classmates_totals['active_classmates'] or 0
     }
 
 
@@ -357,16 +403,52 @@ def get_student_dashboard_statistics(*, student_id: int, actor: CustomUser) -> D
     Get comprehensive student dashboard statistics.
     """
     try:
-        student = Student.objects.select_related('user', 'user__school').get(user_id=student_id)
+        active_enrollments_qs = StudentEnrollment.objects.filter(
+            status__in=ACTIVE_ENROLLMENT_STATUSES
+        ).select_related(
+            'class_room',
+            'class_room__grade',
+            'class_room__academic_year',
+            'class_room__homeroom_teacher__user'
+        )
+
+        student = Student.objects.select_related('user', 'user__school').prefetch_related(
+            Prefetch('enrollments', queryset=active_enrollments_qs, to_attr='active_enrollments')
+        ).get(user_id=student_id)
     except Student.DoesNotExist:
         raise ValueError("Student not found.")
 
-    _check_student_permission(actor, student_id)
+    _check_student_permission(actor, student_id, student=student)
     
     return {
-        'profile': get_student_profile_summary(student_id=student_id, actor=actor, student=student),
-        'courses': get_student_courses(student_id=student_id, actor=actor, student=student),
-        'grades': get_student_grades_summary(student_id=student_id, actor=actor, student=student),
-        'attendance': get_student_attendance_summary(student_id=student_id, actor=actor, student=student),
-        'classmates': get_classmates_count(student_id=student_id, actor=actor, student=student)
+        'profile': get_student_profile_summary(
+            student_id=student_id,
+            actor=actor,
+            student=student,
+            skip_permission_check=True
+        ),
+        'courses': get_student_courses(
+            student_id=student_id,
+            actor=actor,
+            student=student,
+            skip_permission_check=True
+        ),
+        'grades': get_student_grades_summary(
+            student_id=student_id,
+            actor=actor,
+            student=student,
+            skip_permission_check=True
+        ),
+        'attendance': get_student_attendance_summary(
+            student_id=student_id,
+            actor=actor,
+            student=student,
+            skip_permission_check=True
+        ),
+        'classmates': get_classmates_count(
+            student_id=student_id,
+            actor=actor,
+            student=student,
+            skip_permission_check=True
+        )
     }

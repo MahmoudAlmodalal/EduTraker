@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 
-from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent
+from accounts.permissions import IsTeacher, IsAdminOrManagerOrSecretary, IsStaffUser, IsStudent, IsGuardian
 from accounts.pagination import PaginatedAPIMixin
 from teacher.models import Attendance
 from teacher.selectors.attendance_selectors import attendance_list, attendance_get
@@ -64,7 +64,7 @@ class AttendanceOutputSerializer(serializers.ModelSerializer):
 
 class AttendanceListApi(PaginatedAPIMixin, APIView):
     """List attendance records."""
-    permission_classes = [IsStaffUser | IsStudent]
+    permission_classes = [IsStaffUser | IsStudent | IsGuardian]
 
     @extend_schema(
         tags=['Teacher - Attendance'],
@@ -125,7 +125,7 @@ class AttendanceRecordApi(APIView):
 
 class AttendanceDetailApi(APIView):
     """Attendance Detail."""
-    permission_classes = [IsStaffUser | IsStudent]
+    permission_classes = [IsStaffUser | IsStudent | IsGuardian]
 
     @extend_schema(
         tags=['Teacher - Attendance'], 
