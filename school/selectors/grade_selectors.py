@@ -6,7 +6,7 @@ from django.db.models import QuerySet
 
 def grade_list(*, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Grade]:
     """Return a QuerySet of all Grades with optional filters."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive and actor.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         qs = Grade.all_objects.all()
     else:
         qs = Grade.objects.all()
@@ -22,7 +22,7 @@ def grade_list(*, actor: CustomUser, filters: dict, include_inactive: bool = Fal
 
 def grade_get(*, actor: CustomUser, grade_id: int, include_inactive: bool = False) -> Grade:
     """Retrieve a single Grade by ID."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive and actor.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         base_qs = Grade.all_objects
     else:
         base_qs = Grade.objects

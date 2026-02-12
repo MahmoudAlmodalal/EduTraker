@@ -137,6 +137,25 @@ class SchoolExtendedApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1) # Including setup grade
 
+    def test_manager_can_list_inactive_grades_with_include_inactive(self):
+        extra_grade = Grade.objects.create(
+            name="Grade 2", numeric_level=2, min_age=7, max_age=8
+        )
+        self.grade.is_active = False
+        self.grade.save(update_fields=["is_active"])
+
+        url = reverse("school:grade-list")
+        self.client.force_authenticate(user=self.manager)
+
+        active_only_response = self.client.get(url)
+        self.assertEqual(active_only_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(active_only_response.data['results']), 1)
+        self.assertEqual(active_only_response.data['results'][0]['id'], extra_grade.id)
+
+        include_inactive_response = self.client.get(url, {"include_inactive": "true"})
+        self.assertEqual(include_inactive_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(include_inactive_response.data['results']), 2)
+
     def test_retrieve_grade(self):
         url = reverse("school:grade-detail", args=[self.grade.id])
         self.client.force_authenticate(user=self.admin)
@@ -152,6 +171,15 @@ class SchoolExtendedApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.grade.refresh_from_db()
         self.assertEqual(self.grade.name, "Updated Grade")
+
+    def test_update_inactive_grade_returns_validation_error(self):
+        self.grade.is_active = False
+        self.grade.save(update_fields=["is_active"])
+        url = reverse("school:grade-detail", args=[self.grade.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.patch(url, {"name": "Should Fail"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot update an inactive grade", str(response.data))
 
     def test_deactivate_grade(self):
         url = reverse("school:grade-deactivate", args=[self.grade.id])
@@ -170,6 +198,15 @@ class SchoolExtendedApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.grade.refresh_from_db()
         self.assertTrue(self.grade.is_active)
+
+    def test_toggle_grade_status_returns_json(self):
+        url = reverse("school:grade-toggle-status", args=[self.grade.id])
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertFalse(response.data['is_active'])
+        self.assertIn('message', response.data)
 
     # --- Course Actions ---
 
@@ -218,6 +255,38 @@ class SchoolExtendedApiTests(APITestCase):
         course.refresh_from_db()
         self.assertEqual(course.name, "Course 1 Updated")
 
+    def test_update_inactive_course_returns_validation_error(self):
+        course = Course.all_objects.create(
+            school=self.school, grade=self.grade, course_code="C4", name="Course 4", is_active=False
+        )
+        url = reverse("school:course-detail", args=[self.school.id, course.id])
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(url, {"name": "Should Fail"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot update an inactive subject", str(response.data))
+
+    def test_manager_can_list_inactive_courses_with_include_inactive(self):
+        inactive_course = Course.all_objects.create(
+            school=self.school, grade=self.grade, course_code="C2", name="Course 2", is_active=False
+        )
+        active_course = Course.objects.create(
+            school=self.school, grade=self.grade, course_code="C3", name="Course 3"
+        )
+        url = reverse("school:course-list", args=[self.school.id])
+        self.client.force_authenticate(user=self.manager)
+
+        active_only_response = self.client.get(url)
+        self.assertEqual(active_only_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(active_only_response.data['results']), 1)
+        self.assertEqual(active_only_response.data['results'][0]['id'], active_course.id)
+
+        include_inactive_response = self.client.get(url, {"include_inactive": "true"})
+        self.assertEqual(include_inactive_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(include_inactive_response.data['results']), 2)
+        returned_ids = {row['id'] for row in include_inactive_response.data['results']}
+        self.assertIn(inactive_course.id, returned_ids)
+        self.assertIn(active_course.id, returned_ids)
+
     def test_deactivate_course(self):
         course = Course.objects.create(
             school=self.school, grade=self.grade, course_code="C1", name="Course 1"
@@ -239,6 +308,18 @@ class SchoolExtendedApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         course.refresh_from_db()
         self.assertTrue(course.is_active)
+
+    def test_toggle_course_status_returns_json(self):
+        course = Course.objects.create(
+            school=self.school, grade=self.grade, course_code="C5", name="Course 5"
+        )
+        url = reverse("school:course-toggle-status", args=[self.school.id, course.id])
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertFalse(response.data['is_active'])
+        self.assertIn('message', response.data)
 
     # --- ClassRoom Actions ---
 
@@ -307,6 +388,44 @@ class SchoolExtendedApiTests(APITestCase):
         cr.refresh_from_db()
         self.assertEqual(cr.classroom_name, "Class 1B")
 
+    def test_update_inactive_classroom_returns_validation_error(self):
+        ay = AcademicYear.objects.create(
+            school=self.school, start_date=date(2026, 9, 1), end_date=date(2027, 6, 30), academic_year_code="2026/27"
+        )
+        cr = ClassRoom.all_objects.create(
+            school=self.school, academic_year=ay, grade=self.grade, classroom_name="Class 1A", is_active=False
+        )
+        url = reverse("school:classroom-detail", args=[self.school.id, ay.id, cr.id])
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(url, {"classroom_name": "Should Fail"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot update an inactive classroom", str(response.data))
+
+    def test_manager_can_list_inactive_classrooms_with_include_inactive(self):
+        ay = AcademicYear.objects.create(
+            school=self.school, start_date=date(2026, 9, 1), end_date=date(2027, 6, 30), academic_year_code="2026/27"
+        )
+        active_classroom = ClassRoom.objects.create(
+            school=self.school, academic_year=ay, grade=self.grade, classroom_name="Class 1A"
+        )
+        inactive_classroom = ClassRoom.all_objects.create(
+            school=self.school, academic_year=ay, grade=self.grade, classroom_name="Class 1B", is_active=False
+        )
+        url = reverse("school:classroom-list", args=[self.school.id, ay.id])
+        self.client.force_authenticate(user=self.manager)
+
+        active_only_response = self.client.get(url)
+        self.assertEqual(active_only_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(active_only_response.data['results']), 1)
+        self.assertEqual(active_only_response.data['results'][0]['id'], active_classroom.id)
+
+        include_inactive_response = self.client.get(url, {"include_inactive": "true"})
+        self.assertEqual(include_inactive_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(include_inactive_response.data['results']), 2)
+        returned_ids = {row['id'] for row in include_inactive_response.data['results']}
+        self.assertIn(active_classroom.id, returned_ids)
+        self.assertIn(inactive_classroom.id, returned_ids)
+
     def test_deactivate_classroom(self):
         ay = AcademicYear.objects.create(
             school=self.school, start_date=date(2026, 9, 1), end_date=date(2027, 6, 30)
@@ -334,3 +453,46 @@ class SchoolExtendedApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         cr.refresh_from_db()
         self.assertTrue(cr.is_active)
+
+    def test_toggle_classroom_status_returns_json(self):
+        ay = AcademicYear.objects.create(
+            school=self.school, start_date=date(2026, 9, 1), end_date=date(2027, 6, 30)
+        )
+        cr = ClassRoom.objects.create(
+            school=self.school, academic_year=ay, grade=self.grade, classroom_name="Class 1A"
+        )
+        url = reverse("school:classroom-toggle-status", args=[self.school.id, ay.id, cr.id])
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertFalse(response.data['is_active'])
+        self.assertIn('message', response.data)
+
+    def test_toggle_course_allocation_status_returns_json(self):
+        ay = AcademicYear.objects.create(
+            school=self.school, start_date=date(2026, 9, 1), end_date=date(2027, 6, 30)
+        )
+        classroom = ClassRoom.objects.create(
+            school=self.school, academic_year=ay, grade=self.grade, classroom_name="Class 1A"
+        )
+        course = Course.objects.create(
+            school=self.school, grade=self.grade, course_code="C6", name="Course 6"
+        )
+
+        teacher_user = CustomUser.objects.create_user(
+            email="teacher_toggle@school.com", password="pw", role="teacher", school=self.school
+        )
+        from teacher.models import Teacher, CourseAllocation
+        teacher_profile = Teacher.objects.create(user=teacher_user, hire_date=date(2025, 1, 1))
+        allocation = CourseAllocation.objects.create(
+            course=course, class_room=classroom, teacher=teacher_profile, academic_year=ay
+        )
+
+        url = reverse("school:course-allocation-toggle-status", args=[self.school.id, allocation.id])
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+        self.assertFalse(response.data['is_active'])
+        self.assertIn('message', response.data)

@@ -24,15 +24,17 @@ from school.views.grade_views import (
     GradeDetailApi,
     GradeDeactivateApi,
     GradeActivateApi,
+    GradeToggleStatusApi,
 )
 from school.views.course_views import (
     CourseListApi,
     CourseCreateApi,
     CourseDetailApi,
     CourseDeactivateApi,
-    CourseDeactivateApi,
     CourseActivateApi,
     CourseAllocationApi,
+    CourseToggleStatusApi,
+    CourseAllocationToggleStatusApi,
 )
 from school.views.class_room_views import (
     ClassRoomListApi,
@@ -40,6 +42,7 @@ from school.views.class_room_views import (
     ClassRoomDetailApi,
     ClassRoomDeactivateApi,
     ClassRoomActivateApi,
+    ClassRoomToggleStatusApi,
 )
 
 urlpatterns = [
@@ -65,6 +68,7 @@ urlpatterns = [
     path("grades/<int:grade_id>/", GradeDetailApi.as_view(), name="grade-detail"),
     path("grades/<int:grade_id>/deactivate/", GradeDeactivateApi.as_view(), name="grade-deactivate"),
     path("grades/<int:grade_id>/activate/", GradeActivateApi.as_view(), name="grade-activate"),
+    path("grades/<int:grade_id>/toggle-status/", GradeToggleStatusApi.as_view(), name="grade-toggle-status"),
 
     # Course endpoints
     path("school/<int:school_id>/courses/", CourseListApi.as_view(), name="course-list"),
@@ -72,7 +76,9 @@ urlpatterns = [
     path("school/<int:school_id>/courses/<int:course_id>/", CourseDetailApi.as_view(), name="course-detail"),
     path("school/<int:school_id>/courses/<int:course_id>/deactivate/", CourseDeactivateApi.as_view(), name="course-deactivate"),
     path("school/<int:school_id>/courses/<int:course_id>/activate/", CourseActivateApi.as_view(), name="course-activate"),
+    path("school/<int:school_id>/courses/<int:course_id>/toggle-status/", CourseToggleStatusApi.as_view(), name="course-toggle-status"),
     path("school/<int:school_id>/courses/<int:course_id>/assign-teacher/", CourseAllocationApi.as_view(), name="course-assign-teacher"),
+    path("school/<int:school_id>/course-allocations/<int:allocation_id>/toggle-status/", CourseAllocationToggleStatusApi.as_view(), name="course-allocation-toggle-status"),
 
     # Classroom endpoints
     path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/", ClassRoomListApi.as_view(), name="classroom-list"),
@@ -80,4 +86,5 @@ urlpatterns = [
     path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/<int:classroom_id>/", ClassRoomDetailApi.as_view(), name="classroom-detail"),
     path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/<int:classroom_id>/deactivate/", ClassRoomDeactivateApi.as_view(), name="classroom-deactivate"),
     path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/<int:classroom_id>/activate/", ClassRoomActivateApi.as_view(), name="classroom-activate"),
+    path("school/<int:school_id>/academic-year/<int:academic_year_id>/classrooms/<int:classroom_id>/toggle-status/", ClassRoomToggleStatusApi.as_view(), name="classroom-toggle-status"),
 ]

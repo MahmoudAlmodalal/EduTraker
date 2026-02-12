@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
 from school.models import ClassRoom
-from accounts.models import CustomUser, Role
+from accounts.models import CustomUser
 from accounts.policies.user_policies import _has_school_access
 
 
@@ -11,7 +11,7 @@ def classroom_list(
     *, school_id: int, academic_year_id: int, actor: CustomUser, filters: dict, include_inactive: bool = False
 ) -> QuerySet[ClassRoom]:
     """Return a QuerySet of ClassRooms for a specific school and academic year."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         qs = ClassRoom.all_objects.select_related('grade', 'homeroom_teacher').filter(
             school_id=school_id,
             academic_year_id=academic_year_id

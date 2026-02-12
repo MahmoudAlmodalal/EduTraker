@@ -29,14 +29,15 @@ def course_create(
     if not _has_school_access(creator, school):
         raise PermissionDenied("You don't have permission to create courses for this school.")
 
-    # Validate grade exists
-    try:
-        grade = Grade.objects.get(id=grade_id)
-    except Grade.DoesNotExist:
+    # Validate grade exists and is active
+    grade = Grade.all_objects.filter(id=grade_id).first()
+    if not grade:
         raise ValidationError({"grade_id": "Grade not found."})
+    if not grade.is_active:
+        raise ValidationError({"grade_id": "Cannot assign subject to an inactive grade."})
 
     # Validate unique course_code per school
-    if Course.objects.filter(school_id=school_id, course_code=course_code).exists():
+    if Course.all_objects.filter(school_id=school_id, course_code=course_code).exists():
         raise ValidationError({"course_code": "This course code already exists for this school."})
 
     course = Course(
@@ -65,9 +66,12 @@ def course_update(
     if not _has_school_access(actor, course.school):
         raise PermissionDenied("You don't have permission to update courses for this school.")
 
+    if not course.is_active:
+        raise ValidationError({"detail": "Cannot update an inactive subject. Activate it first."})
+
     if "course_code" in data:
         new_code = data["course_code"]
-        if Course.objects.filter(
+        if Course.all_objects.filter(
             school=course.school, course_code=new_code
         ).exclude(id=course.id).exists():
             raise ValidationError({"course_code": "This course code already exists for this school."})
@@ -77,11 +81,12 @@ def course_update(
         course.name = data["name"]
 
     if "grade_id" in data:
-        try:
-            grade = Grade.objects.get(id=data["grade_id"])
-            course.grade = grade
-        except Grade.DoesNotExist:
+        grade = Grade.all_objects.filter(id=data["grade_id"]).first()
+        if not grade:
             raise ValidationError({"grade_id": "Grade not found."})
+        if not grade.is_active:
+            raise ValidationError({"grade_id": "Cannot assign subject to an inactive grade."})
+        course.grade = grade
 
     course.full_clean()
     course.save()
@@ -113,5 +118,8 @@ def course_activate(*, course: Course, actor: CustomUser) -> None:
 
     if course.is_active:
         raise ValidationError("Course is already active.")
+
+    if not course.grade.is_active:
+        raise ValidationError({"detail": "Cannot activate subject because its grade is inactive."})
 
     course.activate()

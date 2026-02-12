@@ -13,6 +13,7 @@ from school.selectors.academic_year_selectors import get_current_academic_year
 from teacher.models import Teacher, CourseAllocation
 from school.models import ClassRoom
 from django.shortcuts import get_object_or_404
+from accounts.policies.user_policies import _has_school_access
 
 
 # =============================================================================
@@ -31,22 +32,53 @@ class CourseOutputSerializer(serializers.ModelSerializer):
     grade_name = serializers.CharField(source='grade.name', read_only=True)
     deactivated_by_name = serializers.CharField(source='deactivated_by.full_name', read_only=True, allow_null=True)
     teacher_name = serializers.SerializerMethodField()
+    classroom_name = serializers.SerializerMethodField()
+    allocation_id = serializers.SerializerMethodField()
+    allocation_is_active = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'course_code', 'school', 'grade', 'grade_name', 'name',
             'is_active', 'deactivated_at', 'deactivated_by', 'deactivated_by_name',
-            'created_at', 'updated_at', 'teacher_name'
+            'created_at', 'updated_at', 'teacher_name', 'classroom_name',
+            'allocation_id', 'allocation_is_active'
         ]
         read_only_fields = ['id', 'school', 'created_at', 'updated_at', 'deactivated_by_name']
 
+    def _get_latest_allocation(self, obj):
+        if hasattr(obj, "_latest_allocation_cache"):
+            return obj._latest_allocation_cache
+
+        obj._latest_allocation_cache = (
+            CourseAllocation.all_objects
+            .select_related('teacher__user', 'class_room')
+            .filter(course=obj)
+            .order_by('-updated_at', '-id')
+            .first()
+        )
+        return obj._latest_allocation_cache
+
     def get_teacher_name(self, obj):
-        # Return the first teacher assigned to this course via allocations
-        allocation = obj.allocations.select_related('teacher__user').first()
+        # Return teacher from the most recent allocation (active or inactive)
+        allocation = self._get_latest_allocation(obj)
         if allocation and allocation.teacher and allocation.teacher.user:
             return allocation.teacher.user.full_name
         return None
+
+    def get_classroom_name(self, obj):
+        allocation = self._get_latest_allocation(obj)
+        if allocation and allocation.class_room:
+            return allocation.class_room.classroom_name
+        return None
+
+    def get_allocation_id(self, obj):
+        allocation = self._get_latest_allocation(obj)
+        return allocation.id if allocation else None
+
+    def get_allocation_is_active(self, obj):
+        allocation = self._get_latest_allocation(obj)
+        return allocation.is_active if allocation else None
 
 
 class CourseFilterSerializer(serializers.Serializer):
@@ -217,7 +249,7 @@ class CourseDetailApi(APIView):
         }
     )
     def patch(self, request, school_id, course_id):
-        course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
+        course = course_get(course_id=course_id, school_id=school_id, actor=request.user, include_inactive=True)
         serializer = CourseInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_course = course_update(course=course, actor=request.user, data=serializer.validated_data)
@@ -269,8 +301,24 @@ class CourseAllocationApi(APIView):
         teacher_id = serializer.validated_data['teacher_id']
 
         # Get instances
-        course = course_get(course_id=course_id, school_id=school_id, actor=request.user)
-        teacher = get_object_or_404(Teacher, user_id=teacher_id) # Teacher PK is user
+        course = course_get(course_id=course_id, school_id=school_id, actor=request.user, include_inactive=True)
+        if not course.is_active:
+            return Response(
+                {"detail": "Cannot assign teacher because this subject is inactive."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not course.grade.is_active:
+            return Response(
+                {"detail": "Cannot assign teacher because this subject belongs to an inactive grade."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        teacher = get_object_or_404(Teacher.all_objects, user_id=teacher_id) # Teacher PK is user
+        if not teacher.is_active:
+            return Response(
+                {"detail": "Cannot assign an inactive teacher."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Get context
         academic_year = get_current_academic_year(school_id=school_id)
@@ -284,12 +332,13 @@ class CourseAllocationApi(APIView):
         classrooms = ClassRoom.objects.filter(
             school_id=school_id,
             grade=course.grade,
-            academic_year=academic_year
+            academic_year=academic_year,
+            is_active=True,
         )
 
         if not classrooms.exists():
             return Response(
-                {"detail": "No classrooms found for this grade in the current academic year."},
+                {"detail": "No active classrooms found for this grade in the current academic year."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -335,3 +384,160 @@ class CourseActivateApi(APIView):
         course = course_get(course_id=course_id, school_id=school_id, actor=request.user, include_inactive=True)
         course_activate(course=course, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseToggleStatusApi(APIView):
+    """Toggle active status for a course."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Course Management'],
+        summary='Toggle course status',
+        description='Toggle a course between active and inactive states.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='course_id', type=int, location=OpenApiParameter.PATH, description='Course ID'),
+        ],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Status updated',
+                examples=[
+                    OpenApiExample(
+                        'Toggle course response',
+                        value={'success': True, 'is_active': False, 'message': 'Subject deactivated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, school_id, course_id):
+        course = course_get(course_id=course_id, school_id=school_id, actor=request.user, include_inactive=True)
+
+        try:
+            if course.is_active:
+                course_deactivate(course=course, actor=request.user)
+                message = "Subject deactivated successfully."
+                is_active = False
+            else:
+                course_activate(course=course, actor=request.user)
+                message = "Subject activated successfully."
+                is_active = True
+        except Exception as exc:
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict) and detail:
+                first = next(iter(detail.values()))
+                message = first[0] if isinstance(first, list) and first else str(first)
+            elif isinstance(detail, list) and detail:
+                message = str(detail[0])
+            elif detail:
+                message = str(detail)
+            else:
+                message = str(exc)
+
+            return Response(
+                {'success': False, 'is_active': course.is_active, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'success': True, 'is_active': is_active, 'message': message},
+            status=status.HTTP_200_OK
+        )
+
+
+class CourseAllocationToggleStatusApi(APIView):
+    """Toggle active status for a course allocation."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Course Management'],
+        summary='Toggle course allocation status',
+        description='Toggle a teacher allocation between active and inactive states.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='allocation_id', type=int, location=OpenApiParameter.PATH, description='Allocation ID'),
+        ],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Status updated',
+                examples=[
+                    OpenApiExample(
+                        'Toggle allocation response',
+                        value={'success': True, 'is_active': True, 'message': 'Teacher allocation activated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, school_id, allocation_id):
+        allocation = get_object_or_404(
+            CourseAllocation.all_objects.select_related(
+                'course__school', 'course__grade', 'class_room__academic_year', 'class_room__grade', 'teacher__user'
+            ),
+            id=allocation_id,
+            course__school_id=school_id
+        )
+
+        if not _has_school_access(request.user, allocation.course.school):
+            return Response(
+                {'success': False, 'is_active': allocation.is_active, 'message': "You don't have permission to manage this teacher allocation."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            if allocation.is_active:
+                allocation.deactivate(user=request.user)
+                message = "Teacher allocation deactivated successfully."
+                is_active = False
+            else:
+                if not allocation.course.is_active:
+                    return Response(
+                        {'success': False, 'is_active': False, 'message': 'Cannot activate allocation because subject is inactive.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if not allocation.course.grade.is_active:
+                    return Response(
+                        {'success': False, 'is_active': False, 'message': 'Cannot activate allocation because grade is inactive.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if not allocation.class_room.is_active:
+                    return Response(
+                        {'success': False, 'is_active': False, 'message': 'Cannot activate allocation because classroom is inactive.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if allocation.class_room.academic_year and not allocation.class_room.academic_year.is_active:
+                    return Response(
+                        {'success': False, 'is_active': False, 'message': 'Cannot activate allocation because academic year is inactive.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if not allocation.teacher.is_active:
+                    return Response(
+                        {'success': False, 'is_active': False, 'message': 'Cannot activate allocation because teacher is inactive.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                allocation.activate()
+                message = "Teacher allocation activated successfully."
+                is_active = True
+        except Exception as exc:
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict) and detail:
+                first = next(iter(detail.values()))
+                message = first[0] if isinstance(first, list) and first else str(first)
+            elif isinstance(detail, list) and detail:
+                message = str(detail[0])
+            elif detail:
+                message = str(detail)
+            else:
+                message = str(exc)
+
+            return Response(
+                {'success': False, 'is_active': allocation.is_active, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'success': True, 'is_active': is_active, 'message': message},
+            status=status.HTTP_200_OK
+        )

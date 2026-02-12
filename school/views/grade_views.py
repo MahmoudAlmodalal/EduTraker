@@ -189,7 +189,7 @@ class GradeDetailApi(APIView):
         }
     )
     def patch(self, request, grade_id):
-        grade = grade_get(actor=request.user, grade_id=grade_id)
+        grade = grade_get(actor=request.user, grade_id=grade_id, include_inactive=True)
         serializer = GradeInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_grade = grade_update(grade=grade, actor=request.user, data=serializer.validated_data)
@@ -230,3 +230,60 @@ class GradeActivateApi(APIView):
         grade = grade_get(actor=request.user, grade_id=grade_id, include_inactive=True)
         grade_activate(grade=grade, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GradeToggleStatusApi(APIView):
+    """Toggle active status for a grade."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Grade Management'],
+        summary='Toggle grade status',
+        description='Toggle a grade between active and inactive states.',
+        parameters=[OpenApiParameter(name='grade_id', type=int, location=OpenApiParameter.PATH, description='Grade ID')],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Status updated',
+                examples=[
+                    OpenApiExample(
+                        'Toggle grade response',
+                        value={'success': True, 'is_active': False, 'message': 'Grade deactivated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, grade_id):
+        grade = grade_get(actor=request.user, grade_id=grade_id, include_inactive=True)
+
+        try:
+            if grade.is_active:
+                grade_deactivate(grade=grade, actor=request.user)
+                message = "Grade deactivated successfully."
+                is_active = False
+            else:
+                grade_activate(grade=grade, actor=request.user)
+                message = "Grade activated successfully."
+                is_active = True
+        except Exception as exc:
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict) and detail:
+                first = next(iter(detail.values()))
+                message = first[0] if isinstance(first, list) and first else str(first)
+            elif isinstance(detail, list) and detail:
+                message = str(detail[0])
+            elif detail:
+                message = str(detail)
+            else:
+                message = str(exc)
+
+            return Response(
+                {'success': False, 'is_active': grade.is_active, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'success': True, 'is_active': is_active, 'message': message},
+            status=status.HTTP_200_OK
+        )

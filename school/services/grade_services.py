@@ -1,9 +1,19 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.core.exceptions import PermissionDenied
 from rest_framework.exceptions import ValidationError
 
 from accounts.models import CustomUser, Role
-from school.models import Grade
+from school.models import Grade, Course, ClassRoom
+
+
+def _raise_grade_unique_validation_error(exc: IntegrityError) -> None:
+    """Map DB unique constraint errors to user-friendly validation errors."""
+    message = str(exc)
+    if "unique_numeric_level" in message:
+        raise ValidationError({"numeric_level": "A grade with this numeric level already exists."})
+    if "unique_grade_name" in message:
+        raise ValidationError({"name": "A grade with this name already exists."})
+    raise ValidationError({"detail": "Grade already exists with the same unique values."})
 
 
 @transaction.atomic
@@ -33,9 +43,11 @@ def grade_create(
     if min_age > max_age:
         raise ValidationError({"min_age": "Minimum age must be less than or equal to maximum age."})
 
-    # Validate unique numeric_level
-    if Grade.objects.filter(numeric_level=numeric_level).exists():
+    # Include inactive grades because DB uniqueness applies to all rows.
+    if Grade.all_objects.filter(numeric_level=numeric_level).exists():
         raise ValidationError({"numeric_level": "A grade with this numeric level already exists."})
+    if Grade.all_objects.filter(name__iexact=name).exists():
+        raise ValidationError({"name": "A grade with this name already exists."})
 
     grade = Grade(
         name=name,
@@ -45,7 +57,10 @@ def grade_create(
     )
 
     grade.full_clean()
-    grade.save()
+    try:
+        grade.save()
+    except IntegrityError as exc:
+        _raise_grade_unique_validation_error(exc)
 
     return grade
 
@@ -66,12 +81,18 @@ def grade_update(
     if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
         raise PermissionDenied("Only admins and managers can update grades.")
 
+    if not grade.is_active:
+        raise ValidationError({"detail": "Cannot update an inactive grade. Activate it first."})
+
     if "name" in data:
+        new_name = data["name"]
+        if Grade.all_objects.filter(name__iexact=new_name).exclude(id=grade.id).exists():
+            raise ValidationError({"name": "A grade with this name already exists."})
         grade.name = data["name"]
 
     if "numeric_level" in data:
         new_level = data["numeric_level"]
-        if Grade.objects.filter(numeric_level=new_level).exclude(id=grade.id).exists():
+        if Grade.all_objects.filter(numeric_level=new_level).exclude(id=grade.id).exists():
             raise ValidationError({"numeric_level": "A grade with this numeric level already exists."})
         grade.numeric_level = new_level
 
@@ -85,7 +106,10 @@ def grade_update(
         raise ValidationError({"min_age": "Minimum age must be less than or equal to maximum age."})
 
     grade.full_clean()
-    grade.save()
+    try:
+        grade.save()
+    except IntegrityError as exc:
+        _raise_grade_unique_validation_error(exc)
 
     return grade
 
@@ -103,6 +127,11 @@ def grade_deactivate(*, grade: Grade, actor: CustomUser) -> None:
 
     if not grade.is_active:
         raise ValidationError("Grade already deactivated.")
+
+    if Course.objects.filter(grade=grade).exists():
+        raise ValidationError({"detail": "Cannot deactivate this grade because it has active subjects."})
+    if ClassRoom.objects.filter(grade=grade).exists():
+        raise ValidationError({"detail": "Cannot deactivate this grade because it is assigned to active classrooms."})
 
     grade.deactivate(user=actor)
 

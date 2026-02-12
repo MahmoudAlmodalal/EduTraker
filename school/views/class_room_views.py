@@ -226,7 +226,13 @@ class ClassRoomDetailApi(APIView):
         }
     )
     def patch(self, request, school_id, academic_year_id, classroom_id):
-        classroom = classroom_get(classroom_id=classroom_id, school_id=school_id, academic_year_id=academic_year_id, actor=request.user)
+        classroom = classroom_get(
+            classroom_id=classroom_id,
+            school_id=school_id,
+            academic_year_id=academic_year_id,
+            actor=request.user,
+            include_inactive=True
+        )
         serializer = ClassRoomInputSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_classroom = classroom_update(classroom=classroom, actor=request.user, data=serializer.validated_data)
@@ -275,3 +281,70 @@ class ClassRoomActivateApi(APIView):
         classroom = classroom_get(classroom_id=classroom_id, school_id=school_id, academic_year_id=academic_year_id, actor=request.user, include_inactive=True)
         classroom_activate(classroom=classroom, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ClassRoomToggleStatusApi(APIView):
+    """Toggle active status for a classroom."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Classroom Management'],
+        summary='Toggle classroom status',
+        description='Toggle a classroom between active and inactive states.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, location=OpenApiParameter.PATH, description='School ID'),
+            OpenApiParameter(name='academic_year_id', type=int, location=OpenApiParameter.PATH, description='Academic Year ID'),
+            OpenApiParameter(name='classroom_id', type=int, location=OpenApiParameter.PATH, description='Classroom ID'),
+        ],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Status updated',
+                examples=[
+                    OpenApiExample(
+                        'Toggle classroom response',
+                        value={'success': True, 'is_active': True, 'message': 'Classroom activated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, school_id, academic_year_id, classroom_id):
+        classroom = classroom_get(
+            classroom_id=classroom_id,
+            school_id=school_id,
+            academic_year_id=academic_year_id,
+            actor=request.user,
+            include_inactive=True
+        )
+
+        try:
+            if classroom.is_active:
+                classroom_deactivate(classroom=classroom, actor=request.user)
+                message = "Classroom deactivated successfully."
+                is_active = False
+            else:
+                classroom_activate(classroom=classroom, actor=request.user)
+                message = "Classroom activated successfully."
+                is_active = True
+        except Exception as exc:
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict) and detail:
+                first = next(iter(detail.values()))
+                message = first[0] if isinstance(first, list) and first else str(first)
+            elif isinstance(detail, list) and detail:
+                message = str(detail[0])
+            elif detail:
+                message = str(detail)
+            else:
+                message = str(exc)
+
+            return Response(
+                {'success': False, 'is_active': classroom.is_active, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'success': True, 'is_active': is_active, 'message': message},
+            status=status.HTTP_200_OK
+        )

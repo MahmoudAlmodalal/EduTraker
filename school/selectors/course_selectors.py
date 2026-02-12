@@ -3,13 +3,13 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
 from school.models import Course
-from accounts.models import CustomUser, Role
+from accounts.models import CustomUser
 from accounts.policies.user_policies import _has_school_access
 
 
 def course_list(*, school_id: int, actor: CustomUser, filters: dict, include_inactive: bool = False) -> QuerySet[Course]:
     """Return a QuerySet of Courses for a specific school and grade."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive:
         qs = Course.all_objects.select_related('grade').filter(school_id=school_id)
     else:
         qs = Course.objects.select_related('grade').filter(school_id=school_id)

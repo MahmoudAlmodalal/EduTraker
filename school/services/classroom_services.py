@@ -40,11 +40,12 @@ def classroom_create(
     if academic_year.school_id != school_id:
         raise ValidationError({"academic_year_id": "Academic year does not belong to this school."})
 
-    # Validate grade exists
-    try:
-        grade = Grade.objects.get(id=grade_id)
-    except Grade.DoesNotExist:
+    # Validate grade exists and is active
+    grade = Grade.all_objects.filter(id=grade_id).first()
+    if not grade:
         raise ValidationError({"grade_id": "Grade not found."})
+    if not grade.is_active:
+        raise ValidationError({"grade_id": "Cannot create classroom because the selected grade is inactive."})
 
     # Validate homeroom teacher if provided
     homeroom_teacher = None
@@ -59,7 +60,7 @@ def classroom_create(
             raise ValidationError({"homeroom_teacher_id": "Teacher does not belong to this school."})
 
     # Check unique constraint
-    if ClassRoom.objects.filter(
+    if ClassRoom.all_objects.filter(
         school=school, academic_year=academic_year, classroom_name=classroom_name
     ).exists():
         raise ValidationError({"classroom_name": "A classroom with this name already exists for this school and year."})
@@ -91,9 +92,12 @@ def classroom_update(
     if not _has_school_access(actor, classroom.school):
         raise PermissionDenied("You don't have permission to update classrooms for this school.")
 
+    if not classroom.is_active:
+        raise ValidationError({"detail": "Cannot update an inactive classroom. Activate it first."})
+
     if "classroom_name" in data:
         new_name = data["classroom_name"]
-        if ClassRoom.objects.filter(
+        if ClassRoom.all_objects.filter(
             school=classroom.school, 
             academic_year=classroom.academic_year, 
             classroom_name=new_name
@@ -102,11 +106,12 @@ def classroom_update(
         classroom.classroom_name = new_name
 
     if "grade_id" in data:
-        try:
-            grade = Grade.objects.get(id=data["grade_id"])
-            classroom.grade = grade
-        except Grade.DoesNotExist:
+        grade = Grade.all_objects.filter(id=data["grade_id"]).first()
+        if not grade:
             raise ValidationError({"grade_id": "Grade not found."})
+        if not grade.is_active:
+            raise ValidationError({"grade_id": "Cannot assign classroom to an inactive grade."})
+        classroom.grade = grade
 
     if "homeroom_teacher_id" in data:
         teacher_id = data["homeroom_teacher_id"]
@@ -151,5 +156,10 @@ def classroom_activate(*, classroom: ClassRoom, actor: CustomUser) -> None:
 
     if classroom.is_active:
         raise ValidationError("Classroom is already active.")
+
+    if not classroom.grade.is_active:
+        raise ValidationError({"detail": "Cannot activate classroom because its grade is inactive."})
+    if not classroom.academic_year.is_active:
+        raise ValidationError({"detail": "Cannot activate classroom because its academic year is inactive."})
 
     classroom.activate()
