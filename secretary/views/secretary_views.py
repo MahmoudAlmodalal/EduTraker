@@ -13,6 +13,7 @@ from secretary.services import (
     secretary_create,
     secretary_update,
     secretary_deactivate,
+    secretary_activate,
 )
 
 
@@ -49,6 +50,8 @@ class SecretaryFilterSerializer(serializers.Serializer):
     school_id = serializers.IntegerField(required=False, help_text="Filter by school")
     department = serializers.CharField(required=False, help_text="Filter by department")
     search = serializers.CharField(required=False, help_text="Search by name or email")
+    include_inactive = serializers.BooleanField(required=False, default=False, help_text="Include inactive secretaries")
+    is_active = serializers.BooleanField(required=False, allow_null=True, help_text="Filter by active status")
 
 
 # =============================================================================
@@ -67,6 +70,8 @@ class SecretaryListApi(PaginatedAPIMixin, APIView):
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
             OpenApiParameter(name='department', type=str, description='Filter by department'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
+            OpenApiParameter(name='include_inactive', type=bool, description='Include inactive secretaries'),
+            OpenApiParameter(name='is_active', type=bool, description='Filter by active status'),
             OpenApiParameter(name='page', type=int, description='Page number'),
         ],
         responses={200: SecretaryOutputSerializer(many=True)},
@@ -254,3 +259,32 @@ class SecretaryDeactivateApi(APIView):
        secretary = secretary_get(secretary_id=secretary_id, actor=request.user)
        secretary_deactivate(secretary=secretary, actor=request.user)
        return Response({"detail": "Secretary deactivated successfully."}, status=status.HTTP_200_OK)
+
+
+class SecretaryActivateApi(APIView):
+    """Activate a secretary account."""
+    permission_classes = [IsAdminOrManager]
+
+    @extend_schema(
+        tags=['Secretary'],
+        summary='Activate secretary',
+        description='Activate a secretary account.',
+        parameters=[OpenApiParameter(name='secretary_id', type=int, location=OpenApiParameter.PATH, description='Secretary user ID')],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=MessageSerializer,
+                description='Secretary activated successfully',
+                examples=[
+                    OpenApiExample(
+                        'Secretary Activated',
+                        value={'detail': 'Secretary activated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, secretary_id):
+       secretary = secretary_get(secretary_id=secretary_id, actor=request.user)
+       secretary_activate(secretary=secretary, actor=request.user)
+       return Response({"detail": "Secretary activated successfully."}, status=status.HTTP_200_OK)

@@ -198,3 +198,57 @@ class SecretaryApiTests(APITestCase):
         self.client.force_authenticate(user=self.manager)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_list_include_inactive_secretaries(self):
+        active_user = CustomUser.objects.create_user(
+            email="active@school.com", password="pw", role="secretary", school=self.school, full_name="Active Secretary"
+        )
+        inactive_user = CustomUser.objects.create_user(
+            email="inactive@school.com", password="pw", role="secretary", school=self.school, full_name="Inactive Secretary"
+        )
+        active_sec = Secretary.objects.create(user=active_user, department="HR", hire_date=date(2025, 1, 1))
+        inactive_sec = Secretary.objects.create(user=inactive_user, department="HR", hire_date=date(2025, 1, 1))
+
+        inactive_user.is_active = False
+        inactive_user.save(update_fields=["is_active"])
+        inactive_sec.is_active = False
+        inactive_sec.save(update_fields=["is_active"])
+
+        self.client.force_authenticate(user=self.admin)
+
+        response_default = self.client.get(self.list_url)
+        self.assertEqual(response_default.status_code, status.HTTP_200_OK)
+        default_emails = {row["email"] for row in response_default.data["results"]}
+        self.assertIn(active_user.email, default_emails)
+        self.assertNotIn(inactive_user.email, default_emails)
+
+        response_with_inactive = self.client.get(self.list_url, {"include_inactive": True})
+        self.assertEqual(response_with_inactive.status_code, status.HTTP_200_OK)
+        all_emails = {row["email"] for row in response_with_inactive.data["results"]}
+        self.assertIn(active_user.email, all_emails)
+        self.assertIn(inactive_user.email, all_emails)
+
+    def test_activate_secretary(self):
+        user = CustomUser.objects.create_user(
+            email="reactivate@school.com", password="pw", role="secretary", school=self.school
+        )
+        secretary = Secretary.objects.create(user=user, department="HR", hire_date=date(2025, 1, 1))
+        deactivate_url = reverse("secretary:secretary-deactivate", args=[user.id])
+        activate_url = reverse("secretary:secretary-activate", args=[user.id])
+
+        self.client.force_authenticate(user=self.manager)
+        response_deactivate = self.client.post(deactivate_url)
+        self.assertEqual(response_deactivate.status_code, status.HTTP_200_OK)
+
+        user.refresh_from_db()
+        secretary.refresh_from_db()
+        self.assertFalse(user.is_active)
+        self.assertFalse(secretary.is_active)
+
+        response_activate = self.client.post(activate_url)
+        self.assertEqual(response_activate.status_code, status.HTTP_200_OK)
+
+        user.refresh_from_db()
+        secretary.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertTrue(secretary.is_active)

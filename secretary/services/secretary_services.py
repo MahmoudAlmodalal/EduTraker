@@ -145,3 +145,28 @@ def secretary_deactivate(*, secretary: Secretary, actor: CustomUser) -> Secretar
     secretary.save()
 
     return secretary
+
+
+@transaction.atomic
+def secretary_activate(*, secretary: Secretary, actor: CustomUser) -> Secretary:
+    """
+    Activate a secretary account.
+    """
+    if actor.role not in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL]:
+        raise PermissionDenied("You don't have permission to activate secretaries.")
+
+    # Permission check
+    if actor.role == Role.MANAGER_WORKSTREAM:
+        if secretary.user.school.work_stream_id != actor.work_stream_id:
+            raise PermissionDenied("Permission denied.")
+    elif actor.role == Role.MANAGER_SCHOOL:
+        if secretary.user.school_id != actor.school_id:
+            raise PermissionDenied("Permission denied.")
+
+    secretary.user.is_active = True
+    secretary.user.save(update_fields=["is_active"])
+
+    secretary.is_active = True
+    secretary.save(update_fields=["is_active"])
+
+    return secretary

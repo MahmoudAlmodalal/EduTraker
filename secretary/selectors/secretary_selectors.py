@@ -8,7 +8,9 @@ from accounts.models import CustomUser, Role
 
 def secretary_list(*, filters: dict, user: CustomUser) -> QuerySet[Secretary]:
     """Return a QuerySet of Secretaries filtered by user role and optional filters."""
-    qs = Secretary.objects.select_related('user', 'user__school', 'user__school__work_stream')
+    include_inactive = filters.get("include_inactive", False)
+    base_qs = Secretary.all_objects if include_inactive else Secretary.objects
+    qs = base_qs.select_related('user', 'user__school', 'user__school__work_stream')
 
     # Role-based filtering
     if user.role == Role.ADMIN:
@@ -36,13 +38,16 @@ def secretary_list(*, filters: dict, user: CustomUser) -> QuerySet[Secretary]:
             Q(user__email__icontains=search)
         )
 
+    if (is_active := filters.get("is_active")) is not None:
+        qs = qs.filter(user__is_active=is_active)
+
     return qs
 
 
 def secretary_get(*, secretary_id: int, actor: CustomUser) -> Secretary:
     """Retrieve a single Secretary by ID with permission check."""
     secretary = get_object_or_404(
-        Secretary.objects.select_related('user', 'user__school'),
+        Secretary.all_objects.select_related('user', 'user__school'),
         user_id=secretary_id
     )
 

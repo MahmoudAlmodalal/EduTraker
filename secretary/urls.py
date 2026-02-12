@@ -4,6 +4,7 @@ from secretary.views import (
     SecretaryCreateApi,
     SecretaryDetailApi,
     SecretaryDeactivateApi,
+    SecretaryActivateApi,
 )
 
 app_name = 'secretary'
@@ -14,4 +15,5 @@ urlpatterns = [
     path('create/', SecretaryCreateApi.as_view(), name='secretary-create'),
     path('<int:secretary_id>/', SecretaryDetailApi.as_view(), name='secretary-detail'),
     path('<int:secretary_id>/deactivate/', SecretaryDeactivateApi.as_view(), name='secretary-deactivate'),
+    path('<int:secretary_id>/activate/', SecretaryActivateApi.as_view(), name='secretary-activate'),
 ]
