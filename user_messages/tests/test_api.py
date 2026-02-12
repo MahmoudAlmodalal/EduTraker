@@ -352,8 +352,17 @@ class UserSearchApiTests(APITestCase):
         from workstream.models import WorkStream
         
         self.ws = WorkStream.objects.create(name="Test Workstream", slug="test-ws")
+        self.ws2 = WorkStream.objects.create(name="Other Workstream", slug="other-ws")
         self.school1 = School.objects.create(school_name="School One", slug="school-1", work_stream=self.ws)
         self.school2 = School.objects.create(school_name="School Two", slug="school-2", work_stream=self.ws)
+        self.school3 = School.objects.create(school_name="School Three", slug="school-3", work_stream=self.ws2)
+        
+        self.ws_manager = User.objects.create_user(
+            email='ws_manager@example.com', full_name='Workstream Manager', role='manager_workstream', work_stream=self.ws
+        )
+        self.ws2_manager = User.objects.create_user(
+            email='ws2_manager@example.com', full_name='Other Workstream Manager', role='manager_workstream', work_stream=self.ws2
+        )
         
         # School 1 users
         self.s1_manager = User.objects.create_user(
@@ -361,6 +370,9 @@ class UserSearchApiTests(APITestCase):
         )
         self.s1_teacher = User.objects.create_user(
             email='s1_teacher@example.com', full_name='S1 Teacher', role='teacher', school=self.school1, work_stream=self.ws
+        )
+        self.s1_secretary = User.objects.create_user(
+            email='s1_secretary@example.com', full_name='S1 Secretary', role='secretary', school=self.school1, work_stream=self.ws
         )
         self.s1_student = User.objects.create_user(
             email='s1_student@example.com', full_name='S1 Student', role='student', school=self.school1, work_stream=self.ws
@@ -373,6 +385,9 @@ class UserSearchApiTests(APITestCase):
         self.s2_teacher = User.objects.create_user(
             email='s2_teacher@example.com', full_name='S2 Teacher', role='teacher', school=self.school2, work_stream=self.ws
         )
+        self.s3_teacher = User.objects.create_user(
+            email='s3_teacher@example.com', full_name='S3 Teacher', role='teacher', school=self.school3, work_stream=self.ws2
+        )
 
         self.search_url = reverse('user_messages:user-search')
 
@@ -384,17 +399,44 @@ class UserSearchApiTests(APITestCase):
         self.assertEqual(len(response.data.get('results', [])), 0)
 
     def test_school_manager_visibility(self):
-        """School manager should only see users in their school."""
+        """School manager should see workstream manager + school teachers/secretaries only."""
         self.client.force_authenticate(user=self.s1_manager)
         
-        # Search for "Teacher"
-        response = self.client.get(self.search_url, {'search': 'Teacher'})
+        # Search for users tagged with S1/Workstream
+        response = self.client.get(self.search_url, {'search': 'S1'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = response.data.get('results', [])
-        
-        # Should only see S1 Teacher, not S2 Teacher
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['email'], self.s1_teacher.email)
+        emails = [r['email'] for r in results]
+
+        self.assertIn(self.s1_teacher.email, emails)
+        self.assertIn(self.s1_secretary.email, emails)
+        self.assertNotIn(self.s1_student.email, emails)
+        self.assertNotIn(self.s2_teacher.email, emails)
+        self.assertNotIn(self.s3_teacher.email, emails)
+
+        response_ws = self.client.get(self.search_url, {'search': 'Workstream'})
+        self.assertEqual(response_ws.status_code, status.HTTP_200_OK)
+        ws_emails = [r['email'] for r in response_ws.data.get('results', [])]
+        self.assertIn(self.ws_manager.email, ws_emails)
+        self.assertNotIn(self.ws2_manager.email, ws_emails)
+
+    def test_school_manager_visibility_with_managed_school_fallback(self):
+        """School manager should still search recipients when school is linked via School.manager only."""
+        manager_without_school_fk = User.objects.create_user(
+            email='fallback_manager@example.com',
+            full_name='Fallback Manager',
+            role='manager_school',
+            work_stream=self.ws
+        )
+        self.school1.manager = manager_without_school_fk
+        self.school1.save(update_fields=['manager'])
+
+        self.client.force_authenticate(user=manager_without_school_fk)
+        response = self.client.get(self.search_url, {'search': 'Teacher'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [r['email'] for r in response.data.get('results', [])]
+        self.assertIn(self.s1_teacher.email, emails)
+        self.assertNotIn(self.s2_teacher.email, emails)
 
     def test_teacher_visibility(self):
         """Teacher should see students and staff in their school."""

@@ -161,10 +161,11 @@ class MessageReadView(APIView):
 class CommunicationUserSearchApi(generics.ListAPIView):
     """
     GET: Search for users for messaging. 
-    Broader search than user_list — allows messaging across schools in the same workstream.
+    Visibility is role-aware and intentionally scoped.
     ADMIN can search all users. 
     MANAGER_WORKSTREAM can search all users in their workstream.
-    MANAGER_SCHOOL, TEACHER, SECRETARY can search all users in their workstream (cross-school messaging).
+    MANAGER_SCHOOL can search their workstream manager and teachers/secretaries in their school.
+    TEACHER, SECRETARY can search users in their school.
     STUDENT, GUARDIAN can search staff in their school.
     """
 
@@ -174,26 +175,66 @@ class CommunicationUserSearchApi(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        search_term = self.request.query_params.get('search', '')
-        if not search_term or len(search_term) < 2:
+        search_term = (self.request.query_params.get('search', '') or '').strip()
+        if not search_term:
             return CustomUser.objects.none()
 
         user = self.request.user
         qs = CustomUser.objects.filter(is_active=True)
 
+        # Resolve school/workstream defensively; some legacy records may have manager assigned
+        # via School.manager without setting user.school.
+        user_school = user.school
+        if not user_school and user.role == Role.MANAGER_SCHOOL:
+            user_school = user.managed_schools.filter(is_active=True).first() or user.managed_schools.first()
+        user_workstream = user.work_stream or (user_school.work_stream if user_school else None)
+
         if user.role == Role.ADMIN:
-            # Admin can message anyone
+            # Admin can message anyone.
             pass
-        elif user.role in [Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY, Role.STUDENT, Role.GUARDIAN]:
-            # All these roles can message anyone in their workstream (cross-school)
-            work_stream = user.work_stream or (user.school.work_stream if user.school else None)
+        elif user.role == Role.MANAGER_WORKSTREAM:
+            work_stream = user_workstream
             if work_stream:
                 qs = qs.filter(
                     models.Q(work_stream=work_stream) |
                     models.Q(school__work_stream=work_stream)
                 )
-            elif user.school:
-                qs = qs.filter(school=user.school)
+            elif user_school:
+                qs = qs.filter(school=user_school)
+            else:
+                return CustomUser.objects.none()
+        elif user.role == Role.MANAGER_SCHOOL:
+            school = user_school
+            work_stream = user_workstream
+            role_filters = models.Q()
+            has_scope_filters = False
+
+            # School manager can message workstream managers of the same workstream.
+            if work_stream:
+                role_filters |= models.Q(role=Role.MANAGER_WORKSTREAM, work_stream=work_stream)
+                role_filters |= models.Q(role=Role.MANAGER_WORKSTREAM, school__work_stream=work_stream)
+                has_scope_filters = True
+
+            # School manager can message teachers and secretaries in their own school.
+            if school:
+                role_filters |= models.Q(role__in=[Role.TEACHER, Role.SECRETARY], school=school)
+                has_scope_filters = True
+
+            if not has_scope_filters:
+                return CustomUser.objects.none()
+
+            qs = qs.filter(role_filters)
+        elif user.role in [Role.TEACHER, Role.SECRETARY]:
+            if not user_school:
+                return CustomUser.objects.none()
+            qs = qs.filter(school=user_school)
+        elif user.role in [Role.STUDENT, Role.GUARDIAN]:
+            if not user_school:
+                return CustomUser.objects.none()
+            qs = qs.filter(
+                models.Q(role=Role.MANAGER_WORKSTREAM, work_stream=user_school.work_stream) |
+                models.Q(role__in=[Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY], school=user_school)
+            )
         else:
             return CustomUser.objects.none()
 
@@ -202,13 +243,10 @@ class CommunicationUserSearchApi(generics.ListAPIView):
 
         # Apply search filter
         from django.db.models import Q
-        from django.db.models.functions import Lower
-        qs = qs.annotate(
-            low_full_name=Lower('full_name'),
-            low_email=Lower('email')
-        ).filter(
-            Q(low_full_name__icontains=search_term.lower()) |
-            Q(low_email__icontains=search_term.lower())
+        qs = qs.filter(
+            Q(full_name__istartswith=search_term) |
+            Q(email__istartswith=search_term) |
+            Q(role__istartswith=search_term)
         )
 
         return qs[:20]  # Limit results
