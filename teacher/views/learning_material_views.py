@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from teacher.models import LearningMaterial
 from teacher.serializers import LearningMaterialSerializer
 from accounts.models import Role
+from reports.utils import log_activity
 
 class  IsMaterialManagerOrReadOnly(permissions.BasePermission):
     """
@@ -103,7 +104,15 @@ class LearningMaterialListCreateView(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
+        material = serializer.save(uploaded_by=self.request.user)
+        log_activity(
+            actor=self.request.user,
+            action_type='CREATE',
+            entity_type='LearningMaterial',
+            entity_id=material.id,
+            description=f"Uploaded learning material '{material.title}'.",
+            request=self.request
+        )
 
 @extend_schema(
     tags=['Teacher - Learning Materials'],
@@ -123,3 +132,27 @@ class LearningMaterialDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsMaterialManagerOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description']
+
+    def perform_update(self, serializer):
+        material = serializer.save()
+        log_activity(
+            actor=self.request.user,
+            action_type='UPDATE',
+            entity_type='LearningMaterial',
+            entity_id=material.id,
+            description=f"Updated learning material '{material.title}'.",
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        title = instance.title
+        material_id = instance.id
+        super().perform_destroy(instance)
+        log_activity(
+            actor=self.request.user,
+            action_type='DELETE',
+            entity_type='LearningMaterial',
+            entity_id=material_id,
+            description=f"Deleted learning material '{title}'.",
+            request=self.request
+        )

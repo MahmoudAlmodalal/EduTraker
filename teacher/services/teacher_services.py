@@ -9,6 +9,7 @@ from accounts.services.user_services import user_create
 from teacher.models import Teacher
 from school.models import School
 from accounts.policies.user_policies import _has_school_access, _can_manage_school
+from reports.utils import log_activity
 
 
 @transaction.atomic
@@ -73,6 +74,14 @@ def teacher_create(
     
     teacher.full_clean()
     teacher.save()
+
+    log_activity(
+        actor=creator,
+        action_type='CREATE',
+        entity_type='Teacher',
+        entity_id=teacher.user_id,
+        description=f"Created teacher profile for {teacher.user.full_name} ({teacher.user.email})."
+    )
     
     return teacher
 
@@ -92,6 +101,14 @@ def teacher_update(*, teacher: Teacher, actor: CustomUser, data: dict) -> Teache
     
     teacher.full_clean()
     teacher.save()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Teacher',
+        entity_id=teacher.user_id,
+        description=f"Updated teacher profile for {teacher.user.full_name} ({teacher.user.email})."
+    )
     return teacher
 
 
@@ -111,6 +128,14 @@ def teacher_deactivate(*, teacher: Teacher, actor: CustomUser) -> None:
 
     # Deactivate teacher profile
     teacher.deactivate(user=actor)
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Teacher',
+        entity_id=teacher.user_id,
+        description=f"Deactivated teacher profile for {teacher.user.full_name} ({teacher.user.email})."
+    )
 
 
 @transaction.atomic
@@ -132,3 +157,11 @@ def teacher_activate(*, teacher: Teacher, actor: CustomUser) -> None:
 
     # Activate teacher profile
     teacher.activate()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Teacher',
+        entity_id=teacher.user_id,
+        description=f"Activated teacher profile for {teacher.user.full_name} ({teacher.user.email})."
+    )

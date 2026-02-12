@@ -8,6 +8,7 @@ from teacher.models import Mark, Teacher, Assignment
 from student.models import Student
 from accounts.models import CustomUser, Role
 from notifications.services.notification_services import notification_create
+from reports.utils import log_activity
 
 
 @transaction.atomic
@@ -53,6 +54,17 @@ def mark_record(
         action_url=f"/student/results"
     )
 
+    log_activity(
+        actor=teacher.user,
+        action_type='CREATE' if created else 'UPDATE',
+        entity_type='Mark',
+        entity_id=mark.id,
+        description=(
+            f"{'Recorded' if created else 'Updated'} mark for {student.user.full_name} "
+            f"in '{assignment.title}' ({score}/{assignment.full_mark})."
+        )
+    )
+
     return mark
 
 
@@ -70,6 +82,14 @@ def mark_deactivate(*, mark: Mark, actor: CustomUser) -> None:
 
     mark.deactivate(user=actor)
 
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Mark',
+        entity_id=mark.id,
+        description=f"Deactivated mark record #{mark.id}."
+    )
+
 
 @transaction.atomic
 def mark_activate(*, mark: Mark, actor: CustomUser) -> None:
@@ -83,6 +103,14 @@ def mark_activate(*, mark: Mark, actor: CustomUser) -> None:
         raise ValidationError("Mark is already active.")
 
     mark.activate()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Mark',
+        entity_id=mark.id,
+        description=f"Activated mark record #{mark.id}."
+    )
 @transaction.atomic
 def mark_bulk_import(
     *,

@@ -1,4 +1,5 @@
 from django.db.models import QuerySet
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 
@@ -9,7 +10,7 @@ from accounts.policies.user_policies import _has_school_access
 
 def teacher_list(*, filters: dict, user: CustomUser, include_inactive: bool = False) -> QuerySet[Teacher]:
     """Return a QuerySet of Teachers filtered by user role and optional filters."""
-    if include_inactive and user.role == Role.ADMIN:
+    if include_inactive and user.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         qs = Teacher.all_objects.select_related('user', 'user__school')
     else:
         qs = Teacher.objects.select_related('user', 'user__school')
@@ -34,14 +35,14 @@ def teacher_list(*, filters: dict, user: CustomUser, include_inactive: bool = Fa
         qs = qs.filter(specialization__icontains=specialization)
 
     if search := filters.get("search"):
-        qs = qs.filter(user__full_name__icontains=search)
+        qs = qs.filter(Q(user__full_name__icontains=search) | Q(user__email__icontains=search))
 
     return qs
 
 
 def teacher_get(*, teacher_id: int, actor: CustomUser, include_inactive: bool = False) -> Teacher:
     """Retrieve a single Teacher by ID with permission check."""
-    if include_inactive and actor.role == Role.ADMIN:
+    if include_inactive and actor.role in [Role.ADMIN, Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL, Role.SECRETARY]:
         base_qs = Teacher.all_objects
     else:
         base_qs = Teacher.objects

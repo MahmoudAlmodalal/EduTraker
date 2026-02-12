@@ -8,6 +8,7 @@ from student.models import Student
 from accounts.models import CustomUser, Role
 from notifications.services.notification_services import notification_create
 from accounts.policies.user_policies import _has_school_access
+from reports.utils import log_activity
 
 
 @transaction.atomic
@@ -52,6 +53,17 @@ def attendance_record(
         action_url=f"/student/attendance"
     )
 
+    log_activity(
+        actor=teacher.user,
+        action_type='CREATE' if created else 'UPDATE',
+        entity_type='Attendance',
+        entity_id=attendance.id,
+        description=(
+            f"{'Recorded' if created else 'Updated'} attendance for {student.user.full_name} "
+            f"as {status} in {course_allocation.course.name} on {date}."
+        )
+    )
+
     return attendance
 
 
@@ -70,6 +82,14 @@ def attendance_deactivate(*, attendance: Attendance, actor: CustomUser) -> None:
 
     attendance.deactivate(user=actor)
 
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Attendance',
+        entity_id=attendance.id,
+        description=f"Deactivated attendance record #{attendance.id}."
+    )
+
 
 @transaction.atomic
 def attendance_activate(*, attendance: Attendance, actor: CustomUser) -> None:
@@ -83,3 +103,11 @@ def attendance_activate(*, attendance: Attendance, actor: CustomUser) -> None:
         raise ValidationError("Attendance record is already active.")
 
     attendance.activate()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Attendance',
+        entity_id=attendance.id,
+        description=f"Activated attendance record #{attendance.id}."
+    )

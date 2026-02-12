@@ -2,9 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
+from django.db.models import Q
 
 from accounts.permissions import IsAdminOrManagerOrSecretary
 from accounts.pagination import PaginatedAPIMixin
+from accounts.models import Role, CustomUser
+from school.models import School
 from teacher.models import Teacher
 from teacher.selectors.teacher_selectors import teacher_list, teacher_get
 from teacher.services.teacher_services import (
@@ -13,6 +16,7 @@ from teacher.services.teacher_services import (
     teacher_deactivate,
     teacher_activate,
 )
+from reports.models import ActivityLog
 
 
 # =============================================================================
@@ -48,6 +52,8 @@ class TeacherOutputSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     school_id = serializers.IntegerField(source='user.school_id', read_only=True, allow_null=True)
     school_name = serializers.CharField(source='user.school.school_name', read_only=True, allow_null=True)
+    date_joined = serializers.DateTimeField(source='user.date_joined', read_only=True, allow_null=True)
+    last_login = serializers.DateTimeField(source='user.last_login', read_only=True, allow_null=True)
     
     deactivated_at = serializers.DateTimeField(source='user.deactivated_at', read_only=True)
     deactivated_by_name = serializers.CharField(source='user.deactivated_by.full_name', read_only=True, allow_null=True)
@@ -59,9 +65,44 @@ class TeacherOutputSerializer(serializers.ModelSerializer):
             'school_id', 'school_name', 'specialization', 'hire_date',
             'employment_status', 'highest_degree', 'years_of_experience',
             'office_location', 'deactivated_at', 'deactivated_by_name',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'date_joined', 'last_login'
         ]
         read_only_fields = ['user_id', 'created_at', 'updated_at', 'deactivated_by_name']
+
+
+class TeacherActivityLogFilterSerializer(serializers.Serializer):
+    """Filter serializer for teacher activity logs."""
+    school_id = serializers.IntegerField(required=False, help_text="Filter by school")
+    teacher_id = serializers.IntegerField(required=False, help_text="Filter by teacher user ID")
+    action_type = serializers.CharField(required=False, help_text="Filter by action type")
+    entity_type = serializers.CharField(required=False, help_text="Filter by entity type")
+
+
+class TeacherActivityLogOutputSerializer(serializers.ModelSerializer):
+    """Output serializer for teacher activity logs."""
+    actor_name = serializers.SerializerMethodField()
+    actor_email = serializers.SerializerMethodField()
+    action_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ActivityLog
+        fields = [
+            'id', 'created_at', 'action_type', 'action_label',
+            'entity_type', 'entity_id', 'description',
+            'actor_name', 'actor_email'
+        ]
+
+    def get_actor_name(self, obj):
+        return obj.actor.full_name if obj.actor else "System"
+
+    def get_actor_email(self, obj):
+        return obj.actor.email if obj.actor else "system@edutraker.com"
+
+    def get_action_label(self, obj):
+        try:
+            return obj.get_action_type_display()
+        except Exception:
+            return obj.action_type
 
 
 # =============================================================================
@@ -277,5 +318,135 @@ class TeacherActivateApi(APIView):
         teacher_activate(teacher=teacher, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-        teacher_activate(teacher=teacher, actor=request.user)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class TeacherToggleStatusApi(APIView):
+    """Toggle active status for a teacher profile."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    @extend_schema(
+        tags=['Teacher Management'],
+        summary='Toggle teacher status',
+        description='Toggle a teacher between active and inactive states.',
+        parameters=[OpenApiParameter(name='teacher_id', type=int, location=OpenApiParameter.PATH, description='Teacher ID')],
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description='Status updated',
+                examples=[
+                    OpenApiExample(
+                        'Toggle teacher response',
+                        value={'success': True, 'is_active': False, 'message': 'Teacher deactivated successfully.'}
+                    )
+                ]
+            )
+        }
+    )
+    def post(self, request, teacher_id):
+        teacher = teacher_get(teacher_id=teacher_id, actor=request.user, include_inactive=True)
+
+        try:
+            if teacher.is_active:
+                teacher_deactivate(teacher=teacher, actor=request.user)
+                is_active = False
+                message = "Teacher deactivated successfully."
+            else:
+                teacher_activate(teacher=teacher, actor=request.user)
+                is_active = True
+                message = "Teacher activated successfully."
+        except Exception as exc:
+            detail = getattr(exc, "detail", None)
+            if isinstance(detail, dict) and detail:
+                first = next(iter(detail.values()))
+                message = first[0] if isinstance(first, list) and first else str(first)
+            elif isinstance(detail, list) and detail:
+                message = str(detail[0])
+            elif detail:
+                message = str(detail)
+            else:
+                message = str(exc)
+
+            return Response(
+                {'success': False, 'is_active': teacher.is_active, 'message': message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {'success': True, 'is_active': is_active, 'message': message},
+            status=status.HTTP_200_OK
+        )
+
+
+class TeacherActivityLogListApi(PaginatedAPIMixin, APIView):
+    """List teacher activity logs for school/workstream scope."""
+    permission_classes = [IsAdminOrManagerOrSecretary]
+
+    @extend_schema(
+        tags=['Teacher Management'],
+        summary='List teacher activity logs',
+        description='Get teacher activities (login/logout/create/update/etc.) ordered by most recent first.',
+        parameters=[
+            OpenApiParameter(name='school_id', type=int, description='Filter by school ID'),
+            OpenApiParameter(name='teacher_id', type=int, description='Filter by teacher user ID'),
+            OpenApiParameter(name='action_type', type=str, description='Filter by action type'),
+            OpenApiParameter(name='entity_type', type=str, description='Filter by entity type'),
+            OpenApiParameter(name='page', type=int, description='Page number'),
+        ],
+        responses={200: TeacherActivityLogOutputSerializer(many=True)}
+    )
+    def get(self, request):
+        filter_serializer = TeacherActivityLogFilterSerializer(data=request.query_params)
+        filter_serializer.is_valid(raise_exception=True)
+        filters = filter_serializer.validated_data
+
+        actor = request.user
+        requested_school_id = filters.get("school_id")
+
+        if actor.role == Role.ADMIN:
+            allowed_school_ids = list(
+                School.objects.values_list('id', flat=True)
+            )
+            if requested_school_id:
+                allowed_school_ids = [requested_school_id]
+        elif actor.role == Role.MANAGER_WORKSTREAM:
+            allowed_school_ids = list(
+                School.objects.filter(work_stream_id=actor.work_stream_id).values_list('id', flat=True)
+            )
+            if requested_school_id:
+                allowed_school_ids = [requested_school_id] if requested_school_id in allowed_school_ids else []
+        else:
+            # MANAGER_SCHOOL and SECRETARY are scoped to their own school only.
+            if not actor.school_id:
+                allowed_school_ids = []
+            elif requested_school_id and requested_school_id != actor.school_id:
+                allowed_school_ids = []
+            else:
+                allowed_school_ids = [actor.school_id]
+
+        teacher_users = CustomUser.all_objects.filter(
+            role=Role.TEACHER,
+            school_id__in=allowed_school_ids
+        )
+
+        if teacher_id := filters.get("teacher_id"):
+            teacher_users = teacher_users.filter(id=teacher_id)
+
+        teacher_user_ids = list(teacher_users.values_list('id', flat=True))
+        teacher_user_ids_str = [str(user_id) for user_id in teacher_user_ids]
+
+        queryset = ActivityLog.objects.select_related('actor').filter(
+            Q(actor_id__in=teacher_user_ids) |
+            Q(entity_type__iexact='Teacher', entity_id__in=teacher_user_ids_str)
+        )
+
+        if action_type := filters.get("action_type"):
+            queryset = queryset.filter(action_type__iexact=action_type)
+
+        if entity_type := filters.get("entity_type"):
+            queryset = queryset.filter(entity_type__icontains=entity_type)
+
+        queryset = queryset.order_by('-created_at')
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            return self.get_paginated_response(TeacherActivityLogOutputSerializer(page, many=True).data)
+        return Response(TeacherActivityLogOutputSerializer(queryset, many=True).data)

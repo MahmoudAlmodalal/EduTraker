@@ -255,6 +255,15 @@ class LogoutView(APIView):
         
         try:
             logout_user(refresh_token=serializer.validated_data['refresh'])
+            from reports.utils import log_activity
+            log_activity(
+                actor=request.user,
+                action_type='LOGOUT',
+                entity_type='User',
+                entity_id=request.user.id,
+                description=f"User {request.user.email} logged out.",
+                request=request
+            )
             return Response(
                 {'message': 'Successfully logged out.'},
                 status=status.HTTP_200_OK

@@ -3,6 +3,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from ..models import LessonPlan, Teacher
 from ..serializers.lesson_plan_serializers import LessonPlanSerializer
 from accounts.models import Role
+from reports.utils import log_activity
 
 class IsLessonPlanAuthorOrReadOnly(permissions.BasePermission):
     """
@@ -53,7 +54,15 @@ class LessonPlanListCreateAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         teacher = Teacher.objects.get(user=self.request.user)
-        serializer.save(teacher=teacher)
+        lesson_plan = serializer.save(teacher=teacher)
+        log_activity(
+            actor=self.request.user,
+            action_type='CREATE',
+            entity_type='LessonPlan',
+            entity_id=lesson_plan.id,
+            description=f"Created lesson plan '{lesson_plan.title}'.",
+            request=self.request
+        )
 
 @extend_schema(
     tags=['Teacher - Lesson Plans'],
@@ -66,3 +75,27 @@ class LessonPlanRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
     queryset = LessonPlan.objects.all()
     serializer_class = LessonPlanSerializer
     permission_classes = [permissions.IsAuthenticated, IsLessonPlanAuthorOrReadOnly]
+
+    def perform_update(self, serializer):
+        lesson_plan = serializer.save()
+        log_activity(
+            actor=self.request.user,
+            action_type='UPDATE',
+            entity_type='LessonPlan',
+            entity_id=lesson_plan.id,
+            description=f"Updated lesson plan '{lesson_plan.title}'.",
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        title = instance.title
+        lesson_plan_id = instance.id
+        super().perform_destroy(instance)
+        log_activity(
+            actor=self.request.user,
+            action_type='DELETE',
+            entity_type='LessonPlan',
+            entity_id=lesson_plan_id,
+            description=f"Deleted lesson plan '{title}'.",
+            request=self.request
+        )

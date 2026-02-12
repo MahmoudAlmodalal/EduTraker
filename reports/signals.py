@@ -16,6 +16,24 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
+
+def _log_user_login_sync(user, ip_address, user_agent):
+    """Fallback logger when Celery is unavailable."""
+    UserLoginHistory.objects.create(
+        user=user,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    ActivityLog.objects.create(
+        actor=user,
+        action_type='LOGIN',
+        entity_type='User',
+        entity_id=str(user.id),
+        description=f"User {user.email} logged in",
+        ip_address=ip_address,
+    )
+
+
 @receiver(user_logged_in)
 def log_user_login(sender, request, user, **kwargs):
     """Log user login asynchronously."""
@@ -26,13 +44,17 @@ def log_user_login(sender, request, user, **kwargs):
         # Import the async task
         from .tasks import log_user_login_async
         
-        # Queue the task asynchronously - this returns immediately
-        log_user_login_async.delay(
-            user_id=user.id,
-            ip_address=ip,
-            user_agent=user_agent,
-            email=user.email
-        )
+        try:
+            # Queue the task asynchronously - this returns immediately
+            log_user_login_async.delay(
+                user_id=user.id,
+                ip_address=ip,
+                user_agent=user_agent,
+                email=user.email
+            )
+        except Exception:
+            # Celery/broker not available: write synchronously so login history is not lost.
+            _log_user_login_sync(user, ip, user_agent)
         
     except Exception as e:
         # Prevent login failure if task queuing fails

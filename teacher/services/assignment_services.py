@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from teacher.models import Assignment, Teacher
 from accounts.models import CustomUser, Role
 from accounts.policies.user_policies import _can_manage_school
+from reports.utils import log_activity
 
 
 def _generate_assignment_code() -> str:
@@ -83,6 +84,14 @@ def assignment_create(
     
     assignment.full_clean()
     assignment.save()
+
+    log_activity(
+        actor=creator,
+        action_type='CREATE',
+        entity_type='Assignment',
+        entity_id=assignment.id,
+        description=f"Created assignment '{assignment.title}' ({assignment.assignment_code})."
+    )
     
     return assignment
 
@@ -135,6 +144,14 @@ def assignment_update(
     
     assignment.full_clean()
     assignment.save()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Assignment',
+        entity_id=assignment.id,
+        description=f"Updated assignment '{assignment.title}' ({assignment.assignment_code})."
+    )
     
     return assignment
 
@@ -154,6 +171,14 @@ def assignment_deactivate(*, assignment: Assignment, actor: CustomUser) -> None:
 
     assignment.deactivate(user=actor)
 
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Assignment',
+        entity_id=assignment.id,
+        description=f"Deactivated assignment '{assignment.title}' ({assignment.assignment_code})."
+    )
+
 
 @transaction.atomic
 def assignment_activate(*, assignment: Assignment, actor: CustomUser) -> None:
@@ -167,3 +192,11 @@ def assignment_activate(*, assignment: Assignment, actor: CustomUser) -> None:
         raise ValidationError("Assignment is already active.")
 
     assignment.activate()
+
+    log_activity(
+        actor=actor,
+        action_type='UPDATE',
+        entity_type='Assignment',
+        entity_id=assignment.id,
+        description=f"Activated assignment '{assignment.title}' ({assignment.assignment_code})."
+    )

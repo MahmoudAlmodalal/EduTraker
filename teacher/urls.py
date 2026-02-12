@@ -6,6 +6,8 @@ from teacher.views.teacher_views import (
     TeacherDetailApi,
     TeacherDeactivateApi,
     TeacherActivateApi,
+    TeacherToggleStatusApi,
+    TeacherActivityLogListApi,
 )
 from teacher.views.assignment_views import (
     AssignmentListCreateApi,
@@ -45,9 +47,11 @@ urlpatterns = [
     # Teacher Management
     path('teachers/', TeacherListApi.as_view(), name='teacher-list'),
     path('teachers/create/', TeacherCreateApi.as_view(), name='teacher-create'),
+    path('teachers/activity-logs/', TeacherActivityLogListApi.as_view(), name='teacher-activity-logs'),
     path('teachers/<int:teacher_id>/', TeacherDetailApi.as_view(), name='teacher-detail'),
     path('teachers/<int:teacher_id>/deactivate/', TeacherDeactivateApi.as_view(), name='teacher-deactivate'),
     path('teachers/<int:teacher_id>/activate/', TeacherActivateApi.as_view(), name='teacher-activate'),
+    path('teachers/<int:teacher_id>/toggle-status/', TeacherToggleStatusApi.as_view(), name='teacher-toggle-status'),
 
     # Assignment Management
     path('assignments/', AssignmentListCreateApi.as_view(), name='assignment-list-create'),
