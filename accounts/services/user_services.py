@@ -141,7 +141,7 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
     Update user fields.
     """
     email = data.get('email')
-    if email and email != user.email:
+    if email:
         normalized_email = email.strip().lower()
         existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=user.id).first()
         if existing_user:
