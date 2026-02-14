@@ -10,18 +10,21 @@ def authenticate_user(*, email: str, password: str) -> Optional[CustomUser]:
     Returns user if credentials are valid, None otherwise.
     Optimized with select_related to prefetch work_stream and school.
     """
-    user = authenticate(username=email, password=password)
+    normalized_email = (email or "").strip()
+    user = authenticate(username=normalized_email, password=password)
     
     if user is None:
         raise ValidationError("Invalid email or password.")
-    
+
+    # Enforce strict case-sensitive email matching.
+    if user.email != normalized_email:
+        raise ValidationError("Invalid email or password.")
+
     if not user.is_active:
         raise ValidationError("This account has been deactivated.")
-    
+
     # Optimize by prefetching related objects to avoid N+1 queries
     # when serializing user data in the login response
     user = CustomUser.objects.select_related('work_stream', 'school').get(pk=user.pk)
-    
+
     return user
-
-

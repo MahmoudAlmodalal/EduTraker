@@ -31,6 +31,7 @@ from student.services.student_services import (
 class StudentFilterSerializer(serializers.Serializer):
     """Filter serializer for student list endpoint."""
     school_id = serializers.IntegerField(required=False, help_text="Filter by school")
+    academic_year_id = serializers.IntegerField(required=False, help_text="Filter by academic year (via enrollments)")
     grade_id = serializers.IntegerField(required=False, help_text="Filter by grade (via enrollments)")
     classroom_id = serializers.IntegerField(required=False, help_text="Filter by classroom (via enrollments)")
     current_status = serializers.CharField(required=False, help_text="Filter by status")
@@ -122,7 +123,9 @@ class StudentListApi(PaginatedAPIMixin, APIView):
         description='Get all students filtered by permissions and filters.',
         parameters=[
             OpenApiParameter(name='school_id', type=int, description='Filter by school'),
+            OpenApiParameter(name='academic_year_id', type=int, description='Filter by academic year (via enrollments)'),
             OpenApiParameter(name='grade_id', type=int, description='Filter by grade (via enrollments)'),
+            OpenApiParameter(name='classroom_id', type=int, description='Filter by classroom (via enrollments)'),
             OpenApiParameter(name='current_status', type=str, description='Filter by status'),
             OpenApiParameter(name='search', type=str, description='Search by name or email'),
             OpenApiParameter(name='include_inactive', type=bool, description='Include deactivated records'),

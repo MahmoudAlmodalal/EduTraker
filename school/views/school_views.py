@@ -8,7 +8,13 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from accounts.permissions import IsAdminOrManagerWorkstream
 from accounts.pagination import PaginatedAPIMixin
 from school.selectors.school_selectors import school_list, school_get
-from school.services.school_services import create_school, update_school, deactivate_school, activate_school
+from school.services.school_services import (
+    UNSET,
+    create_school,
+    update_school,
+    deactivate_school,
+    activate_school,
+)
 from workstream.models import WorkStream
 from accounts.models import Role
 
@@ -131,6 +137,8 @@ class SchoolCreateAPIView(APIView):
             school_name=in_ser.validated_data["school_name"],
             work_stream=workstream,
             manager=None,
+            location=in_ser.validated_data.get("location"),
+            capacity=in_ser.validated_data.get("capacity"),
         )
 
         return Response({"id": school.id}, status=status.HTTP_201_CREATED)
@@ -202,7 +210,9 @@ class SchoolUpdateAPIView(APIView):
         update_school(
             actor=request.user,
             school=school,
-            school_name=in_ser.validated_data.get("school_name"),
+            school_name=in_ser.validated_data.get("school_name", UNSET),
+            location=in_ser.validated_data.get("location", UNSET),
+            capacity=in_ser.validated_data.get("capacity", UNSET),
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)

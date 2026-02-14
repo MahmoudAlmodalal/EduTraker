@@ -148,6 +148,27 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeleteModel):
     )
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True, help_text="Last login timestamp")
+    timezone = models.CharField(
+        max_length=64,
+        default="UTC",
+        help_text="Preferred timezone for this user"
+    )
+    email_notifications = models.BooleanField(
+        default=True,
+        help_text="Whether email notifications are enabled"
+    )
+    in_app_alerts = models.BooleanField(
+        default=True,
+        help_text="Whether in-app alerts are enabled"
+    )
+    sms_notifications = models.BooleanField(
+        default=False,
+        help_text="Whether SMS notifications are enabled"
+    )
+    enable_2fa = models.BooleanField(
+        default=False,
+        help_text="Whether two-factor authentication preference is enabled"
+    )
     
     objects = UserManager()
     

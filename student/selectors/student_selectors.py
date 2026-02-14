@@ -69,6 +69,9 @@ def student_list(*, filters: dict, user: CustomUser, include_inactive: bool = Fa
     if school_id := filters.get("school_id"):
         qs = qs.filter(user__school_id=school_id)
 
+    if academic_year_id := filters.get("academic_year_id"):
+        qs = qs.filter(enrollments__academic_year_id=academic_year_id).distinct()
+
     if grade_id := filters.get("grade_id"):
         qs = qs.filter(enrollments__class_room__grade_id=grade_id).distinct()
 

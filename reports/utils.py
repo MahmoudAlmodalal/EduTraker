@@ -1,7 +1,11 @@
 """
 Utility functions for activity logging
 """
+import logging
+
 from .models import ActivityLog
+
+logger = logging.getLogger(__name__)
 
 
 def get_client_ip(request):
@@ -60,7 +64,7 @@ def log_activity(
             ip_address=ip_address
         )
         return activity
-    except Exception as e:
+    except Exception:
         # Don't let logging errors break the main functionality
-        print(f"Error logging activity: {e}")
+        logger.exception("Error logging activity")
         return None

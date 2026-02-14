@@ -139,6 +139,11 @@ class WorkstreamLoginView(APIView):
                 'school': user.school_id,
                 'school_name': user.school.school_name if user.school else None,
                 'is_active': user.is_active,
+                'timezone': user.timezone,
+                'email_notifications': user.email_notifications,
+                'in_app_alerts': user.in_app_alerts,
+                'sms_notifications': user.sms_notifications,
+                'enable_2fa': user.enable_2fa,
             }
     
     @extend_schema(

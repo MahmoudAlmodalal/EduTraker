@@ -9,6 +9,8 @@ class SchoolListQuerySerializer(serializers.Serializer):
 
 class SchoolCreateInputSerializer(serializers.Serializer):
     school_name = serializers.CharField(max_length=255)
+    location = serializers.CharField(max_length=300, required=False, allow_blank=True, allow_null=True)
+    capacity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     # Make work_stream optional; when omitted, views can fall back to the
     # authenticated user's work_stream (for manager_workstream roles).
     work_stream = serializers.PrimaryKeyRelatedField(
@@ -20,11 +22,15 @@ class SchoolCreateInputSerializer(serializers.Serializer):
 
 class SchoolUpdateInputSerializer(serializers.Serializer):
     school_name = serializers.CharField(max_length=255, required=False)
+    location = serializers.CharField(max_length=300, required=False, allow_blank=True, allow_null=True)
+    capacity = serializers.IntegerField(required=False, allow_null=True, min_value=1)
 
 
 class SchoolOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     school_name = serializers.CharField()
+    location = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+    capacity = serializers.IntegerField(allow_null=True, required=False)
     work_stream = serializers.IntegerField(source="work_stream_id")
     manager = serializers.IntegerField(source="manager_id", allow_null=True)
     is_active = serializers.BooleanField()

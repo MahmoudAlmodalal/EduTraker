@@ -375,24 +375,77 @@ class UserProfileUpdateApi(APIView):
     """Update current user's profile."""
     permission_classes = [permissions.IsAuthenticated]
 
+    class UserProfileSettingsSerializer(serializers.ModelSerializer):
+        password = serializers.CharField(
+            required=False,
+            write_only=True,
+            min_length=8,
+            help_text="New password (minimum 8 characters)",
+        )
+
+        class Meta:
+            model = CustomUser
+            fields = [
+                "id",
+                "full_name",
+                "email",
+                "password",
+                "timezone",
+                "email_notifications",
+                "in_app_alerts",
+                "sms_notifications",
+                "enable_2fa",
+            ]
+            read_only_fields = ["id"]
+
+        def validate_timezone(self, value):
+            value = value.strip()
+            if not value:
+                raise serializers.ValidationError("Timezone cannot be empty.")
+            return value
+
+    @extend_schema(
+        tags=['User Management'],
+        summary='Get current profile',
+        description='Get current user profile and settings preferences.',
+        responses={
+            200: OpenApiResponse(response=UserProfileSettingsSerializer)
+        }
+    )
+    def get(self, request):
+        serializer = self.UserProfileSettingsSerializer(request.user)
+        return Response(serializer.data)
+
     @extend_schema(
         tags=['User Management'],
         summary='Update profile',
-        description='Update current user profile. Cannot update sensitive fields like role.',
-        request=UserUpdateApi.UserUpdateInputSerializer,
+        description='Update current user profile and preferences. Cannot update sensitive fields like role.',
+        request=UserProfileSettingsSerializer,
         responses={204: OpenApiResponse(description='Profile updated successfully')}
     )
     def patch(self, request):
         user = request.user
-        serializer = UserUpdateApi.UserUpdateInputSerializer(data=request.data, partial=True)
+        blocked_fields = {
+            "role",
+            "work_stream",
+            "work_stream_id",
+            "school",
+            "school_id",
+            "is_active",
+            "is_staff",
+            "is_superuser",
+            "created_by",
+            "groups",
+            "user_permissions",
+        }
+
+        incoming_data = request.data.copy()
+        for field_name in blocked_fields:
+            incoming_data.pop(field_name, None)
+
+        serializer = self.UserProfileSettingsSerializer(data=incoming_data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-
-        # Prevent changing sensitive fields
-        data.pop("role", None)
-        data.pop("work_stream", None)
-        data.pop("school", None)
-        data.pop("is_active", None)
 
         user_update(user=user, data=data)
         return Response(status=status.HTTP_204_NO_CONTENT)

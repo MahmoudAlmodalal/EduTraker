@@ -137,6 +137,11 @@ class PortalLoginView(APIView):
                 'school': user.school_id,
                 'school_id': user.school_id, # Alias for frontend
                 'is_active': user.is_active,
+                'timezone': user.timezone,
+                'email_notifications': user.email_notifications,
+                'in_app_alerts': user.in_app_alerts,
+                'sms_notifications': user.sms_notifications,
+                'enable_2fa': user.enable_2fa,
             }
     
     @extend_schema(

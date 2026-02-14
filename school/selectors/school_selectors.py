@@ -10,9 +10,9 @@ from accounts.policies.user_policies import _has_school_access
 def school_get(*, actor: CustomUser, school_id: int, include_inactive: bool = False) -> School:
     """Retrieve a single School by ID with permission check."""
     if include_inactive:
-        school = School.all_objects.filter(id=school_id).first()
+        school = School.all_objects.select_related("work_stream", "manager").filter(id=school_id).first()
     else:
-        school = School.objects.filter(id=school_id).first()
+        school = School.objects.select_related("work_stream", "manager").filter(id=school_id).first()
 
     if not school:
         raise NotFound("School not found")
@@ -28,9 +28,9 @@ def school_list(*, actor: CustomUser, work_stream_id: Optional[int] = None, incl
     # Use all_objects (including inactive) when explicitly requested for
     # privileged roles that manage schools at workstream/global level.
     if include_inactive and actor.role in (Role.ADMIN, Role.MANAGER_WORKSTREAM,):
-        qs = School.all_objects.all()
+        qs = School.all_objects.select_related("work_stream", "manager")
     else:
-        qs = School.objects.all()
+        qs = School.objects.select_related("work_stream", "manager")
 
     if actor.role == Role.ADMIN:
         if work_stream_id:

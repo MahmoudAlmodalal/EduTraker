@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
@@ -7,6 +9,9 @@ from school.models import School
 from workstream.models import WorkStream
 from student.models import Student
 from teacher.models import Teacher
+
+logger = logging.getLogger(__name__)
+
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -56,9 +61,9 @@ def log_user_login(sender, request, user, **kwargs):
             # Celery/broker not available: write synchronously so login history is not lost.
             _log_user_login_sync(user, ip, user_agent)
         
-    except Exception as e:
+    except Exception:
         # Prevent login failure if task queuing fails
-        print(f"Error queuing login logging task: {e}")
+        logger.exception("Error queuing login logging task")
 
 @receiver(post_save, sender=School)
 def log_school_changes(sender, instance, created, **kwargs):

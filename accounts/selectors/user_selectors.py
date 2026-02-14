@@ -11,7 +11,7 @@ def user_list(*, filters: dict, user: CustomUser) -> QuerySet[CustomUser]:
     """
     Get a filtered list of users based on the actor's role and permissions.
     """
-    qs = CustomUser.all_objects.all()
+    qs = CustomUser.all_objects.select_related("work_stream", "school")
 
     if user.role == Role.MANAGER_WORKSTREAM:
         qs = qs.filter(work_stream=user.work_stream)
@@ -49,7 +49,10 @@ def user_get(*, user_id: int, actor: CustomUser) -> CustomUser:
     """
     Get a single user by ID with permission check.
     """
-    user = get_object_or_404(CustomUser.all_objects, id=user_id)
+    user = get_object_or_404(
+        CustomUser.all_objects.select_related("work_stream", "school"),
+        id=user_id
+    )
 
     if not can_access_user(actor=actor, target=user):
         raise DRFPermissionDenied("Access denied.")
@@ -63,7 +66,7 @@ def user_get_by_email(*, email: str) -> Optional[CustomUser]:
     Returns None if user does not exist.
     """
     try:
-        return CustomUser.objects.get(email=email)
+        return CustomUser.objects.select_related("work_stream", "school").get(email=email)
     except CustomUser.DoesNotExist:
         return None
 
