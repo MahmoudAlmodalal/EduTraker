@@ -148,6 +148,13 @@ def student_update(*, student: Student, actor: CustomUser, data: dict) -> Studen
                     student.user.school = school
                 except School.DoesNotExist:
                     raise ValidationError({"school_id": "School not found."})
+            elif field == 'email':
+                # Check email uniqueness, excluding current user
+                normalized_email = data[field].strip().lower()
+                existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=student.user.id).first()
+                if existing_user:
+                    raise ValidationError({"email": "A user with this email already exists."})
+                setattr(student.user, field, normalized_email)
             else:
                 setattr(student.user, field, data[field])
 
