@@ -376,7 +376,7 @@ class Command(BaseCommand):
                 work_stream=workstream,
                 location=fake.address(),
                 capacity=random.randint(500, 1500),
-                contact_email=f"info@{name_prefix.lower().replace(' ', '')}{school_type.lower()}.edu",
+                contact_email=f"info@{name_prefix.lower().replace(' ', '')}-{school_type.lower()}.edu",
                 contact_phone=fake.phone_number()[:15],
                 academic_year_start=datetime(2025, 9, 1).date(),
                 academic_year_end=datetime(2026, 6, 30).date()
