@@ -88,6 +88,13 @@ def guardian_update(*, guardian: Guardian, actor: CustomUser, data: dict) -> Gua
                         raise ValidationError({"school_id": "School not found."})
                     guardian.user.school = school
                     guardian.user.work_stream_id = school.work_stream_id
+                elif f == "email":
+                    # Check email uniqueness, excluding current user
+                    normalized_email = data[f].strip().lower()
+                    existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=guardian.user.id).first()
+                    if existing_user:
+                        raise ValidationError({"email": "A user with this email already exists."})
+                    setattr(guardian.user, f, normalized_email)
                 else:
                     setattr(guardian.user, f, data[f])
                 user_changed = True
