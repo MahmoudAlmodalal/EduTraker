@@ -61,6 +61,21 @@ class ProfileSettingsApiTests(APITestCase):
         self.assertEqual(self.user.full_name, "Updated Name")
         self.assertEqual(self.user.email, "updated-name@test.com")
 
+    def test_patch_allows_same_email_for_current_user(self):
+        self.client.force_authenticate(user=self.user)
+        current_email = self.user.email
+        payload = {
+            "full_name": "Updated Name",
+            "email": current_email,
+        }
+
+        response = self.client.patch(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.full_name, "Updated Name")
+        self.assertEqual(self.user.email, current_email)
+
     def test_patch_updates_preference_fields(self):
         self.client.force_authenticate(user=self.user)
         payload = {
