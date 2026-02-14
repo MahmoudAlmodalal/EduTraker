@@ -6,35 +6,55 @@ Usage:
     python manage.py seed_data --clear  # Clear existing data before seeding
 
 This script creates:
-- 2 Workstreams
-- 2 Workstream Managers (1 per workstream)
-- 4 Schools (under one selected workstream)
+- 5 Workstreams
+- 5 Workstream Managers (1 per workstream)
+- 8 Schools per workstream (40 total)
 - 12 Grades (1-12) with descriptive names (Primary, Elementary, Middle, High School)
 - For each school:
     - 1 School Manager
-    - 6 Teachers with specializations
-    - 3 Secretaries with department assignments (Administration, Student Records, etc.)
-    - 15 Students distributed across grades
-    - Guardians (~10 per school) linked to students as families
+    - 12 Teachers with specializations
+    - 6 Secretaries with department assignments
+    - 50 Students distributed across grades
+    - Guardians (~30 per school) linked to students as families
     - 6 Courses per grade (Math, Science, English, History, PE, Art)
-    - 6 Classrooms (2 sections per grade)
+    - 12 Classrooms (2 sections per grade across 6 grades)
     - Student enrollments
     - Course allocations (teacher-course-classroom assignments)
+    - Assignments (homework, quizzes, exams per course)
+    - Marks (student scores on assignments)
+    - Learning materials per course
+    - Lesson plans per course
+    - Attendance records (past 4 weeks)
+- Notifications (various types for all users)
+- Messages between users
+- Support tickets
+- Staff evaluations
+- User login history
+- Activity logs
+- System configuration entries
 """
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from faker import Faker
 import random
+import uuid
 from datetime import datetime, timedelta
 
 from workstream.models import WorkStream
 from school.models import School, Grade, AcademicYear, Course, ClassRoom
 from student.models import Student, StudentEnrollment
-from teacher.models import Teacher, CourseAllocation, Attendance
+from teacher.models import Teacher, CourseAllocation, Attendance, Assignment, LearningMaterial, LessonPlan, Mark
 from secretary.models import Secretary
 from guardian.models import Guardian, GuardianStudentLink
+from notifications.models import Notification
+from user_messages.models import Message, MessageReceipt
+from custom_admin.models import SupportTicket
+from manager.models import StaffEvaluation
+from reports.models import UserLoginHistory, ActivityLog
+from accounts.models import SystemConfiguration
 
 User = get_user_model()
 fake = Faker()
@@ -59,21 +79,26 @@ class Command(BaseCommand):
 
         try:
             with transaction.atomic():
-                # Step 1: Create 2 Workstreams
-                workstreams = self.create_workstreams(count=2)
+                # Step 1: Create 5 Workstreams
+                workstreams = self.create_workstreams(count=5)
                 self.stdout.write(self.style.SUCCESS(f'✓ Created {len(workstreams)} workstreams'))
 
-                # Step 2: Create 2 Workstream Managers (1 per workstream)
+                # Step 2: Create 5 Workstream Managers (1 per workstream)
                 workstream_managers = self.create_workstream_managers(workstreams)
                 self.stdout.write(self.style.SUCCESS(f'✓ Created {len(workstream_managers)} workstream managers'))
 
-                # Step 3: Select one workstream manager and create 4 schools
-                selected_manager = workstream_managers[0]
-                selected_workstream = selected_manager.work_stream
-                schools = self.create_schools(selected_workstream, count=4)
-                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(schools)} schools under workstream "{selected_workstream.workstream_name}"'))
+                # Step 3: Create 8 schools per workstream
+                all_schools = []
+                for ws in workstreams:
+                    schools = self.create_schools(ws, count=8)
+                    all_schools.extend(schools)
+                    self.stdout.write(self.style.SUCCESS(f'✓ Created {len(schools)} schools under workstream "{ws.workstream_name}"'))
 
-                # Step 4: For each school, create comprehensive data
+                # Step 4: Create system configuration entries
+                sys_configs = self.create_system_configurations(workstreams, all_schools)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(sys_configs)} system configuration entries'))
+
+                # Step 5: For each school, create comprehensive data
                 total_school_managers = 0
                 total_teachers = 0
                 total_secretaries = 0
@@ -85,8 +110,17 @@ class Command(BaseCommand):
                 total_enrollments = 0
                 total_allocations = 0
                 total_attendance = 0
+                total_assignments = 0
+                total_marks = 0
+                total_learning_materials = 0
+                total_lesson_plans = 0
 
-                for school in schools:
+                all_users = list(User.objects.all())
+                all_teachers_list = []
+                all_students_list = []
+                all_school_manager_users = []
+
+                for school in all_schools:
                     # Create grades for the school if they don't exist
                     grades = self.ensure_grades()
 
@@ -96,34 +130,42 @@ class Command(BaseCommand):
                     # Create 1 School Manager
                     school_manager = self.create_school_manager(school)
                     total_school_managers += 1
+                    all_users.append(school_manager)
+                    all_school_manager_users.append(school_manager)
 
-                    # Create 6 Teachers (more than before)
-                    teachers = self.create_teachers(school, count=6)
+                    # Create 12 Teachers
+                    teachers = self.create_teachers(school, count=12)
                     total_teachers += len(teachers)
+                    all_teachers_list.extend(teachers)
+                    all_users.extend([t.user for t in teachers])
 
-                    # Create 3 Secretaries
-                    secretaries = self.create_secretaries(school, count=3)
+                    # Create 6 Secretaries
+                    secretaries = self.create_secretaries(school, count=6)
                     total_secretaries += len(secretaries)
+                    all_users.extend([s.user for s in secretaries])
 
-                    # Select 3 grades for this school (e.g., grades 7-9 for middle school)
-                    school_grades = grades[6:9]  # Grade 7, 8, 9
+                    # Select 6 grades for this school (grades 4-9)
+                    school_grades = grades[3:9]  # Grades 4, 5, 6, 7, 8, 9
 
                     # Create courses for this school (6 subjects per grade)
                     courses = self.create_courses(school, school_grades)
                     total_courses += len(courses)
 
-                    # Create classrooms (1 classroom per grade)
+                    # Create classrooms (2 sections per grade)
                     classrooms = self.create_classrooms(school, academic_year, school_grades, teachers)
                     total_classrooms += len(classrooms)
 
-                    # Create 15 Students (more realistic)
-                    students = self.create_students(school, school_grades, count=15)
+                    # Create 50 Students
+                    students = self.create_students(school, school_grades, count=50)
                     total_students += len(students)
+                    all_students_list.extend(students)
+                    all_users.extend([s.user for s in students])
 
                     # Create guardians and link them to students
                     guardians, guardian_links = self.create_guardians_for_students(school, students)
                     total_guardians += len(guardians)
                     total_guardian_links += len(guardian_links)
+                    all_users.extend([g.user for g in guardians])
 
                     # Create student enrollments
                     enrollments = self.create_enrollments(students, classrooms, academic_year)
@@ -133,7 +175,23 @@ class Command(BaseCommand):
                     allocations = self.create_course_allocations(courses, classrooms, teachers, academic_year)
                     total_allocations += len(allocations)
 
-                    # Create attendance records for the past 2 weeks
+                    # Create assignments for each course allocation
+                    assignments = self.create_assignments(allocations, teachers)
+                    total_assignments += len(assignments)
+
+                    # Create marks for students on assignments
+                    marks = self.create_marks(assignments, students, teachers)
+                    total_marks += len(marks)
+
+                    # Create learning materials for courses
+                    learning_materials = self.create_learning_materials(courses, classrooms, academic_year, teachers)
+                    total_learning_materials += len(learning_materials)
+
+                    # Create lesson plans for courses
+                    lesson_plans = self.create_lesson_plans(courses, classrooms, academic_year, teachers)
+                    total_lesson_plans += len(lesson_plans)
+
+                    # Create attendance records for the past 4 weeks
                     attendance_records = self.create_attendance_records(students, allocations, teachers)
                     total_attendance += len(attendance_records)
 
@@ -141,9 +199,38 @@ class Command(BaseCommand):
                         self.style.SUCCESS(
                             f'  ✓ School "{school.school_name}": '
                             f'1 manager, {len(teachers)} teachers, {len(secretaries)} secretaries, '
-                            f'{len(students)} students, {len(guardians)} guardians, {len(attendance_records)} attendance records'
+                            f'{len(students)} students, {len(guardians)} guardians, '
+                            f'{len(assignments)} assignments, {len(marks)} marks, '
+                            f'{len(attendance_records)} attendance records'
                         )
                     )
+
+                # Step 6: Create cross-school data
+                self.stdout.write(self.style.SUCCESS('\nCreating cross-school data...'))
+
+                # Notifications
+                notifications = self.create_notifications(all_users)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(notifications)} notifications'))
+
+                # Messages
+                messages, receipts = self.create_messages(all_users)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(messages)} messages with {len(receipts)} receipts'))
+
+                # Support tickets
+                tickets = self.create_support_tickets(all_users)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(tickets)} support tickets'))
+
+                # Staff evaluations
+                evaluations = self.create_staff_evaluations(all_school_manager_users, all_teachers_list)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(evaluations)} staff evaluations'))
+
+                # Login history
+                login_records = self.create_login_history(all_users)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(login_records)} login history records'))
+
+                # Activity logs
+                activity_logs = self.create_activity_logs(all_users)
+                self.stdout.write(self.style.SUCCESS(f'✓ Created {len(activity_logs)} activity logs'))
 
                 # Final summary
                 self.stdout.write(self.style.SUCCESS('\n' + '='*70))
@@ -152,7 +239,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Total created:'))
                 self.stdout.write(self.style.SUCCESS(f'  - Workstreams: {len(workstreams)}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Workstream Managers: {len(workstream_managers)}'))
-                self.stdout.write(self.style.SUCCESS(f'  - Schools: {len(schools)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Schools: {len(all_schools)}'))
                 self.stdout.write(self.style.SUCCESS(f'  - School Managers: {total_school_managers}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Teachers: {total_teachers}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Secretaries: {total_secretaries}'))
@@ -163,7 +250,19 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'  - Classrooms: {total_classrooms}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Student Enrollments: {total_enrollments}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Course Allocations: {total_allocations}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Assignments: {total_assignments}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Marks: {total_marks}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Learning Materials: {total_learning_materials}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Lesson Plans: {total_lesson_plans}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Attendance Records: {total_attendance}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Notifications: {len(notifications)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Messages: {len(messages)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Message Receipts: {len(receipts)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Support Tickets: {len(tickets)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Staff Evaluations: {len(evaluations)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Login History: {len(login_records)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Activity Logs: {len(activity_logs)}'))
+                self.stdout.write(self.style.SUCCESS(f'  - System Configurations: {len(sys_configs)}'))
                 self.stdout.write(self.style.SUCCESS('\nDefault password for all users: Password123!'))
 
         except Exception as e:
@@ -173,6 +272,17 @@ class Command(BaseCommand):
     def clear_seeded_data(self):
         """Clear seeded data (optional, use with --clear flag)"""
         # Clear in order to respect foreign key constraints
+        ActivityLog.objects.all().delete()
+        UserLoginHistory.objects.all().delete()
+        StaffEvaluation.objects.all().delete()
+        SupportTicket.objects.all().delete()
+        MessageReceipt.objects.all().delete()
+        Message.objects.all().delete()
+        Notification.objects.all().delete()
+        Mark.objects.all().delete()
+        LessonPlan.objects.all().delete()
+        LearningMaterial.objects.all().delete()
+        Assignment.objects.all().delete()
         Attendance.objects.all().delete()  # Clear attendance records
         GuardianStudentLink.objects.all().delete()  # Clear guardian-student links first
         Guardian.objects.all().delete()  # Clear guardian profiles
@@ -184,6 +294,7 @@ class Command(BaseCommand):
         ClassRoom.objects.all().delete()
         Course.objects.all().delete()
         AcademicYear.objects.all().delete()
+        SystemConfiguration.objects.all().delete()
 
         # Use all_objects to include soft-deleted records
         User.all_objects.filter(role__in=[
@@ -193,17 +304,20 @@ class Command(BaseCommand):
         WorkStream.all_objects.all().delete()
         self.stdout.write(self.style.SUCCESS('✓ Cleared existing seeded data'))
 
-    def create_workstreams(self, count=2):
+    def create_workstreams(self, count=5):
         """Create workstreams with realistic data"""
         workstreams = []
-        regions = ['North', 'South', 'East', 'West', 'Central']
+        regions = [
+            'North', 'South', 'East', 'West', 'Central',
+            'Northeast', 'Southeast', 'Northwest', 'Southwest', 'Coastal'
+        ]
 
         for i in range(count):
             region = regions[i % len(regions)]
             workstream = WorkStream.objects.create(
                 workstream_name=f"{region} Region Education District",
                 description=fake.paragraph(nb_sentences=3),
-                capacity=random.randint(500, 2000),
+                capacity=random.randint(1000, 5000),
                 location=fake.city()
             )
             workstreams.append(workstream)
@@ -237,14 +351,20 @@ class Command(BaseCommand):
 
         return managers
 
-    def create_schools(self, workstream, count=4):
+    def create_schools(self, workstream, count=8):
         """Create schools under a workstream"""
         schools = []
         school_names = [
             ('Riverside', 'Middle'),
             ('Oak Valley', 'High'),
             ('Sunrise', 'Elementary'),
-            ('Mountain View', 'Secondary')
+            ('Mountain View', 'Secondary'),
+            ('Lakewood', 'Academy'),
+            ('Cedar Park', 'Preparatory'),
+            ('Greenfield', 'International'),
+            ('Westridge', 'Comprehensive'),
+            ('Hillcrest', 'Grammar'),
+            ('Brookside', 'Primary'),
         ]
 
         for i in range(count):
@@ -255,8 +375,8 @@ class Command(BaseCommand):
                 school_name=school_name,
                 work_stream=workstream,
                 location=fake.address(),
-                capacity=random.randint(300, 800),
-                contact_email=f"info@{name_prefix.lower()}{school_type.lower()}.edu",
+                capacity=random.randint(500, 1500),
+                contact_email=f"info@{name_prefix.lower().replace(' ', '')}{school_type.lower()}.edu",
                 contact_phone=fake.phone_number()[:15],
                 academic_year_start=datetime(2025, 9, 1).date(),
                 academic_year_end=datetime(2026, 6, 30).date()
@@ -288,14 +408,15 @@ class Command(BaseCommand):
 
         return manager
 
-    def create_teachers(self, school, count=6):
+    def create_teachers(self, school, count=12):
         """Create teachers for the school"""
         teachers = []
         specializations = [
             'Mathematics', 'Science', 'English', 'History',
-            'Physics', 'Art & Music'
+            'Physics', 'Art & Music', 'Chemistry', 'Biology',
+            'Geography', 'Computer Science', 'Physical Education', 'Foreign Languages'
         ]
-        employment_statuses = ['full_time', 'full_time', 'full_time', 'part_time']
+        employment_statuses = ['full_time', 'full_time', 'full_time', 'part_time', 'contract']
 
         for i in range(count):
             first_name = fake.first_name()
@@ -327,7 +448,7 @@ class Command(BaseCommand):
 
         return teachers
 
-    def create_secretaries(self, school, count=3):
+    def create_secretaries(self, school, count=6):
         """Create secretaries for the school with department assignments"""
         secretaries = []
 
@@ -425,7 +546,7 @@ class Command(BaseCommand):
 
         return classrooms
 
-    def create_students(self, school, grades, count=15):
+    def create_students(self, school, grades, count=50):
         """Create students for the school"""
         students = []
         genders = ['male', 'female']
@@ -659,16 +780,16 @@ class Command(BaseCommand):
 
     def create_attendance_records(self, students, allocations, teachers):
         """
-        Create realistic attendance records for the past 2 weeks.
+        Create realistic attendance records for the past 4 weeks.
         Most students are present (85%), some are absent (8%), late (5%), or excused (2%).
         """
         records = []
         today = datetime.now().date()
 
-        # Generate records for the past 10 weekdays
+        # Generate records for the past 20 weekdays (4 weeks)
         dates = []
         current = today
-        while len(dates) < 10:
+        while len(dates) < 20:
             if current.weekday() < 5:  # Monday to Friday
                 dates.append(current)
             current -= timedelta(days=1)
@@ -741,3 +862,537 @@ class Command(BaseCommand):
                     pass
 
         return records
+
+    def create_assignments(self, allocations, teachers):
+        """Create assignments for each course allocation (homework, quizzes, exams)"""
+        assignments = []
+        assignment_templates = [
+            ('homework', 'Homework', 20.0, 0.10),
+            ('quiz', 'Quiz', 30.0, 0.15),
+            ('assignment', 'Assignment', 50.0, 0.15),
+            ('midterm', 'Midterm Exam', 100.0, 0.25),
+            ('project', 'Project', 80.0, 0.20),
+            ('final', 'Final Exam', 100.0, 0.30),
+            ('participation', 'Class Participation', 10.0, 0.05),
+        ]
+
+        counter = Assignment.objects.count()
+        today = datetime.now().date()
+
+        for allocation in allocations:
+            course_name = allocation.course.name
+            teacher = allocation.teacher
+
+            for atype, label, full_mark, weight in assignment_templates:
+                counter += 1
+                assignment_code = f"ASGN-{counter:05d}"
+
+                assigned_date = fake.date_between(start_date='-60d', end_date='today')
+                due_date = datetime.combine(
+                    assigned_date + timedelta(days=random.randint(3, 21)),
+                    datetime.min.time()
+                )
+
+                try:
+                    assignment = Assignment.objects.create(
+                        assignment_code=assignment_code,
+                        course_allocation=allocation,
+                        created_by=teacher,
+                        title=f"{label} - {course_name}",
+                        description=fake.paragraph(nb_sentences=2),
+                        assignment_type=atype,
+                        full_mark=full_mark,
+                        weight=weight,
+                        assigned_date=assigned_date,
+                        due_date=due_date,
+                        is_published=random.choice([True, True, True, False]),
+                    )
+                    assignments.append(assignment)
+                except Exception:
+                    pass
+
+        return assignments
+
+    def create_marks(self, assignments, students, teachers):
+        """Create marks for students on assignments"""
+        marks = []
+
+        for assignment in assignments:
+            # Find students in the same grade as the assignment's classroom
+            grade_id = assignment.course_allocation.class_room.grade_id
+            grade_students = [s for s in students if s.grade_id == grade_id]
+
+            if not grade_students:
+                continue
+
+            teacher = assignment.created_by
+            full_mark = float(assignment.full_mark)
+
+            for student in grade_students:
+                # 80% chance of having a mark (some haven't submitted)
+                if random.random() < 0.2:
+                    continue
+
+                score = round(random.uniform(full_mark * 0.3, full_mark), 2)
+                percentage = round((score / full_mark) * 100, 2) if full_mark > 0 else 0
+
+                # Determine letter grade
+                if percentage >= 90:
+                    letter = 'A'
+                elif percentage >= 80:
+                    letter = 'B'
+                elif percentage >= 70:
+                    letter = 'C'
+                elif percentage >= 60:
+                    letter = 'D'
+                else:
+                    letter = 'F'
+
+                feedback_options = [
+                    'Good work!', 'Excellent effort.', 'Needs improvement.',
+                    'Well done.', 'Keep it up!', 'Please review the material.',
+                    'Great understanding shown.', 'Satisfactory.',
+                    None, None, None,
+                ]
+
+                try:
+                    mark = Mark.objects.create(
+                        student=student,
+                        assignment=assignment,
+                        score=score,
+                        max_score=full_mark,
+                        percentage=percentage,
+                        letter_grade=letter,
+                        feedback=random.choice(feedback_options),
+                        graded_by=teacher,
+                        graded_at=timezone.now() - timedelta(days=random.randint(0, 14)),
+                        is_final=random.choice([True, False]),
+                    )
+                    marks.append(mark)
+                except Exception:
+                    pass
+
+        return marks
+
+    def create_learning_materials(self, courses, classrooms, academic_year, teachers):
+        """Create learning materials for courses"""
+        materials = []
+        material_types = [
+            ('pdf', 'PDF Document'),
+            ('pptx', 'PowerPoint Presentation'),
+            ('docx', 'Word Document'),
+            ('mp4', 'Video Lecture'),
+            ('xlsx', 'Spreadsheet'),
+        ]
+
+        counter = LearningMaterial.objects.count()
+
+        for course in courses:
+            matching_classrooms = [c for c in classrooms if c.grade_id == course.grade_id]
+            if not matching_classrooms:
+                continue
+
+            classroom = matching_classrooms[0]
+            teacher = random.choice(teachers)
+
+            # 2-4 materials per course
+            num_materials = random.randint(2, 4)
+            for j in range(num_materials):
+                counter += 1
+                file_type, type_desc = random.choice(material_types)
+
+                try:
+                    material = LearningMaterial.objects.create(
+                        material_code=f"MAT-{counter:05d}",
+                        course=course,
+                        classroom=classroom,
+                        academic_year=academic_year,
+                        uploaded_by=teacher.user,
+                        title=f"{course.name} - {type_desc} {j + 1}",
+                        description=fake.sentence(),
+                        file_url=f"https://storage.edutracker.com/materials/{counter}.{file_type}",
+                        file_type=file_type,
+                        file_size=random.randint(50000, 50000000),
+                    )
+                    materials.append(material)
+                except Exception:
+                    pass
+
+        return materials
+
+    def create_lesson_plans(self, courses, classrooms, academic_year, teachers):
+        """Create lesson plans for courses"""
+        plans = []
+        today = datetime.now().date()
+
+        for course in courses:
+            matching_classrooms = [c for c in classrooms if c.grade_id == course.grade_id]
+            if not matching_classrooms:
+                continue
+
+            classroom = matching_classrooms[0]
+            teacher = random.choice(teachers)
+
+            # 3-5 lesson plans per course
+            num_plans = random.randint(3, 5)
+            for j in range(num_plans):
+                plan_date = today + timedelta(days=random.randint(-30, 30))
+
+                try:
+                    plan = LessonPlan.objects.create(
+                        course=course,
+                        classroom=classroom,
+                        academic_year=academic_year,
+                        teacher=teacher,
+                        title=f"Week {j + 1} - {course.name}",
+                        content=fake.paragraph(nb_sentences=5),
+                        objectives=fake.paragraph(nb_sentences=3),
+                        resources_needed=', '.join(fake.words(nb=4)),
+                        date_planned=plan_date,
+                        is_published=random.choice([True, True, False]),
+                    )
+                    plans.append(plan)
+                except Exception:
+                    pass
+
+        return plans
+
+    def create_notifications(self, all_users):
+        """Create notifications for users"""
+        notifications = []
+        notification_types = [
+            'grade_posted', 'assignment_due', 'attendance_marked',
+            'announcement', 'message_received', 'account_change', 'system'
+        ]
+
+        notification_templates = {
+            'grade_posted': ('New Grade Posted', 'Your grade for {subject} has been posted.'),
+            'assignment_due': ('Assignment Due Soon', 'Reminder: {subject} assignment is due tomorrow.'),
+            'attendance_marked': ('Attendance Recorded', 'Your attendance for today has been marked as {status}.'),
+            'announcement': ('School Announcement', '{announcement}'),
+            'message_received': ('New Message', 'You have received a new message from {sender}.'),
+            'account_change': ('Account Updated', 'Your account settings have been updated.'),
+            'system': ('System Notification', 'System maintenance scheduled for this weekend.'),
+        }
+
+        # Create 500 notifications across users
+        sample_users = random.choices(all_users, k=min(500, len(all_users) * 3))
+
+        for recipient in sample_users:
+            ntype = random.choice(notification_types)
+            title, message_template = notification_templates[ntype]
+
+            message = message_template.format(
+                subject=random.choice(['Mathematics', 'Science', 'English', 'History']),
+                status=random.choice(['present', 'absent', 'late']),
+                announcement=fake.sentence(),
+                sender=fake.name(),
+            )
+
+            sender = random.choice(all_users) if random.random() > 0.2 else None
+
+            try:
+                notification = Notification.objects.create(
+                    sender=sender,
+                    recipient=recipient,
+                    title=title,
+                    message=message,
+                    notification_type=ntype,
+                    is_read=random.choice([True, False, False]),
+                    read_at=timezone.now() - timedelta(hours=random.randint(0, 168)) if random.random() > 0.5 else None,
+                )
+                notifications.append(notification)
+            except Exception:
+                pass
+
+        return notifications
+
+    def create_messages(self, all_users):
+        """Create messages between users"""
+        messages = []
+        receipts = []
+
+        # Create 200 message threads
+        for _ in range(200):
+            sender = random.choice(all_users)
+            num_recipients = random.randint(1, 5)
+            recipient_list = random.sample(
+                [u for u in all_users if u != sender],
+                min(num_recipients, len(all_users) - 1)
+            )
+
+            if not recipient_list:
+                continue
+
+            thread_id = uuid.uuid4()
+            subject = random.choice([
+                'Meeting Tomorrow',
+                'Grade Report Update',
+                'Upcoming Event',
+                'Question about Assignment',
+                'Parent-Teacher Conference',
+                'Schedule Change',
+                'Field Trip Permission',
+                'Academic Progress',
+                'Attendance Notice',
+                'Important Announcement',
+            ])
+
+            try:
+                message = Message.objects.create(
+                    sender=sender,
+                    subject=subject,
+                    body=fake.paragraph(nb_sentences=random.randint(2, 6)),
+                    thread_id=thread_id,
+                    is_draft=False,
+                )
+                messages.append(message)
+
+                for recipient in recipient_list:
+                    receipt = MessageReceipt.objects.create(
+                        message=message,
+                        recipient=recipient,
+                        is_read=random.choice([True, False]),
+                        read_at=timezone.now() - timedelta(hours=random.randint(0, 72)) if random.random() > 0.4 else None,
+                    )
+                    receipts.append(receipt)
+
+                # 40% chance of a reply in the thread
+                if random.random() < 0.4 and recipient_list:
+                    reply_sender = random.choice(recipient_list)
+                    reply = Message.objects.create(
+                        sender=reply_sender,
+                        subject=f"Re: {subject}",
+                        body=fake.paragraph(nb_sentences=random.randint(1, 4)),
+                        parent_message=message,
+                        thread_id=thread_id,
+                        is_draft=False,
+                    )
+                    messages.append(reply)
+
+                    reply_receipt = MessageReceipt.objects.create(
+                        message=reply,
+                        recipient=sender,
+                        is_read=random.choice([True, False]),
+                    )
+                    receipts.append(reply_receipt)
+
+            except Exception:
+                pass
+
+        return messages, receipts
+
+    def create_support_tickets(self, all_users):
+        """Create support tickets from various users"""
+        tickets = []
+        ticket_subjects = [
+            'Cannot access my account',
+            'Grade not showing correctly',
+            'Need password reset',
+            'Attendance record is wrong',
+            'Cannot download materials',
+            'System is slow',
+            'Profile information needs update',
+            'Missing course enrollment',
+            'Schedule conflict',
+            'Technical issue with dashboard',
+            'Request for new feature',
+            'Data export not working',
+            'Permission access issue',
+            'Report generation error',
+            'Mobile app not syncing',
+        ]
+
+        # Create 100 support tickets
+        for i in range(100):
+            user = random.choice(all_users)
+            subject = random.choice(ticket_subjects)
+
+            try:
+                ticket = SupportTicket.objects.create(
+                    subject=subject,
+                    description=fake.paragraph(nb_sentences=3),
+                    priority=random.choices(
+                        ['low', 'medium', 'high'],
+                        weights=[30, 50, 20]
+                    )[0],
+                    status=random.choices(
+                        ['open', 'in_progress', 'closed'],
+                        weights=[40, 30, 30]
+                    )[0],
+                    created_by=user,
+                    assigned_to=random.choice(all_users) if random.random() > 0.3 else None,
+                )
+                tickets.append(ticket)
+            except Exception:
+                pass
+
+        return tickets
+
+    def create_staff_evaluations(self, manager_users, teachers):
+        """Create staff evaluations by managers for teachers"""
+        evaluations = []
+
+        if not manager_users or not teachers:
+            return evaluations
+
+        # Each manager evaluates several teachers
+        for manager in manager_users:
+            # Evaluate 3-6 random teachers
+            num_evaluations = min(random.randint(3, 6), len(teachers))
+            evaluated_teachers = random.sample(teachers, num_evaluations)
+
+            for teacher in evaluated_teachers:
+                try:
+                    evaluation = StaffEvaluation.objects.create(
+                        reviewer=manager,
+                        reviewee=teacher.user,
+                        evaluation_date=fake.date_between(start_date='-6m', end_date='today'),
+                        rating_score=random.randint(1, 10),
+                        comments=random.choice([
+                            'Excellent teaching methods and classroom management.',
+                            'Good performance overall. Shows dedication to students.',
+                            'Meets expectations. Could improve in student engagement.',
+                            'Outstanding contribution to the school community.',
+                            'Satisfactory performance. Recommended for professional development.',
+                            'Very effective in curriculum delivery.',
+                            'Strong communication skills with parents and staff.',
+                            None,
+                        ]),
+                    )
+                    evaluations.append(evaluation)
+                except Exception:
+                    pass
+
+        return evaluations
+
+    def create_login_history(self, all_users):
+        """Create login history records for users"""
+        records = []
+
+        # Create 1000 login records across users
+        for _ in range(1000):
+            user = random.choice(all_users)
+
+            try:
+                record = UserLoginHistory.objects.create(
+                    user=user,
+                    ip_address=fake.ipv4(),
+                    user_agent=random.choice([
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
+                        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+                        'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)',
+                        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36',
+                    ]),
+                )
+                records.append(record)
+            except Exception:
+                pass
+
+        return records
+
+    def create_activity_logs(self, all_users):
+        """Create activity log entries"""
+        logs = []
+        action_types = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'EXPORT']
+        entity_types = [
+            'Student', 'Teacher', 'Course', 'ClassRoom', 'Assignment',
+            'Mark', 'Attendance', 'Enrollment', 'School', 'User'
+        ]
+
+        descriptions = {
+            'CREATE': 'Created a new {entity}',
+            'UPDATE': 'Updated {entity} record',
+            'DELETE': 'Deleted {entity} record',
+            'LOGIN': 'User logged in to the system',
+            'LOGOUT': 'User logged out of the system',
+            'EXPORT': 'Exported {entity} data to CSV',
+        }
+
+        # Create 1500 activity logs
+        for _ in range(1500):
+            user = random.choice(all_users)
+            action = random.choice(action_types)
+            entity = random.choice(entity_types)
+
+            try:
+                log = ActivityLog.objects.create(
+                    actor=user,
+                    action_type=action,
+                    entity_type=entity,
+                    entity_id=str(random.randint(1, 5000)),
+                    description=descriptions.get(action, 'Performed action on {entity}').format(entity=entity),
+                    ip_address=fake.ipv4(),
+                )
+                logs.append(log)
+            except Exception:
+                pass
+
+        return logs
+
+    def create_system_configurations(self, workstreams, schools):
+        """Create system configuration entries"""
+        configs = []
+
+        # Global configurations
+        global_configs = {
+            'max_students_per_class': '35',
+            'grading_scale': 'A,B,C,D,F',
+            'academic_year_format': 'YYYY/YYYY',
+            'default_language': 'en',
+            'attendance_threshold': '75',
+            'max_absence_before_alert': '5',
+            'enable_sms_notifications': 'true',
+            'report_generation_format': 'pdf',
+            'session_timeout_minutes': '30',
+            'password_min_length': '8',
+        }
+
+        for key, value in global_configs.items():
+            try:
+                config = SystemConfiguration.objects.create(
+                    config_key=key,
+                    config_value=value,
+                )
+                configs.append(config)
+            except Exception:
+                pass
+
+        # Per-workstream configurations
+        for ws in workstreams:
+            ws_configs = {
+                'timezone': random.choice(['UTC', 'US/Eastern', 'US/Central', 'US/Pacific', 'Europe/London']),
+                'currency': random.choice(['USD', 'EUR', 'GBP']),
+                'school_week_days': '5',
+            }
+            for key, value in ws_configs.items():
+                try:
+                    config = SystemConfiguration.objects.create(
+                        work_stream=ws,
+                        config_key=key,
+                        config_value=value,
+                    )
+                    configs.append(config)
+                except Exception:
+                    pass
+
+        # Per-school configurations
+        for school in schools:
+            school_configs = {
+                'bell_schedule': '08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00',
+                'max_class_size': str(random.randint(25, 40)),
+            }
+            for key, value in school_configs.items():
+                try:
+                    config = SystemConfiguration.objects.create(
+                        school=school,
+                        config_key=key,
+                        config_value=value,
+                    )
+                    configs.append(config)
+                except Exception:
+                    pass
+
+        return configs
