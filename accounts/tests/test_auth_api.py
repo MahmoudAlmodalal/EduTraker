@@ -246,3 +246,76 @@ class TokenRefreshApiTests(APITestCase):
         response = self.client.post(self.url, {'refresh': str(refresh)})
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class EmailCaseInsensitivityTests(APITestCase):
+    """Test that email addresses are case-insensitive."""
+    
+    def setUp(self):
+        """Create a test user with lowercase email."""
+        self.user = User.objects.create_user(
+            email='testuser@example.com',
+            password='testpass123',
+            full_name='Test User',
+            role='admin'
+        )
+        self.portal_login_url = reverse('portal-login')
+    
+    def test_login_with_uppercase_email(self):
+        """User should be able to login with uppercase email."""
+        response = self.client.post(self.portal_login_url, {
+            'email': 'TESTUSER@EXAMPLE.COM',
+            'password': 'testpass123'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+    
+    def test_login_with_mixed_case_email(self):
+        """User should be able to login with mixed case email."""
+        response = self.client.post(self.portal_login_url, {
+            'email': 'TestUser@Example.Com',
+            'password': 'testpass123'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+    
+    def test_login_with_lowercase_email(self):
+        """User should be able to login with original lowercase email."""
+        response = self.client.post(self.portal_login_url, {
+            'email': 'testuser@example.com',
+            'password': 'testpass123'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+    
+    def test_password_reset_request_with_uppercase_email(self):
+        """Password reset should work with uppercase email."""
+        url = reverse('password-reset-request')
+        response = self.client.post(url, {
+            'email': 'TESTUSER@EXAMPLE.COM'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        # Should return uid and token for existing user
+        self.assertIn('uid', response.data)
+        self.assertIn('token', response.data)
+    
+    def test_password_reset_request_with_mixed_case_email(self):
+        """Password reset should work with mixed case email."""
+        url = reverse('password-reset-request')
+        response = self.client.post(url, {
+            'email': 'TestUser@Example.Com'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        # Should return uid and token for existing user
+        self.assertIn('uid', response.data)
+        self.assertIn('token', response.data)

@@ -289,3 +289,43 @@ class WorkstreamCapacityTests(APITestCase):
         response = self.client.post(url, data)
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class WorkstreamEmailCaseInsensitivityTests(APITestCase):
+    """Test that email addresses are case-insensitive for workstream auth."""
+    
+    def setUp(self):
+        """Create test workstream and user."""
+        self.workstream = WorkStream.objects.create(
+            workstream_name="Test WS", capacity=10
+        )
+        self.user = User.objects.create_user(
+            email='wsuser@example.com',
+            password='testpass123',
+            full_name='WS User',
+            role='student',
+            work_stream=self.workstream
+        )
+        self.login_url = reverse('workstream-login', kwargs={'workstream_id': self.workstream.id})
+    
+    def test_workstream_login_with_uppercase_email(self):
+        """User should be able to login to workstream with uppercase email."""
+        response = self.client.post(self.login_url, {
+            'email': 'WSUSER@EXAMPLE.COM',
+            'password': 'testpass123'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('tokens', response.data)
+        self.assertIn('access', response.data['tokens'])
+    
+    def test_workstream_login_with_mixed_case_email(self):
+        """User should be able to login to workstream with mixed case email."""
+        response = self.client.post(self.login_url, {
+            'email': 'WsUser@Example.Com',
+            'password': 'testpass123'
+        })
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('tokens', response.data)
+        self.assertIn('access', response.data['tokens'])

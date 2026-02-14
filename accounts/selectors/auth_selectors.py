@@ -16,10 +16,6 @@ def authenticate_user(*, email: str, password: str) -> Optional[CustomUser]:
     if user is None:
         raise ValidationError("Invalid email or password.")
 
-    # Enforce strict case-sensitive email matching.
-    if user.email != normalized_email:
-        raise ValidationError("Invalid email or password.")
-
     if not user.is_active:
         raise ValidationError("This account has been deactivated.")
 
