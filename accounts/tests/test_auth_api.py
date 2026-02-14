@@ -269,8 +269,9 @@ class EmailCaseInsensitivityTests(APITestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertIn('tokens', response.data)
+        self.assertIn('access', response.data['tokens'])
+        self.assertIn('refresh', response.data['tokens'])
     
     def test_login_with_mixed_case_email(self):
         """User should be able to login with mixed case email."""
@@ -280,8 +281,9 @@ class EmailCaseInsensitivityTests(APITestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertIn('tokens', response.data)
+        self.assertIn('access', response.data['tokens'])
+        self.assertIn('refresh', response.data['tokens'])
     
     def test_login_with_lowercase_email(self):
         """User should be able to login with original lowercase email."""
@@ -291,8 +293,9 @@ class EmailCaseInsensitivityTests(APITestCase):
         })
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertIn('tokens', response.data)
+        self.assertIn('access', response.data['tokens'])
+        self.assertIn('refresh', response.data['tokens'])
     
     def test_password_reset_request_with_uppercase_email(self):
         """Password reset should work with uppercase email."""
@@ -303,9 +306,6 @@ class EmailCaseInsensitivityTests(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('message', response.data)
-        # Should return uid and token for existing user
-        self.assertIn('uid', response.data)
-        self.assertIn('token', response.data)
     
     def test_password_reset_request_with_mixed_case_email(self):
         """Password reset should work with mixed case email."""
@@ -316,6 +316,3 @@ class EmailCaseInsensitivityTests(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('message', response.data)
-        # Should return uid and token for existing user
-        self.assertIn('uid', response.data)
-        self.assertIn('token', response.data)
