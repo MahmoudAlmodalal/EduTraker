@@ -9,39 +9,50 @@
                                       │
                                       ▼
         ┌─────────────────────────────────────────────────────────┐
-        │              2 WORKSTREAMS (Regions)                     │
+        │              5 WORKSTREAMS (Regions)                     │
         │  • North/South/East/West/Central Region Education District│
-        │  • Capacity: 500-2000 students                           │
+        │  • Capacity: 1000-5000 students                          │
         │  • Location: Random city                                 │
         └─────────────────────────────────────────────────────────┘
-                    │                           │
-                    ▼                           ▼
-        ┌──────────────────────┐    ┌──────────────────────┐
-        │ WORKSTREAM MANAGER 1 │    │ WORKSTREAM MANAGER 2 │
-        │ firstname.lastname   │    │ firstname.lastname   │
-        │    .ws@edutracker    │    │    .ws@edutracker    │
-        └──────────────────────┘    └──────────────────────┘
-                    │
-                    ▼
+              │         │         │         │         │
+              ▼         ▼         ▼         ▼         ▼
+        ┌──────────────────────────────────────────────────┐
+        │         5 WORKSTREAM MANAGERS (1 per WS)          │
+        │  firstname.lastname.ws@edutracker.com             │
+        └──────────────────────────────────────────────────┘
+              │
+              ▼
         ┌─────────────────────────────────────────────────┐
-        │        4 SCHOOLS (Selected Workstream)          │
-        │  • Springfield Elementary School                │
-        │  • Riverside Middle School                      │
-        │  • Lakeview High School                         │
-        │  • Oakwood Primary School                       │
+        │     8 SCHOOLS PER WORKSTREAM (40 total)          │
+        │  • Riverside Middle School                       │
+        │  • Oak Valley High School                        │
+        │  • Sunrise Elementary School                     │
+        │  • Mountain View Secondary School                │
+        │  • Lakewood Academy School                       │
+        │  • Cedar Park Preparatory School                 │
+        │  • Greenfield International School               │
+        │  • Westridge Comprehensive School                │
         └─────────────────────────────────────────────────┘
                     │
                     ▼
-    ┌───────────────┴───────────────┬───────────────┬───────────────┐
-    ▼                               ▼               ▼               ▼
-┌─────────┐                   ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ SCHOOL 1│                   │ SCHOOL 2│     │ SCHOOL 3│     │ SCHOOL 4│
-└─────────┘                   └─────────┘     └─────────┘     └─────────┘
-    │                               │               │               │
-    ├─ 1 School Manager              ├─ 1 School Manager
-    ├─ 3 Teachers                    ├─ 3 Teachers
-    ├─ 3 Secretaries                 ├─ 3 Secretaries
-    └─ 5 Students                    └─ 5 Students
+    ┌───────────────┴───────────────┬────────────────┐
+    ▼                               ▼                ▼
+┌──────────┐                  ┌──────────┐     ┌──────────┐
+│ SCHOOL 1 │                  │ SCHOOL 2 │ ... │ SCHOOL 40│
+└──────────┘                  └──────────┘     └──────────┘
+    │                               │
+    ├─ 1 School Manager             ├─ 1 School Manager
+    ├─ 12 Teachers                  ├─ 12 Teachers
+    ├─ 6 Secretaries                ├─ 6 Secretaries
+    ├─ 50 Students                  ├─ 50 Students
+    ├─ ~30 Guardians                ├─ ~30 Guardians
+    ├─ 36 Courses                   ├─ 36 Courses
+    ├─ 12 Classrooms                ├─ 12 Classrooms
+    ├─ Assignments (7 per alloc.)   ├─ Assignments
+    ├─ Marks (per student/assign.)  ├─ Marks
+    ├─ Learning Materials           ├─ Learning Materials
+    ├─ Lesson Plans                 ├─ Lesson Plans
+    └─ Attendance (4 weeks)         └─ Attendance
 ```
 
 ## Detailed Entity Breakdown
@@ -50,15 +61,16 @@
 
 ```yaml
 WorkStream:
-  count: 2
+  count: 5
   attributes:
     - workstream_name: "{Region} Region Education District"
     - description: "Realistic 3-sentence description"
-    - capacity: 500-2000 (random)
+    - capacity: 1000-5000 (random)
     - location: "Random city name"
     - manager: Link to Workstream Manager
   examples:
     - "North Region Education District"
+    - "South Region Education District"
     - "Central Region Education District"
 ```
 
@@ -66,7 +78,7 @@ WorkStream:
 
 ```yaml
 WorkstreamManager:
-  count: 2 (1 per workstream)
+  count: 5 (1 per workstream)
   attributes:
     - email: "{firstname}.{lastname}.ws@edutracker.com"
     - password: "Password123!"
@@ -82,13 +94,13 @@ WorkstreamManager:
 
 ```yaml
 School:
-  count: 4 (under selected workstream)
+  count: 40 (8 per workstream)
   attributes:
     - school_name: "{City} {Type} School"
     - work_stream: Link to parent Workstream
     - manager: Link to School Manager
     - location: "Full street address"
-    - capacity: 200-1000 (random)
+    - capacity: 500-1500 (random)
     - contact_email: "info@{schoolname}.edu"
     - contact_phone: "Realistic phone number"
     - academic_year_start: "2025-09-01"
@@ -105,7 +117,7 @@ School:
 
 ```yaml
 SchoolManager:
-  count: 4 (1 per school)
+  count: 40 (1 per school)
   attributes:
     - email: "{firstname}.{lastname}.sm@edutracker.com"
     - password: "Password123!"
@@ -122,9 +134,9 @@ SchoolManager:
 
 ```yaml
 Teacher:
-  count: 12 (3 per school)
+  count: 480 (12 per school)
   user_attributes:
-    - email: "{firstname}.{lastname}.t@edutracker.com"
+    - email: "{firstname}.{lastname}.t{N}@edutracker.com"
     - password: "Password123!"
     - full_name: "{First} {Last}"
     - role: "teacher"
@@ -143,7 +155,7 @@ Teacher:
 
 ```yaml
 Secretary:
-  count: 12 (3 per school)
+  count: 240 (6 per school)
   attributes:
     - email: "{firstname}.{lastname}.sec@edutracker.com"
     - password: "Password123!"
@@ -160,7 +172,7 @@ Secretary:
 
 ```yaml
 Student:
-  count: 20 (5 per school)
+  count: 2000 (50 per school)
   user_attributes:
     - email: "{firstname}.{lastname}.st{XXXX}@edutracker.com"
     - password: "Password123!"
@@ -204,48 +216,103 @@ Student:
 ┌──────────────────┐         ┌──────────────────┐
 │  School Manager  │         │    Teachers      │
 │   (Level 4a)     │         │   (Level 4b)     │
-└──────────────────┘         └──────────────────┘
-                                     │
-                             ┌───────┴────────┐
-                             ▼                ▼
-                     ┌──────────────┐  ┌──────────────┐
-                     │ Secretaries  │  │   Students   │
-                     │ (Level 4c)   │  │  (Level 4d)  │
-                     └──────────────┘  └──────────────┘
+└──────────────────┘         └──────┬───────────┘
+                                    │
+                      ┌─────────────┼─────────────┐
+                      ▼             ▼             ▼
+              ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+              │ Secretaries  │ │   Students   │ │   Courses    │
+              │ (Level 4c)   │ │  (Level 4d)  │ │ (Level 4e)   │
+              └──────────────┘ └──────┬───────┘ └──────┬───────┘
+                                      │                │
+                               ┌──────┤          ┌─────┤
+                               ▼      ▼          ▼     ▼
+                        ┌──────────┐ ┌──────┐ ┌──────────────┐
+                        │Guardians │ │Marks │ │ Assignments  │
+                        │(Level 5) │ │      │ │LessonPlans   │
+                        └──────────┘ └──────┘ │Materials     │
+                                              └──────────────┘
+
+Cross-cutting entities:
+  ├─ Notifications    (sender → recipient)
+  ├─ Messages         (sender → recipients via receipts)
+  ├─ Support Tickets  (created_by → assigned_to)
+  ├─ Staff Evaluations(reviewer → reviewee)
+  ├─ Login History    (user → login records)
+  ├─ Activity Logs    (actor → actions)
+  └─ System Config    (global / workstream / school level)
 ```
 
 ## Data Flow
 
 ```
-1. CREATE WORKSTREAMS (2)
+1. CREATE WORKSTREAMS (5)
    └─> Generate regions, capacities, locations
 
-2. CREATE WORKSTREAM MANAGERS (2)
+2. CREATE WORKSTREAM MANAGERS (5)
    └─> Link 1 manager to each workstream
    └─> Update workstream.manager field
 
-3. SELECT ONE WORKSTREAM
-   └─> Create 4 schools under this workstream
+3. CREATE SYSTEM CONFIGURATIONS
+   └─> Global, per-workstream, per-school settings
 
-4. FOR EACH SCHOOL (4):
+4. FOR EACH WORKSTREAM (5):
+   └─> Create 8 schools under this workstream
+
+5. FOR EACH SCHOOL (40):
    ├─> CREATE SCHOOL MANAGER (1)
    │   └─> Link to school
    │   └─> Update school.manager field
    │
-   ├─> CREATE TEACHERS (3)
+   ├─> CREATE TEACHERS (12)
    │   └─> Create CustomUser with role='teacher'
    │   └─> Create Teacher profile (specialization, hire date, etc.)
    │
-   ├─> CREATE SECRETARIES (3)
+   ├─> CREATE SECRETARIES (6)
    │   └─> Create CustomUser with role='secretary'
+   │   └─> Create Secretary profile (department, office, etc.)
    │
-   └─> CREATE STUDENTS (5)
-       └─> Create CustomUser with role='student'
-       └─> Create Student profile (student_id, GPA, grade, etc.)
+   ├─> CREATE COURSES (36: 6 subjects × 6 grades)
+   │   └─> Math, Science, English, History, PE, Art
+   │
+   ├─> CREATE CLASSROOMS (12: 2 sections × 6 grades)
+   │   └─> Assign homeroom teachers
+   │
+   ├─> CREATE STUDENTS (50)
+   │   └─> Create CustomUser with role='student'
+   │   └─> Create Student profile (student_id, GPA, grade, etc.)
+   │
+   ├─> CREATE GUARDIANS (~30)
+   │   └─> Link to students as families (1-3 students per family)
+   │
+   ├─> CREATE ENROLLMENTS
+   │   └─> Enroll students in matching classrooms
+   │
+   ├─> CREATE COURSE ALLOCATIONS
+   │   └─> Assign teachers to courses in classrooms
+   │
+   ├─> CREATE ASSIGNMENTS (7 types per allocation)
+   │   └─> Homework, Quiz, Midterm, Final, Project, etc.
+   │
+   ├─> CREATE MARKS
+   │   └─> Student scores on assignments with grades
+   │
+   ├─> CREATE LEARNING MATERIALS (2-4 per course)
+   │   └─> PDF, PPT, DOCX, video resources
+   │
+   ├─> CREATE LESSON PLANS (3-5 per course)
+   │   └─> Weekly lesson plans with objectives
+   │
+   └─> CREATE ATTENDANCE (past 4 weeks)
+       └─> Daily records for 20 weekdays
 
-5. CREATE SUPPORTING DATA
-   ├─> Grades 1-12 (global, shared)
-   └─> Academic Year 2025-2026 per school
+6. CREATE CROSS-SCHOOL DATA
+   ├─> Notifications (500) - various types
+   ├─> Messages (200+) - with threaded replies
+   ├─> Support Tickets (100) - from various users
+   ├─> Staff Evaluations - manager reviews of teachers
+   ├─> Login History (1000) - login records
+   └─> Activity Logs (1500) - audit trail
 ```
 
 ## Foreign Key Relationships
@@ -269,8 +336,75 @@ Student (OneToOne)
   ├─> user (FK → CustomUser, required)
   └─> grade (FK → Grade, required)
 
+Guardian (OneToOne)
+  └─> user (FK → CustomUser, required)
+
+GuardianStudentLink
+  ├─> guardian (FK → Guardian, required)
+  └─> student (FK → Student, required)
+
 AcademicYear
   └─> school (FK → School, required)
+
+Course
+  ├─> school (FK → School, required)
+  └─> grade (FK → Grade, required)
+
+ClassRoom
+  ├─> school (FK → School, required)
+  ├─> academic_year (FK → AcademicYear, required)
+  ├─> grade (FK → Grade, required)
+  └─> homeroom_teacher (FK → Teacher, nullable)
+
+Assignment
+  ├─> course_allocation (FK → CourseAllocation, nullable)
+  └─> created_by (FK → Teacher, required)
+
+Mark
+  ├─> student (FK → Student, required)
+  ├─> assignment (FK → Assignment, required)
+  └─> graded_by (FK → Teacher, nullable)
+
+LearningMaterial
+  ├─> course (FK → Course, required)
+  ├─> classroom (FK → ClassRoom, required)
+  ├─> academic_year (FK → AcademicYear, required)
+  └─> uploaded_by (FK → CustomUser, required)
+
+LessonPlan
+  ├─> course (FK → Course, required)
+  ├─> classroom (FK → ClassRoom, required)
+  ├─> academic_year (FK → AcademicYear, required)
+  └─> teacher (FK → Teacher, required)
+
+Notification
+  ├─> sender (FK → CustomUser, nullable)
+  └─> recipient (FK → CustomUser, nullable)
+
+Message
+  ├─> sender (FK → CustomUser, required)
+  └─> parent_message (FK → self, nullable)
+
+MessageReceipt
+  ├─> message (FK → Message, required)
+  └─> recipient (FK → CustomUser, required)
+
+SupportTicket
+  ├─> created_by (FK → CustomUser, required)
+  └─> assigned_to (FK → CustomUser, nullable)
+
+StaffEvaluation
+  ├─> reviewer (FK → CustomUser, required)
+  └─> reviewee (FK → CustomUser, required)
+
+Attendance
+  ├─> student (FK → Student, required)
+  ├─> course_allocation (FK → CourseAllocation, nullable)
+  └─> recorded_by (FK → Teacher, nullable)
+
+SystemConfiguration
+  ├─> work_stream (FK → WorkStream, nullable)
+  └─> school (FK → School, nullable)
 ```
 
 ## Data Validation Rules
@@ -285,8 +419,8 @@ AcademicYear
 - Meets typical requirements (length, special char, number)
 
 ### Capacities
-- Workstream capacity: 500-2000
-- School capacity: 200-1000
+- Workstream capacity: 1000-5000
+- School capacity: 500-1500
 - Must be >= 1 (validated at model level)
 
 ### Dates
@@ -332,6 +466,6 @@ with transaction.atomic():
 ---
 
 **Generated by:** seed_data.py management command
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-14
 **Django Version:** 5.2.8
 **Faker Version:** 33.1.0
