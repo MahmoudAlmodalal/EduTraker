@@ -8,7 +8,8 @@ from reports.views.stats_views import (
     ClassroomStudentCountView,
     ComprehensiveStatisticsView,
     DashboardStatisticsView,
-    SchoolPerformanceView
+    SchoolPerformanceView,
+    EnrollmentTrendsView
 )
 from reports.views.export_views import ReportExportView
 from reports.views.activity_log_views import ActivityLogListView
@@ -19,6 +20,7 @@ urlpatterns = [
     
     # Comprehensive statistics
     path('statistics/comprehensive/', ComprehensiveStatisticsView.as_view(), name='comprehensive-statistics'),
+    path('statistics/enrollment-trends/', EnrollmentTrendsView.as_view(), name='enrollment-trends'),
     
     # Teacher statistics
     path('statistics/teacher/<int:teacher_id>/', TeacherStudentCountView.as_view(), name='teacher-student-count'),

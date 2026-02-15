@@ -55,7 +55,8 @@ def get_workstream_summary(*, workstream_id: int, actor: CustomUser) -> Dict:
     ).select_related('manager').annotate(
         student_count=Count(
             'users__student_profile',
-            filter=Q(users__student_profile__enrollment_status='active')
+            filter=Q(users__student_profile__enrollment_status='active'),
+            distinct=True
         ),
         teacher_count=Count(
             'users__teacher_profile',
@@ -338,4 +339,3 @@ def get_workstream_dashboard_statistics(*, workstream_id: int, actor: CustomUser
         'schools': get_schools_in_workstream(workstream_id=workstream_id, actor=actor),
         'classrooms': get_classrooms_in_workstream(workstream_id=workstream_id, actor=actor)
     }
-

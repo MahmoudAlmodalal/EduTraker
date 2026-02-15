@@ -360,6 +360,9 @@ class UserSearchApiTests(APITestCase):
         self.ws_manager = User.objects.create_user(
             email='ws_manager@example.com', full_name='Workstream Manager', role='manager_workstream', work_stream=self.ws
         )
+        self.admin_user = User.objects.create_user(
+            email='admin@example.com', full_name='Platform Admin', role='admin'
+        )
         self.ws2_manager = User.objects.create_user(
             email='ws2_manager@example.com', full_name='Other Workstream Manager', role='manager_workstream', work_stream=self.ws2
         )
@@ -419,6 +422,25 @@ class UserSearchApiTests(APITestCase):
         ws_emails = [r['email'] for r in response_ws.data.get('results', [])]
         self.assertIn(self.ws_manager.email, ws_emails)
         self.assertNotIn(self.ws2_manager.email, ws_emails)
+
+    def test_workstream_manager_visibility(self):
+        """Workstream manager should see only admins and school managers in own workstream."""
+        self.client.force_authenticate(user=self.ws_manager)
+
+        response_mgr = self.client.get(self.search_url, {'search': 'Manager'})
+        self.assertEqual(response_mgr.status_code, status.HTTP_200_OK)
+        mgr_emails = [r['email'] for r in response_mgr.data.get('results', [])]
+        self.assertIn(self.s1_manager.email, mgr_emails)
+        self.assertIn(self.s2_manager.email, mgr_emails)
+        self.assertNotIn(self.s1_teacher.email, mgr_emails)
+        self.assertNotIn(self.s1_secretary.email, mgr_emails)
+        self.assertNotIn(self.s1_student.email, mgr_emails)
+        self.assertNotIn(self.ws2_manager.email, mgr_emails)
+
+        response_admin = self.client.get(self.search_url, {'search': 'Admin'})
+        self.assertEqual(response_admin.status_code, status.HTTP_200_OK)
+        admin_emails = [r['email'] for r in response_admin.data.get('results', [])]
+        self.assertIn(self.admin_user.email, admin_emails)
 
     def test_school_manager_visibility_with_managed_school_fallback(self):
         """School manager should still search recipients when school is linked via School.manager only."""

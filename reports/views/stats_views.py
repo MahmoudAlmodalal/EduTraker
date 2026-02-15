@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, OpenApiResponse
 from django.core.exceptions import PermissionDenied, ValidationError
+from datetime import date
+import re
 
 from reports.serializers import (
     TeacherStudentCountSerializer,
@@ -15,6 +17,7 @@ from reports.serializers import (
 )
 
 from accounts.permissions import IsStaffUser, IsAdminOrManager, IsStudent
+from accounts.models import CustomUser, Role
 from rest_framework.permissions import IsAuthenticated
 from reports.services.count_services import (
     get_student_count_by_course,
@@ -31,6 +34,7 @@ from reports.services.activity_services import get_login_activity_chart
 from teacher.models import Teacher, CourseAllocation, Assignment, Attendance, Mark
 from student.models import StudentEnrollment
 from django.db.models import Avg, Count, Q
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 class TeacherStudentCountView(APIView):
@@ -381,6 +385,127 @@ class ComprehensiveStatisticsView(APIView):
                 {'detail': str(e)},
                 status=status.HTTP_403_FORBIDDEN
             )
+
+
+class EnrollmentTrendsView(APIView):
+    """
+    GET: Get monthly student enrollment counts for the last N months.
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Reports & Statistics'],
+        summary='Get enrollment trends',
+        description='Returns monthly student enrollment counts, scoped by the authenticated user role.',
+        parameters=[
+            OpenApiParameter(
+                name='period',
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description='Number of months to include (e.g. 6months, 12months). Defaults to 6months.'
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                description='Enrollment trends',
+                examples=[
+                    OpenApiExample(
+                        'Enrollment Trends Response',
+                        value={
+                            'results': [
+                                {'month': 'Sep', 'enrollment': 12},
+                                {'month': 'Oct', 'enrollment': 15},
+                                {'month': 'Nov', 'enrollment': 9},
+                                {'month': 'Dec', 'enrollment': 18},
+                                {'month': 'Jan', 'enrollment': 14},
+                                {'month': 'Feb', 'enrollment': 11},
+                            ]
+                        }
+                    )
+                ]
+            )
+        }
+    )
+    def get(self, request):
+        actor = request.user
+
+        period_param = (request.query_params.get('period') or '6months').strip().lower()
+        months_back = 6
+        period_match = re.match(r'^(\d+)\s*months?$', period_param)
+        if period_match:
+            months_back = int(period_match.group(1))
+        months_back = max(1, min(months_back, 24))
+
+        def shift_month(year: int, month: int, delta: int):
+            month_index = (year * 12 + (month - 1)) + delta
+            shifted_year, shifted_month_zero = divmod(month_index, 12)
+            return shifted_year, shifted_month_zero + 1
+
+        now = timezone.now().date()
+        current_month_start = date(now.year, now.month, 1)
+
+        start_year, start_month = shift_month(
+            current_month_start.year,
+            current_month_start.month,
+            -(months_back - 1)
+        )
+        range_start = date(start_year, start_month, 1)
+
+        end_year, end_month = shift_month(
+            current_month_start.year,
+            current_month_start.month,
+            1
+        )
+        range_end = date(end_year, end_month, 1)
+
+        queryset = CustomUser.objects.filter(
+            role=Role.STUDENT,
+            is_active=True,
+            date_joined__gte=range_start,
+            date_joined__lt=range_end
+        )
+
+        if actor.role == Role.MANAGER_WORKSTREAM:
+            if actor.work_stream_id:
+                queryset = queryset.filter(
+                    Q(work_stream_id=actor.work_stream_id) |
+                    Q(school__work_stream_id=actor.work_stream_id)
+                )
+            else:
+                queryset = queryset.none()
+        elif actor.role == Role.MANAGER_SCHOOL:
+            if actor.school_id:
+                queryset = queryset.filter(school_id=actor.school_id)
+            else:
+                queryset = queryset.none()
+        elif actor.role in [Role.TEACHER, Role.SECRETARY, Role.STUDENT, Role.GUARDIAN]:
+            if actor.school_id:
+                queryset = queryset.filter(school_id=actor.school_id)
+            else:
+                queryset = queryset.none()
+
+        monthly_counts = queryset.annotate(
+            month=TruncMonth('date_joined')
+        ).values('month').annotate(
+            enrollment=Count('id')
+        ).order_by('month')
+
+        count_map = {
+            (item['month'].year, item['month'].month): item['enrollment']
+            for item in monthly_counts
+            if item.get('month')
+        }
+
+        trends = []
+        for offset in range(months_back - 1, -1, -1):
+            year, month = shift_month(current_month_start.year, current_month_start.month, -offset)
+            month_date = date(year, month, 1)
+            trends.append({
+                'month': month_date.strftime('%b'),
+                'enrollment': count_map.get((year, month), 0)
+            })
+
+        return Response({'results': trends}, status=status.HTTP_200_OK)
 
 
 class DashboardStatisticsView(APIView):

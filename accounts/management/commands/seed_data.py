@@ -1,4 +1,3 @@
-"""
 Django management command to seed the database with realistic test data using Faker.
 
 Usage:
@@ -20,6 +19,7 @@ This script creates:
     - 12 Classrooms (2 sections per grade across 6 grades)
     - Student enrollments
     - Course allocations (teacher-course-classroom assignments)
+<<<<<<< HEAD
     - Assignments (homework, quizzes, exams per course)
     - Marks (student scores on assignments)
     - Learning materials per course
@@ -32,6 +32,14 @@ This script creates:
 - User login history
 - Activity logs
 - System configuration entries
+=======
+    - Assignments and quizzes
+    - Student marks/grades
+    - Attendance records
+    - Lesson plans
+    - Learning materials/assets
+    - Messages and notifications
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
 """
 
 from django.core.management.base import BaseCommand
@@ -42,10 +50,12 @@ from faker import Faker
 import random
 import uuid
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from workstream.models import WorkStream
 from school.models import School, Grade, AcademicYear, Course, ClassRoom
 from student.models import Student, StudentEnrollment
+<<<<<<< HEAD
 from teacher.models import Teacher, CourseAllocation, Attendance, Assignment, LearningMaterial, LessonPlan, Mark
 from secretary.models import Secretary
 from guardian.models import Guardian, GuardianStudentLink
@@ -55,6 +65,21 @@ from custom_admin.models import SupportTicket
 from manager.models import StaffEvaluation
 from reports.models import UserLoginHistory, ActivityLog
 from accounts.models import SystemConfiguration
+=======
+from teacher.models import (
+    Teacher,
+    CourseAllocation,
+    Attendance,
+    Assignment,
+    Mark,
+    LessonPlan,
+    LearningMaterial,
+)
+from secretary.models import Secretary
+from guardian.models import Guardian, GuardianStudentLink
+from user_messages.models import Message, MessageReceipt
+from notifications.models import Notification
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
 
 User = get_user_model()
 fake = Faker()
@@ -109,11 +134,21 @@ class Command(BaseCommand):
                 total_classrooms = 0
                 total_enrollments = 0
                 total_allocations = 0
+                total_assignments = 0
+                total_marks = 0
                 total_attendance = 0
+<<<<<<< HEAD
                 total_assignments = 0
                 total_marks = 0
                 total_learning_materials = 0
                 total_lesson_plans = 0
+=======
+                total_lesson_plans = 0
+                total_learning_materials = 0
+                total_messages = 0
+                total_message_receipts = 0
+                total_notifications = 0
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
 
                 all_users = list(User.objects.all())
                 all_teachers_list = []
@@ -170,11 +205,13 @@ class Command(BaseCommand):
                     # Create student enrollments
                     enrollments = self.create_enrollments(students, classrooms, academic_year)
                     total_enrollments += len(enrollments)
+                    students_by_classroom = self.build_students_by_classroom(enrollments)
 
                     # Create course allocations (assign teachers to courses in classrooms)
                     allocations = self.create_course_allocations(courses, classrooms, teachers, academic_year)
                     total_allocations += len(allocations)
 
+<<<<<<< HEAD
                     # Create assignments for each course allocation
                     assignments = self.create_assignments(allocations, teachers)
                     total_assignments += len(assignments)
@@ -193,7 +230,49 @@ class Command(BaseCommand):
 
                     # Create attendance records for the past 4 weeks
                     attendance_records = self.create_attendance_records(students, allocations, teachers)
+=======
+                    # Create assignments/quizzes and marks
+                    assignments = self.create_assignments(allocations)
+                    total_assignments += len(assignments)
+                    marks = self.create_marks(assignments, students_by_classroom)
+                    total_marks += len(marks)
+
+                    # Create attendance records for the past 2 weeks
+                    attendance_records = self.create_attendance_records(students, allocations)
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
                     total_attendance += len(attendance_records)
+
+                    # Create lesson plans and learning materials
+                    lesson_plans = self.create_lesson_plans(allocations, academic_year)
+                    total_lesson_plans += len(lesson_plans)
+                    learning_materials = self.create_learning_materials(allocations, academic_year)
+                    total_learning_materials += len(learning_materials)
+
+                    # Create communication data (messages + notifications)
+                    messages, message_receipt_count = self.create_messages(
+                        workstream_manager=selected_manager,
+                        school_manager=school_manager,
+                        teachers=teachers,
+                        secretaries=secretaries,
+                        students=students,
+                        guardians=guardians,
+                    )
+                    total_messages += len(messages)
+                    total_message_receipts += message_receipt_count
+
+                    notifications = self.create_notifications(
+                        workstream_manager=selected_manager,
+                        school_manager=school_manager,
+                        teachers=teachers,
+                        secretaries=secretaries,
+                        students=students,
+                        guardian_links=guardian_links,
+                        assignments=assignments,
+                        marks=marks,
+                        attendance_records=attendance_records,
+                        messages=messages,
+                    )
+                    total_notifications += len(notifications)
 
                     self.stdout.write(
                         self.style.SUCCESS(
@@ -201,7 +280,13 @@ class Command(BaseCommand):
                             f'1 manager, {len(teachers)} teachers, {len(secretaries)} secretaries, '
                             f'{len(students)} students, {len(guardians)} guardians, '
                             f'{len(assignments)} assignments, {len(marks)} marks, '
+<<<<<<< HEAD
                             f'{len(attendance_records)} attendance records'
+=======
+                            f'{len(attendance_records)} attendance, {len(lesson_plans)} lesson plans, '
+                            f'{len(learning_materials)} materials, {len(messages)} messages, '
+                            f'{len(notifications)} notifications'
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
                         )
                     )
 
@@ -250,6 +335,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'  - Classrooms: {total_classrooms}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Student Enrollments: {total_enrollments}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Course Allocations: {total_allocations}'))
+<<<<<<< HEAD
                 self.stdout.write(self.style.SUCCESS(f'  - Assignments: {total_assignments}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Marks: {total_marks}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Learning Materials: {total_learning_materials}'))
@@ -263,6 +349,16 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'  - Login History: {len(login_records)}'))
                 self.stdout.write(self.style.SUCCESS(f'  - Activity Logs: {len(activity_logs)}'))
                 self.stdout.write(self.style.SUCCESS(f'  - System Configurations: {len(sys_configs)}'))
+=======
+                self.stdout.write(self.style.SUCCESS(f'  - Assignments/Quizzes: {total_assignments}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Marks: {total_marks}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Attendance Records: {total_attendance}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Lesson Plans: {total_lesson_plans}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Learning Materials: {total_learning_materials}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Messages: {total_messages}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Message Receipts: {total_message_receipts}'))
+                self.stdout.write(self.style.SUCCESS(f'  - Notifications: {total_notifications}'))
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
                 self.stdout.write(self.style.SUCCESS('\nDefault password for all users: Password123!'))
 
         except Exception as e:
@@ -272,6 +368,7 @@ class Command(BaseCommand):
     def clear_seeded_data(self):
         """Clear seeded data (optional, use with --clear flag)"""
         # Clear in order to respect foreign key constraints
+<<<<<<< HEAD
         ActivityLog.objects.all().delete()
         UserLoginHistory.objects.all().delete()
         StaffEvaluation.objects.all().delete()
@@ -295,6 +392,26 @@ class Command(BaseCommand):
         Course.objects.all().delete()
         AcademicYear.objects.all().delete()
         SystemConfiguration.objects.all().delete()
+=======
+        MessageReceipt.all_objects.all().delete()
+        Message.all_objects.all().delete()
+        Notification.all_objects.all().delete()
+        LearningMaterial.all_objects.all().delete()
+        LessonPlan.all_objects.all().delete()
+        Mark.all_objects.all().delete()
+        Attendance.all_objects.all().delete()
+        Assignment.all_objects.all().delete()
+        GuardianStudentLink.all_objects.all().delete()
+        Guardian.all_objects.all().delete()
+        StudentEnrollment.all_objects.all().delete()
+        CourseAllocation.all_objects.all().delete()
+        Student.all_objects.all().delete()
+        Teacher.all_objects.all().delete()
+        Secretary.all_objects.all().delete()
+        ClassRoom.all_objects.all().delete()
+        Course.all_objects.all().delete()
+        AcademicYear.all_objects.all().delete()
+>>>>>>> 12bb526 (work stram manager 66 bug solved)
 
         # Use all_objects to include soft-deleted records
         User.all_objects.filter(role__in=[
@@ -665,21 +782,21 @@ class Command(BaseCommand):
         for level in range(1, 13):
             min_age = level + 5
             max_age = level + 6
-            name, description = grade_descriptions.get(level, (f'Grade {level}', ''))
+            name, _ = grade_descriptions.get(level, (f'Grade {level}', ''))
 
-            grade, created = Grade.objects.get_or_create(
+            # Use all_objects so soft-deleted grades are re-used instead of causing
+            # unique constraint conflicts on numeric_level.
+            grade, _ = Grade.all_objects.update_or_create(
                 numeric_level=level,
                 defaults={
                     'name': name,
                     'min_age': min_age,
-                    'max_age': max_age
+                    'max_age': max_age,
+                    'is_active': True,
+                    'deactivated_at': None,
+                    'deactivated_by': None,
                 }
             )
-
-            # Update existing grades with better names if they were basic
-            if not created and grade.name == f'Grade {level}':
-                grade.name = name
-                grade.save()
 
             grades.append(grade)
 
@@ -778,7 +895,377 @@ class Command(BaseCommand):
 
         return guardians, guardian_links
 
-    def create_attendance_records(self, students, allocations, teachers):
+    def build_students_by_classroom(self, enrollments):
+        """Build a fast lookup of students keyed by classroom id."""
+        students_by_classroom = {}
+        for enrollment in enrollments:
+            students_by_classroom.setdefault(enrollment.class_room_id, []).append(enrollment.student)
+        return students_by_classroom
+
+    def create_assignments(self, allocations):
+        """Create assignment/quiz records for each course allocation."""
+        assignments = []
+        assignment_templates = [
+            "Unit Review",
+            "Chapter Practice",
+            "Progress Quiz",
+            "Weekly Homework",
+            "Project Milestone",
+            "Concept Check",
+        ]
+        assignment_types = ["assignment", "quiz", "homework", "project", "midterm", "participation"]
+        full_marks = [10, 20, 25, 50, 100]
+
+        for allocation in allocations:
+            assignment_count = random.randint(2, 4)
+
+            for idx in range(assignment_count):
+                assignment_type = random.choice(assignment_types)
+                due_date = timezone.now() + timedelta(days=random.randint(-14, 28), hours=random.randint(1, 18))
+                assigned_date = (due_date - timedelta(days=random.randint(3, 12))).date()
+                full_mark = Decimal(str(random.choice(full_marks)))
+
+                assignment = Assignment.objects.create(
+                    assignment_code=f"ASG-{allocation.id}-{idx + 1:02d}",
+                    course_allocation=allocation,
+                    created_by=allocation.teacher,
+                    title=f"{random.choice(assignment_templates)} - {allocation.course.name}",
+                    description=fake.paragraph(nb_sentences=3),
+                    assignment_type=assignment_type,
+                    exam_type=assignment_type,
+                    full_mark=full_mark,
+                    weight=Decimal("1.00"),
+                    assigned_date=assigned_date,
+                    due_date=due_date,
+                    instructions_url=fake.url() if random.random() < 0.35 else "",
+                    is_published=random.random() < 0.9,
+                )
+                assignments.append(assignment)
+
+        return assignments
+
+    def grade_from_percentage(self, percentage):
+        """Convert percentage to letter grade."""
+        value = float(percentage)
+        if value >= 90:
+            return "A"
+        if value >= 80:
+            return "B"
+        if value >= 70:
+            return "C"
+        if value >= 60:
+            return "D"
+        return "F"
+
+    def create_marks(self, assignments, students_by_classroom):
+        """Create marks for assignments per classroom enrollment."""
+        marks = []
+        now = timezone.now()
+        feedback_options = [
+            "Excellent progress.",
+            "Good effort, keep practicing.",
+            "Needs revision on key concepts.",
+            "Great participation and understanding.",
+            "Satisfactory work, improve presentation.",
+            "",
+        ]
+
+        for assignment in assignments:
+            if not assignment.course_allocation_id:
+                continue
+
+            class_students = students_by_classroom.get(assignment.course_allocation.class_room_id, [])
+            if not class_students:
+                continue
+
+            for student in class_students:
+                # Keep some assignments pending grading for realism.
+                if assignment.due_date and assignment.due_date > now and random.random() < 0.65:
+                    continue
+                if random.random() < 0.12:
+                    continue
+
+                max_score = assignment.full_mark
+                percentage = Decimal(str(round(random.uniform(45, 100), 2)))
+                score = (max_score * percentage / Decimal("100")).quantize(Decimal("0.01"))
+                is_final = bool(assignment.due_date and assignment.due_date <= now)
+
+                mark = Mark.objects.create(
+                    student=student,
+                    assignment=assignment,
+                    score=score,
+                    max_score=max_score,
+                    percentage=percentage,
+                    letter_grade=self.grade_from_percentage(percentage),
+                    feedback=random.choice(feedback_options),
+                    graded_by=assignment.created_by,
+                    graded_at=now - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23)),
+                    is_final=is_final,
+                )
+                marks.append(mark)
+
+        return marks
+
+    def create_lesson_plans(self, allocations, academic_year):
+        """Create lesson plans for course allocations."""
+        plans = []
+        for allocation in allocations:
+            plan_count = random.randint(1, 2)
+
+            for idx in range(plan_count):
+                plan_date = timezone.now().date() + timedelta(days=random.randint(-10, 21))
+                plan = LessonPlan.objects.create(
+                    course=allocation.course,
+                    classroom=allocation.class_room,
+                    academic_year=academic_year,
+                    teacher=allocation.teacher,
+                    title=f"Lesson {idx + 1}: {allocation.course.name}",
+                    content=fake.paragraph(nb_sentences=6),
+                    objectives=fake.paragraph(nb_sentences=2),
+                    resources_needed=fake.sentence(nb_words=12),
+                    date_planned=plan_date,
+                    is_published=random.random() < 0.8,
+                )
+                plans.append(plan)
+
+        return plans
+
+    def create_learning_materials(self, allocations, academic_year):
+        """Create downloadable learning materials (assets)."""
+        materials = []
+        file_types = ["pdf", "pptx", "docx", "xlsx", "mp4"]
+
+        for allocation in allocations:
+            material_count = random.randint(1, 2)
+            for idx in range(material_count):
+                file_ext = random.choice(file_types)
+                material_code = f"MAT-{allocation.id}-{idx + 1:02d}"
+                material = LearningMaterial.objects.create(
+                    material_code=material_code,
+                    course=allocation.course,
+                    classroom=allocation.class_room,
+                    academic_year=academic_year,
+                    uploaded_by=allocation.teacher.user,
+                    title=f"{allocation.course.name} Resource {idx + 1}",
+                    description=fake.sentence(nb_words=16),
+                    file_url=f"/media/materials/{material_code.lower()}.{file_ext}",
+                    file_type=file_ext,
+                    file_size=random.randint(120_000, 6_500_000),
+                )
+                materials.append(material)
+
+        return materials
+
+    def create_messages(self, workstream_manager, school_manager, teachers, secretaries, students, guardians):
+        """Create realistic threaded communication between roles."""
+        teacher_users = [teacher.user for teacher in teachers]
+        secretary_users = [secretary.user for secretary in secretaries]
+        student_users = [student.user for student in students]
+        guardian_users = [guardian.user for guardian in guardians]
+
+        staff_users = [workstream_manager, school_manager, *teacher_users, *secretary_users]
+        all_users = staff_users + student_users + guardian_users
+
+        # Deduplicate users while preserving order.
+        unique_users = []
+        seen_user_ids = set()
+        for user in all_users:
+            if user and user.id not in seen_user_ids:
+                seen_user_ids.add(user.id)
+                unique_users.append(user)
+
+        messages = []
+        message_receipt_count = 0
+        subjects = [
+            "Attendance Follow-up",
+            "Assignment Clarification",
+            "Progress Update",
+            "Class Schedule Notice",
+            "Parent Meeting Request",
+            "Support Needed",
+            "Weekly Academic Review",
+        ]
+
+        if len(unique_users) < 2:
+            return messages, message_receipt_count
+
+        thread_count = max(12, len(students) // 2)
+        for _ in range(thread_count):
+            sender = random.choice(unique_users)
+            recipient_pool = [user for user in unique_users if user.id != sender.id]
+            if not recipient_pool:
+                continue
+
+            recipient_count = 1 if random.random() < 0.85 else min(2, len(recipient_pool))
+            recipients = random.sample(recipient_pool, k=recipient_count)
+
+            message = Message.objects.create(
+                sender=sender,
+                subject=random.choice(subjects),
+                body=fake.paragraph(nb_sentences=3),
+            )
+            message.recipients.add(*recipients)
+            messages.append(message)
+            message_receipt_count += len(recipients)
+
+            for receipt in message.receipts.all():
+                if random.random() < 0.65:
+                    receipt.is_read = True
+                    receipt.read_at = timezone.now() - timedelta(hours=random.randint(1, 96))
+                    receipt.save(update_fields=["is_read", "read_at"])
+
+            # Add reply in the same thread for realism.
+            if random.random() < 0.65:
+                replier = random.choice(recipients)
+                reply = Message.objects.create(
+                    sender=replier,
+                    subject=f"Re: {message.subject}",
+                    body=fake.paragraph(nb_sentences=2),
+                    parent_message=message,
+                    thread_id=message.thread_id,
+                )
+                reply.recipients.add(sender)
+                messages.append(reply)
+                message_receipt_count += 1
+
+                for receipt in reply.receipts.all():
+                    if random.random() < 0.7:
+                        receipt.is_read = True
+                        receipt.read_at = timezone.now() - timedelta(hours=random.randint(1, 48))
+                        receipt.save(update_fields=["is_read", "read_at"])
+
+        return messages, message_receipt_count
+
+    def maybe_mark_notification_read(self, notification, read_probability=0.35):
+        """Randomly mark seeded notifications as read to mimic real usage."""
+        if random.random() < read_probability:
+            notification.is_read = True
+            notification.read_at = timezone.now() - timedelta(hours=random.randint(1, 96))
+            notification.save(update_fields=["is_read", "read_at"])
+
+    def create_notifications(
+        self,
+        workstream_manager,
+        school_manager,
+        teachers,
+        secretaries,
+        students,
+        guardian_links,
+        assignments,
+        marks,
+        attendance_records,
+        messages,
+    ):
+        """Create notifications for assignments, marks, attendance, announcements, and messages."""
+        notifications = []
+        teacher_users = [teacher.user for teacher in teachers]
+        secretary_users = [secretary.user for secretary in secretaries]
+
+        # Workstream announcement for school staff.
+        for recipient in [school_manager, *teacher_users, *secretary_users]:
+            notification = Notification.objects.create(
+                sender=workstream_manager,
+                recipient=recipient,
+                title="Workstream Academic Update",
+                message="Please review this week's teaching and attendance targets.",
+                notification_type="announcement",
+                action_url="/dashboard",
+            )
+            self.maybe_mark_notification_read(notification, read_probability=0.55)
+            notifications.append(notification)
+
+        # Assignment reminders for students.
+        for student in students:
+            student_assignments = [
+                assignment for assignment in assignments
+                if assignment.course_allocation.class_room.grade_id == student.grade_id
+            ]
+            if not student_assignments:
+                continue
+
+            assignment = random.choice(student_assignments)
+            notification = Notification.objects.create(
+                sender=assignment.created_by.user,
+                recipient=student.user,
+                title=f"Upcoming: {assignment.title}",
+                message="You have an assignment/quiz due soon. Review the instructions and submit on time.",
+                notification_type="assignment_due",
+                action_url="/student/assessments",
+                related_object_type="assignment",
+                related_object_id=assignment.id,
+            )
+            self.maybe_mark_notification_read(notification, read_probability=0.25)
+            notifications.append(notification)
+
+        # Grade posted notifications for students.
+        marks_by_student = {}
+        for mark in marks:
+            marks_by_student.setdefault(mark.student_id, []).append(mark)
+
+        for student in students:
+            if student.user_id not in marks_by_student:
+                continue
+            mark = random.choice(marks_by_student[student.user_id])
+            notification = Notification.objects.create(
+                sender=mark.graded_by.user if mark.graded_by else school_manager,
+                recipient=student.user,
+                title=f"Grade Posted: {mark.assignment.title}",
+                message=f"Score: {mark.score}/{mark.max_score} ({mark.percentage}%).",
+                notification_type="grade_posted",
+                action_url="/student/grades",
+                related_object_type="mark",
+                related_object_id=mark.id,
+            )
+            self.maybe_mark_notification_read(notification, read_probability=0.2)
+            notifications.append(notification)
+
+        # Attendance notifications for guardians.
+        attendance_by_student = {}
+        for record in attendance_records:
+            attendance_by_student.setdefault(record.student_id, []).append(record)
+
+        sent_guardian_ids = set()
+        for link in guardian_links:
+            if link.guardian_id in sent_guardian_ids:
+                continue
+            student_attendance = attendance_by_student.get(link.student_id, [])
+            if not student_attendance:
+                continue
+            latest = max(student_attendance, key=lambda item: item.date)
+
+            notification = Notification.objects.create(
+                sender=latest.recorded_by.user if latest.recorded_by else school_manager,
+                recipient=link.guardian.user,
+                title=f"Attendance Update for {link.student.user.full_name}",
+                message=f"Status on {latest.date}: {latest.status}.",
+                notification_type="attendance_marked",
+                action_url="/guardian/attendance",
+                related_object_type="attendance",
+                related_object_id=latest.id,
+            )
+            self.maybe_mark_notification_read(notification, read_probability=0.3)
+            notifications.append(notification)
+            sent_guardian_ids.add(link.guardian_id)
+
+        # Message notifications for recipients.
+        for message in messages:
+            for receipt in message.receipts.all():
+                notification = Notification.objects.create(
+                    sender=message.sender,
+                    recipient=receipt.recipient,
+                    title=f"New Message: {message.subject or 'No Subject'}",
+                    message="You received a new message in your communication inbox.",
+                    notification_type="message_received",
+                    action_url="/communication",
+                    related_object_type="message",
+                    related_object_id=message.id,
+                )
+                self.maybe_mark_notification_read(notification, read_probability=0.4)
+                notifications.append(notification)
+
+        return notifications
+
+    def create_attendance_records(self, students, allocations):
         """
         Create realistic attendance records for the past 4 weeks.
         Most students are present (85%), some are absent (8%), late (5%), or excused (2%).

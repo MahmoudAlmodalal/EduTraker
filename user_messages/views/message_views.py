@@ -163,7 +163,7 @@ class CommunicationUserSearchApi(generics.ListAPIView):
     GET: Search for users for messaging. 
     Visibility is role-aware and intentionally scoped.
     ADMIN can search all users. 
-    MANAGER_WORKSTREAM can search all users in their workstream.
+    MANAGER_WORKSTREAM can search admins + school managers in their workstream.
     MANAGER_SCHOOL can search their workstream manager and teachers/secretaries in their school.
     TEACHER, SECRETARY can search users in their school.
     STUDENT, GUARDIAN can search staff in their school.
@@ -194,15 +194,25 @@ class CommunicationUserSearchApi(generics.ListAPIView):
             pass
         elif user.role == Role.MANAGER_WORKSTREAM:
             work_stream = user_workstream
+            role_filters = models.Q(role=Role.ADMIN)
             if work_stream:
-                qs = qs.filter(
-                    models.Q(work_stream=work_stream) |
-                    models.Q(school__work_stream=work_stream)
+                role_filters |= models.Q(
+                    role=Role.MANAGER_SCHOOL,
+                    work_stream=work_stream
                 )
+                role_filters |= models.Q(
+                    role=Role.MANAGER_SCHOOL,
+                    school__work_stream=work_stream
+                )
+                qs = qs.filter(role_filters)
             elif user_school:
-                qs = qs.filter(school=user_school)
+                # Fallback when workstream FK is missing on manager_workstream user
+                qs = qs.filter(
+                    role_filters | models.Q(role=Role.MANAGER_SCHOOL, school=user_school)
+                )
             else:
-                return CustomUser.objects.none()
+                # Keep admins reachable even if manager has incomplete scoping fields
+                qs = qs.filter(role=Role.ADMIN)
         elif user.role == Role.MANAGER_SCHOOL:
             school = user_school
             work_stream = user_workstream
