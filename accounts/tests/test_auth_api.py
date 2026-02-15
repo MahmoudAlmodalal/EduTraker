@@ -103,6 +103,15 @@ class PasswordResetRequestApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('message', response.data)
 
+    def test_request_reset_with_wrong_email_case_does_not_return_debug_tokens(self):
+        """Exact-case lookup should not return uid/token for differently cased email."""
+        response = self.client.post(self.url, {'email': 'USER@test.com'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertNotIn('uid', response.data)
+        self.assertNotIn('token', response.data)
+
     def test_request_reset_returns_token_for_testing(self):
         """Reset request should return uid and token for testing purposes."""
         response = self.client.post(self.url, {'email': 'user@test.com'})

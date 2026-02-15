@@ -65,8 +65,12 @@ def user_get_by_email(*, email: str) -> Optional[CustomUser]:
     Get user by email address.
     Returns None if user does not exist.
     """
+    normalized_email = (email or "").strip()
+    if not normalized_email:
+        return None
+
     try:
-        return CustomUser.objects.select_related("work_stream", "school").get(email=email)
+        return CustomUser.all_objects.select_related("work_stream", "school").get(email=normalized_email)
     except CustomUser.DoesNotExist:
         return None
 

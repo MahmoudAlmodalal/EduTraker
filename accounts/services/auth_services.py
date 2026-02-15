@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError, PermissionDenied
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import CustomUser, Role
@@ -45,13 +44,15 @@ def portal_register(
     Register a new user in the portal with GUEST role by default.
     This is for admin/workstream manager registration.
     """
+    normalized_email = (email or "").strip()
+
     # Check if email already exists
-    if user_get_by_email(email=email):
+    if user_get_by_email(email=normalized_email):
         raise ValidationError("A user with this email already exists.")
     
     # Create user with GUEST role
     user = CustomUser(
-        email=email,
+        email=normalized_email,
         full_name=full_name,
         role=Role.GUEST,
     )
@@ -105,8 +106,10 @@ def workstream_register_user(
     Register a new user in a specific workstream with STUDENT role by default.
     The Student profile with school/grade info can be added later by a manager.
     """
+    normalized_email = (email or "").strip()
+
     # Check if email already exists
-    if user_get_by_email(email=email):
+    if user_get_by_email(email=normalized_email):
         raise ValidationError("A user with this email already exists.")
     
     # Validate workstream exists and is active
@@ -128,7 +131,7 @@ def workstream_register_user(
     
     # Create user with STUDENT role and assign to workstream
     user = CustomUser(
-        email=email,
+        email=normalized_email,
         full_name=full_name,
         role=Role.STUDENT,
         work_stream=workstream,
@@ -191,7 +194,8 @@ def request_password_reset(*, email: str) -> Dict:
     from django.utils.encoding import force_bytes
     from accounts.services.email_service import send_password_reset_email
 
-    user = user_get_by_email(email=email)
+    normalized_email = (email or "").strip()
+    user = user_get_by_email(email=normalized_email)
 
     if not user:
         # Don't reveal whether the email exists

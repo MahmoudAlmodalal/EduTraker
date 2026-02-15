@@ -61,6 +61,47 @@ class ProfileSettingsApiTests(APITestCase):
         self.assertEqual(self.user.full_name, "Updated Name")
         self.assertEqual(self.user.email, "updated-name@test.com")
 
+    def test_patch_updates_name_with_same_email(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            "full_name": "Renamed User",
+            "email": "settings-user@test.com",
+        }
+
+        response = self.client.patch(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.full_name, "Renamed User")
+        self.assertEqual(self.user.email, "settings-user@test.com")
+
+    def test_patch_rejects_exact_case_duplicate_email(self):
+        duplicate_owner = User.objects.create_user(
+            email="taken@test.com",
+            password="pass12345",
+            full_name="Taken User",
+            role="guardian",
+        )
+        self.assertIsNotNone(duplicate_owner.pk)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(self.url, {"email": "taken@test.com"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+    def test_patch_allows_case_only_change_for_own_email(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch(
+            self.url,
+            {"email": "Settings-User@Test.com"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "Settings-User@Test.com")
+
     def test_patch_updates_preference_fields(self):
         self.client.force_authenticate(user=self.user)
         payload = {

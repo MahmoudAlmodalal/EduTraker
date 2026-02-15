@@ -183,6 +183,46 @@ class UserCreateApiTests(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_case_only_variant_email_allowed(self):
+        """Case-only email variants should be allowed as separate users."""
+        self.client.force_authenticate(user=self.admin)
+        User.objects.create_user(
+            email='CaseOnly@test.com',
+            password='pass123',
+            full_name='Case Only Existing',
+            role='guest'
+        )
+
+        data = {
+            'email': 'caseonly@test.com',
+            'full_name': 'Case Only New',
+            'password': 'securepass123',
+            'role': 'guest'
+        }
+        response = self.client.post(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email='CaseOnly@test.com').exists())
+        self.assertTrue(User.objects.filter(email='caseonly@test.com').exists())
+
+    def test_create_user_preserves_email_casing(self):
+        """Created user should keep the exact submitted email casing."""
+        self.client.force_authenticate(user=self.admin)
+        submitted_email = 'MiXeDCaSe@Test.com'
+        response = self.client.post(
+            self.url,
+            {
+                'email': submitted_email,
+                'full_name': 'Mixed Case User',
+                'password': 'securepass123',
+                'role': 'guest'
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = User.objects.get(id=response.data['id'])
+        self.assertEqual(created.email, submitted_email)
+
     def test_inactive_duplicate_email_rejected_with_400(self):
         """Creating a user with an inactive user's email should return 400, not 500."""
         inactive_user = User(

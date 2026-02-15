@@ -88,6 +88,19 @@ class AuthenticationSecurityTests(APITestCase):
         # Check tokens are returned (structure may vary)
         self.assertTrue('access' in str(response.data) or 'token' in str(response.data))
 
+    def test_login_fails_with_wrong_email_case(self):
+        """Case-sensitive email login should reject different letter casing."""
+        User.objects.create_user(
+            email='CaseSensitive@test.com',
+            password='validpass123',
+            full_name='Case Sensitive User',
+            role='admin'
+        )
+        url = reverse('portal-login')
+        data = {'email': 'casesensitive@test.com', 'password': 'validpass123'}
+        response = self.client.post(url, data)
+        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_401_UNAUTHORIZED])
+
     def test_token_required_for_protected_endpoints(self):
         """Test: protected endpoints require valid token."""
         url = reverse('workstream:workstream-list-create')

@@ -30,10 +30,10 @@ def user_create(
     If profile_data is provided, creates the corresponding role profile
     (Secretary, Teacher, Student, Guardian).
     """
-    normalized_email = email.strip().lower()
+    normalized_email = (email or "").strip()
 
     # Check email uniqueness against all users, including inactive (soft-deleted) ones
-    existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).first()
+    existing_user = CustomUser.all_objects.filter(email=normalized_email).first()
     if existing_user:
         if existing_user.is_active:
             raise ValidationError({"email": "A user with this email already exists."})
@@ -142,8 +142,8 @@ def user_update(*, user: CustomUser, data: dict) -> CustomUser:
     """
     email = data.get('email')
     if email and email != user.email:
-        normalized_email = email.strip().lower()
-        existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=user.id).first()
+        normalized_email = email.strip()
+        existing_user = CustomUser.all_objects.filter(email=normalized_email).exclude(id=user.id).first()
         if existing_user:
             raise ValidationError({"email": "A user with this email already exists."})
         data['email'] = normalized_email

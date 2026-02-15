@@ -443,7 +443,7 @@ class UserProfileUpdateApi(APIView):
         for field_name in blocked_fields:
             incoming_data.pop(field_name, None)
 
-        serializer = self.UserProfileSettingsSerializer(data=incoming_data, partial=True)
+        serializer = self.UserProfileSettingsSerializer(instance=user, data=incoming_data, partial=True)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 

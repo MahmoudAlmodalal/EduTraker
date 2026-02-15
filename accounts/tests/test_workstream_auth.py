@@ -65,6 +65,29 @@ class WorkstreamRegistrationTests(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_register_allows_case_only_email_variant(self):
+        """Case-only email variants are treated as separate accounts."""
+        User.objects.create_user(
+            email='CaseVariant@test.com',
+            password='pass123',
+            full_name='Existing Variant',
+            role='student'
+        )
+
+        response = self.client.post(
+            self.url,
+            {
+                'email': 'casevariant@test.com',
+                'full_name': 'New Variant',
+                'password': 'securepass123',
+                'password_confirm': 'securepass123',
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email='CaseVariant@test.com').exists())
+        self.assertTrue(User.objects.filter(email='casevariant@test.com').exists())
+
     def test_register_password_mismatch_rejected(self):
         """Should reject registration when passwords don't match."""
         data = {
@@ -171,6 +194,20 @@ class WorkstreamLoginTests(APITestCase):
         }
         response = self.client.post(self.url, data)
         
+        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_401_UNAUTHORIZED])
+
+    def test_login_fails_with_wrong_email_case(self):
+        """Case-sensitive email login should reject different letter casing."""
+        self.user.email = 'CaseUser@test.com'
+        self.user.save(update_fields=['email'])
+
+        response = self.client.post(
+            self.url,
+            {
+                'email': 'caseuser@test.com',
+                'password': 'pass123',
+            }
+        )
         self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_401_UNAUTHORIZED])
 
     def test_login_user_in_wrong_workstream(self):
