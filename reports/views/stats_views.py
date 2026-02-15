@@ -679,6 +679,7 @@ class DashboardStatisticsView(APIView):
                     'classroom_count': data['total_classrooms'],
                     'course_count': data['total_courses'],
                     'by_grade': data['by_grade'],
+                    'by_classroom': data['by_classroom'],
                     'subject_performance': get_subject_performance_distribution(school_id=user.school_id, actor=user)
                 }
             

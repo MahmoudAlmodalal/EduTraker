@@ -1,4 +1,4 @@
-from django.db.models import QuerySet, Count
+from django.db.models import QuerySet, Count, Q
 from django.shortcuts import get_object_or_404
 from workstream.models import WorkStream
 from accounts.models import CustomUser, Role
@@ -9,8 +9,13 @@ def workstream_list(*, filters: dict, user: CustomUser) -> QuerySet:
     # Bypass ActiveManager by using all_objects.filter(is_active=True)
     # This avoids potential issues with the custom manager's get_queryset overriding standard behavior
     qs = WorkStream.all_objects.annotate(
-        total_users=Count("users"),
-        total_schools=Count("schools")
+        total_users=Count("users", distinct=True),
+        total_schools=Count("schools", distinct=True),
+        total_students=Count(
+            "users",
+            filter=Q(users__role=Role.STUDENT),
+            distinct=True
+        )
     )
 
     if user.role in {Role.MANAGER_WORKSTREAM, Role.MANAGER_SCHOOL}:
