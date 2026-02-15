@@ -3,44 +3,59 @@ set -e
 
 echo "Starting EduTraker Entrypoint..."
 
-if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
-  echo "Checking database connection at $DB_HOST:$DB_PORT..."
-  # Use netcat if available, otherwise sleep
-  if command -v nc >/dev/null 2>&1; then
-      if timeout 30s nc -z "$DB_HOST" "$DB_PORT"; then
+DB_REACHABLE="unknown"
+DB_CHECK_TIMEOUT_SECONDS="${DB_CHECK_TIMEOUT_SECONDS:-10}"
+
+check_db_connection() {
+  if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
+    echo "Checking database connection at $DB_HOST:$DB_PORT..."
+    if command -v nc >/dev/null 2>&1; then
+      if timeout "${DB_CHECK_TIMEOUT_SECONDS}s" nc -z "$DB_HOST" "$DB_PORT"; then
         echo "Database is reachable."
+        DB_REACHABLE="true"
       else
-        echo "Warning: Could not reach database at $DB_HOST:$DB_PORT. Continuing anyway..."
+        echo "Warning: Could not reach database at $DB_HOST:$DB_PORT."
+        DB_REACHABLE="false"
       fi
+    else
+      echo "netcat not found, skipping direct DB reachability check..."
+    fi
   else
-      echo "netcat not found, sleeping 5s to allow DB startup..."
-      sleep 5
+    echo "DB_HOST or DB_PORT not set, skipping connection check..."
   fi
-else
-  echo "DB_HOST or DB_PORT not set, skipping connection check..."
-fi
+}
 
 # Only run migrations if we are likely the backend (not celery) or if explicitly forced
 # A simple heuristic: if no arguments are passed, we are the backend starting default gunicorn
 if [ $# -eq 0 ]; then
-    echo "Running migrations..."
-    # Automated Schema Sync Logic
-    if [ "$FORCE_MIGRATE_SYNC" = "True" ]; then
-      echo "FORCE_MIGRATE_SYNC is True. Re-syncing migration state..."
-      python db_fix.py || echo "db_fix.py failed, continuing..."
-      python manage.py migrate --fake-initial || echo "Fake initial failed, continuing..."
-      python manage.py migrate --noinput
-    elif [ "$MIGRATE_FAKE" = "True" ]; then
-      echo "Faking migrations..."
-      python manage.py migrate --noinput --fake
+    check_db_connection
+
+    if [ "$DB_REACHABLE" = "false" ]; then
+      if [ "${REQUIRE_DB_ON_STARTUP:-False}" = "True" ]; then
+        echo "Database is unreachable and REQUIRE_DB_ON_STARTUP=True. Exiting."
+        exit 1
+      fi
+      echo "Skipping db_fix.py and migrations because database is unreachable."
     else
-      echo "Executing standard migration..."
-      # Run db reconciliation before migration
-      python db_fix.py || echo "db_fix.py failed, continuing..."
-      python manage.py migrate --noinput || {
-        echo "Migration failed. Attempting to reconcile..."
-        python manage.py migrate --fake-initial --noinput || echo "Auto-reconcile failed."
-      }
+      echo "Running migrations..."
+      # Automated Schema Sync Logic
+      if [ "$FORCE_MIGRATE_SYNC" = "True" ]; then
+        echo "FORCE_MIGRATE_SYNC is True. Re-syncing migration state..."
+        python db_fix.py || echo "db_fix.py failed, continuing..."
+        python manage.py migrate --fake-initial || echo "Fake initial failed, continuing..."
+        python manage.py migrate --noinput
+      elif [ "$MIGRATE_FAKE" = "True" ]; then
+        echo "Faking migrations..."
+        python manage.py migrate --noinput --fake
+      else
+        echo "Executing standard migration..."
+        # Run db reconciliation before migration
+        python db_fix.py || echo "db_fix.py failed, continuing..."
+        python manage.py migrate --noinput || {
+          echo "Migration failed. Attempting to reconcile..."
+          python manage.py migrate --fake-initial --noinput || echo "Auto-reconcile failed."
+        }
+      fi
     fi
 
     echo "Collecting static files..."

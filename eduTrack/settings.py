@@ -191,6 +191,7 @@ else:
     DB_PORT = os.environ.get('DB_PORT', '3306')
     DB_SSL = os.environ.get('DB_SSL', 'False') == 'True'
     DB_CA_PATH = os.environ.get('DB_CA_PATH', '/etc/ssl/certs/ca-certificates.crt')
+    DB_CONNECT_TIMEOUT = int(os.environ.get('DB_CONNECT_TIMEOUT', '10'))
     
     DATABASES = {
         'default': {
@@ -201,9 +202,12 @@ else:
             'HOST': DB_HOST,
             'PORT': DB_PORT,
             'OPTIONS': {
-                'ssl': {
-                    'ca': DB_CA_PATH
-                } if DB_SSL else {}
+                'connect_timeout': DB_CONNECT_TIMEOUT,
+                **({
+                    'ssl': {
+                        'ca': DB_CA_PATH
+                    }
+                } if DB_SSL else {})
             }
         }
     }
@@ -264,6 +268,9 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = (
+    os.environ.get('CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP', 'True') == 'True'
+)
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60  # 20 minutes
