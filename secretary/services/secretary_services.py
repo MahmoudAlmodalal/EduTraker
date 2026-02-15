@@ -96,7 +96,15 @@ def secretary_update(*, secretary: Secretary, actor: CustomUser, data: dict) -> 
     # Handle user fields
     for field in allowed_user_fields:
         if field in data:
-            setattr(secretary.user, field, data[field])
+            if field == 'email':
+                # Check email uniqueness, excluding current user
+                normalized_email = data[field].strip().lower()
+                existing_user = CustomUser.all_objects.filter(email__iexact=normalized_email).exclude(id=secretary.user.id).first()
+                if existing_user:
+                    raise ValidationError({"email": "A user with this email already exists."})
+                setattr(secretary.user, field, normalized_email)
+            else:
+                setattr(secretary.user, field, data[field])
 
     if any(f in data for f in allowed_user_fields):
         secretary.user.full_clean()

@@ -9,9 +9,14 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsAdminOrManagerOrSecretary, IsStaffUser, IsTeacher, IsGuardian
 from accounts.pagination import PaginatedAPIMixin
-from accounts.models import Role
+from accounts.models import CustomUser, Role
 from guardian.models import Guardian, GuardianStudentLink
-from guardian.selectors.guardian_selectors import guardian_list, guardian_get, guardian_student_list
+from guardian.selectors.guardian_selectors import (
+    guardian_list,
+    guardian_get,
+    guardian_student_list,
+    guardian_student_link_get,
+)
 from guardian.services.guardian_services import (
     guardian_create,
     guardian_update,
@@ -249,3 +254,82 @@ class GuardianStudentLinkDetailApi(APIView):
         link = guardian_student_link_get(link_id=link_id, actor=request.user)
         guardian_student_link_deactivate(link=link, actor=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GuardianSchoolInfoApi(APIView):
+    permission_classes = [IsAdminOrManagerOrSecretary | IsGuardian]
+
+    @extend_schema(
+        tags=["Guardian Management"],
+        summary="Get guardian school info",
+        responses={200: OpenApiResponse(description="Guardian school info")},
+    )
+    def get(self, request, guardian_id: int):
+        guardian = guardian_get(guardian_id=guardian_id, actor=request.user)
+        school = guardian.user.school
+
+        if not school:
+            link = (
+                GuardianStudentLink.objects
+                .filter(guardian=guardian)
+                .select_related("student__user__school")
+                .first()
+            )
+            school = link.student.user.school if link else None
+
+        if not school:
+            return Response({})
+
+        workstream = school.work_stream
+
+        manager_data = None
+        if school.manager:
+            manager_data = {
+                "id": school.manager.id,
+                "full_name": school.manager.full_name,
+                "email": school.manager.email,
+            }
+
+        teachers = (
+            CustomUser.objects
+            .filter(role=Role.TEACHER, school=school, is_active=True)
+            .only("id", "full_name", "email")
+        )
+        secretaries = (
+            CustomUser.objects
+            .filter(role=Role.SECRETARY, school=school, is_active=True)
+            .only("id", "full_name", "email")
+        )
+
+        links = (
+            GuardianStudentLink.objects
+            .filter(guardian=guardian)
+            .select_related("student", "student__user", "student__grade")
+        )
+
+        students_data = []
+        for link in links:
+            student = link.student
+            grade_name = (
+                student.grade.name
+                if student.grade
+                else (f"Grade {student.grade_level}" if getattr(student, "grade_level", None) else "N/A")
+            )
+
+            students_data.append({
+                "id": student.user_id,
+                "full_name": student.user.full_name,
+                "grade": grade_name,
+                "relationship_type": link.relationship_type,
+                "relationship_display": link.get_relationship_type_display(),
+                "is_primary": link.is_primary,
+            })
+
+        return Response({
+            "school": {"id": school.id, "name": school.school_name},
+            "workstream": {"id": workstream.id, "name": workstream.workstream_name} if workstream else None,
+            "school_manager": manager_data,
+            "teachers": [{"id": teacher.id, "full_name": teacher.full_name, "email": teacher.email} for teacher in teachers],
+            "secretaries": [{"id": secretary.id, "full_name": secretary.full_name, "email": secretary.email} for secretary in secretaries],
+            "linked_students": students_data,
+        })

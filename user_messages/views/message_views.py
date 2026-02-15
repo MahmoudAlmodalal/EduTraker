@@ -229,12 +229,40 @@ class CommunicationUserSearchApi(generics.ListAPIView):
                 return CustomUser.objects.none()
             qs = qs.filter(school=user_school)
         elif user.role in [Role.STUDENT, Role.GUARDIAN]:
+            if not user_school and user.role == Role.GUARDIAN:
+                # Guardians may not have user.school set directly.
+                # Fall back to the school of their first linked student.
+                try:
+                    from guardian.models import GuardianStudentLink
+                    link = GuardianStudentLink.objects.filter(
+                        guardian__user=user
+                    ).select_related('student__user__school').first()
+                    if link:
+                        user_school = link.student.user.school
+                except Exception:
+                    pass
             if not user_school:
                 return CustomUser.objects.none()
-            qs = qs.filter(
+
+            school_staff_q = (
                 models.Q(role=Role.MANAGER_WORKSTREAM, work_stream=user_school.work_stream) |
                 models.Q(role__in=[Role.MANAGER_SCHOOL, Role.TEACHER, Role.SECRETARY], school=user_school)
             )
+
+            if user.role == Role.GUARDIAN:
+                # Guardians can also search their own linked students (children).
+                try:
+                    from guardian.models import GuardianStudentLink
+                    linked_student_user_ids = list(
+                        GuardianStudentLink.objects.filter(
+                            guardian__user=user
+                        ).values_list('student__user_id', flat=True)
+                    )
+                    school_staff_q |= models.Q(id__in=linked_student_user_ids)
+                except Exception:
+                    pass
+
+            qs = qs.filter(school_staff_q)
         else:
             return CustomUser.objects.none()
 

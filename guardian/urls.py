@@ -10,6 +10,7 @@ from guardian.views.guardian_views import (
     GuardianActivateApi,
     GuardianStudentLinkApi,
     GuardianStudentLinkDetailApi,
+    GuardianSchoolInfoApi,
 )
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     path("guardians/<int:guardian_id>/activate/", GuardianActivateApi.as_view(), name="guardian-activate"),
 
     path("guardians/<int:guardian_id>/students/", GuardianStudentLinkApi.as_view(), name="guardian-students"),
+    path("guardians/<int:guardian_id>/school-info/", GuardianSchoolInfoApi.as_view(), name="guardian-school-info"),
     path("guardian-links/<int:link_id>/", GuardianStudentLinkDetailApi.as_view(), name="guardian-link-detail"),
     path("guardian-links/<int:link_id>/deactivate/", GuardianStudentLinkDetailApi.as_view(), name="guardian-link-deactivate"),
 ]
